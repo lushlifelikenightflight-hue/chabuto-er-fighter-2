@@ -1,0 +1,52 @@
+:root {
+  color-scheme: dark;
+  font-family: "MS Gothic", "Noto Sans JP", monospace;
+  background: #05060c;
+  color: #f8f3d5;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: #05060c; }
+body { display: grid; place-items: center; min-height: 100svh; overflow: hidden; }
+
+.cabinet {
+  width: min(96vw, 760px);
+  padding: clamp(8px, 2vw, 20px);
+  border: 4px solid #222a3b;
+  border-radius: 18px;
+  background: linear-gradient(140deg, #343e52, #131929 55%, #0b0e18);
+  box-shadow: 0 22px 60px #000, inset 0 0 0 2px #7a8596;
+}
+.brand { margin: 0 4px 8px; color: #c8d1df; font: 700 11px/1.2 monospace; letter-spacing: .2em; }
+.brand span { float: right; color: #f8c54e; letter-spacing: .08em; }
+.lcd { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border: 7px solid #090c14; border-radius: 8px; background: #101a2e; box-shadow: inset 0 0 26px #000, 0 0 0 2px #778195; }
+#arena { display: block; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; background: #101a2e; }
+#panel { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; padding: 5%; overflow: auto; background: linear-gradient(180deg, rgba(8,11,24,.78), rgba(5,7,15,.94)); text-align: center; }
+#panel[data-screen="battle"] { pointer-events: none; justify-content: flex-end; background: transparent; padding: 4px; }
+#panel[data-screen="battle"] button, #panel[data-screen="battle"] h1, #panel[data-screen="battle"] p, #panel[data-screen="battle"] pre, #panel[data-screen="battle"] .character-grid { display: none; }
+#panel h1 { margin: 0; color: #ffda66; font: 900 clamp(18px, 4vw, 34px)/1.1 monospace; letter-spacing: .06em; text-shadow: 2px 2px #470b1b; }
+#panel p { margin: 0; color: #9de8ff; font-size: clamp(9px, 1.8vw, 13px); }
+#panel pre { max-width: 38em; margin: 3px 0; color: #f8f3d5; font: 700 clamp(9px, 1.6vw, 12px)/1.5 monospace; white-space: pre-wrap; }
+#panel button { min-width: 176px; padding: 7px 14px; border: 2px solid #cf8e27; border-radius: 3px; background: #211a10; color: #fff8dc; font: 800 12px/1.2 monospace; cursor: pointer; }
+#panel button:hover, #panel button:focus-visible, #panel button.selected { border-color: #67defb; background: #18354b; outline: none; box-shadow: 0 0 0 2px rgba(103,222,251,.24); }
+.character-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; width: min(100%, 620px); }
+.character-grid button { min-width: 0 !important; padding: 3px !important; display: grid; gap: 2px; }
+.character-grid img { width: 100%; height: clamp(42px, 10vw, 82px); object-fit: contain; image-rendering: pixelated; }
+.character-grid strong { font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.character-grid small { color: #aab6c8; font-size: 8px; }
+.stage-preview { width: min(80%, 460px); max-height: 110px; object-fit: cover; image-rendering: pixelated; border: 1px solid #536681; }
+.score-list { width: min(100%, 420px); margin: 0; padding: 0 0 0 24px; text-align: left; color: #f8f3d5; font: 700 11px/1.65 monospace; }
+#hint { position: absolute; z-index: 5; bottom: 3px; left: 50%; width: max-content; max-width: 98%; transform: translateX(-50%); margin: 0; padding: 3px 6px; border: 1px solid rgba(157,232,255,.5); background: rgba(4,7,16,.78); color: #dff8ff; font: 700 9px/1.2 monospace; pointer-events: none; }
+.controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 55px; padding: 8px 3px 0; color: #b7c1d1; font: 700 10px/1.2 monospace; }
+.dpad { color: #f8c54e; letter-spacing: .15em; }
+.buttons b { display: inline-grid; place-items: center; min-width: 18px; min-height: 18px; margin-left: 3px; border-radius: 50%; background: #d7405b; color: #fff; }
+.system { color: #74e7ff; text-align: right; }
+@media (max-width: 620px) {
+  body { overflow: auto; }
+  .cabinet { width: 100vw; min-height: 100svh; border-width: 2px; border-radius: 0; }
+  .lcd { border-width: 4px; }
+  .character-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .controls { min-height: 66px; flex-wrap: wrap; justify-content: center; }
+  .system { width: 100%; text-align: center; }
+  #hint { display: none; }
+}

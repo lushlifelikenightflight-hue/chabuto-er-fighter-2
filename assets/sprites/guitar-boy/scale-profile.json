@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "name": "guitar-boy",
+  "processing": {
+    "cell_size": 256,
+    "fit_scale": 0.82,
+    "trim_border": 4,
+    "edge_clean_depth": 3,
+    "align": "feet",
+    "shared_scale": true,
+    "scale_strategy": "preserve",
+    "component_mode": "largest",
+    "component_padding": 0,
+    "min_component_area": 1,
+    "edge_touch_margin": 0
+  },
+  "output_origin": [
+    128.0,
+    233
+  ],
+  "reference": {
+    "target": "player",
+    "mode": "combat",
+    "rows": 2,
+    "cols": 2,
+    "body_scale_mean": 0.41119575170296585,
+    "body_scale_cv": 0.02639690916995745,
+    "anchor_y_mean": 0.8417932148626813
+  },
+  "qc": {
+    "max_body_scale_drift": 0.1
+  }
+}
