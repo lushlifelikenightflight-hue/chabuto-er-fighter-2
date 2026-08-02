@@ -1,0 +1,810 @@
+{
+  "version": 1,
+  "characterId": "guitar-boy",
+  "format": "PNG RGBA",
+  "cell": {
+    "width": 256,
+    "height": 256
+  },
+  "nearestNeighbor": true,
+  "sourceKeyframes": {
+    "idle": "assets/sprites/guitar-boy/combat-1.png",
+    "movement": "assets/sprites/guitar-boy/combat-2.png",
+    "lightStandActive": "assets/sprites/guitar-boy/combat-3.png",
+    "heavyStandOrSpecialActive": "assets/sprites/guitar-boy/combat-4.png"
+  },
+  "actions": {
+    "idle": {
+      "group": "idle",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/idle/idle-1.png",
+        "assets/sprites/guitar-boy/actions/idle/idle-2.png",
+        "assets/sprites/guitar-boy/actions/idle/idle-3.png",
+        "assets/sprites/guitar-boy/actions/idle/idle-4.png"
+      ],
+      "frameDuration": 10,
+      "loop": true,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "walk_forward": {
+      "group": "movement",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/movement/movement-1.png",
+        "assets/sprites/guitar-boy/actions/movement/movement-2.png",
+        "assets/sprites/guitar-boy/actions/movement/movement-3.png"
+      ],
+      "frameDuration": 5,
+      "loop": true,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "walk_backward": {
+      "group": "movement",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/movement/movement-4.png",
+        "assets/sprites/guitar-boy/actions/movement/movement-5.png",
+        "assets/sprites/guitar-boy/actions/movement/movement-6.png"
+      ],
+      "frameDuration": 6,
+      "loop": true,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "dash": {
+      "group": "movement",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/movement/movement-7.png",
+        "assets/sprites/guitar-boy/actions/movement/movement-8.png",
+        "assets/sprites/guitar-boy/actions/movement/movement-9.png"
+      ],
+      "frameDuration": 3,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "backstep": {
+      "group": "movement",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/movement/movement-10.png",
+        "assets/sprites/guitar-boy/actions/movement/movement-11.png",
+        "assets/sprites/guitar-boy/actions/movement/movement-12.png"
+      ],
+      "frameDuration": 4,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "crouch_start": {
+      "group": "crouch",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/crouch/crouch-1.png",
+        "assets/sprites/guitar-boy/actions/crouch/crouch-2.png"
+      ],
+      "frameDuration": 4,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "crouch_idle": {
+      "group": "crouch",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/crouch/crouch-3.png",
+        "assets/sprites/guitar-boy/actions/crouch/crouch-4.png"
+      ],
+      "frameDuration": 10,
+      "loop": true,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "crouch_end": {
+      "group": "crouch",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/crouch/crouch-5.png",
+        "assets/sprites/guitar-boy/actions/crouch/crouch-6.png"
+      ],
+      "frameDuration": 4,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "jump_start": {
+      "group": "jump",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/jump/jump-1.png",
+        "assets/sprites/guitar-boy/actions/jump/jump-2.png"
+      ],
+      "frameDuration": 4,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "jump_rise": {
+      "group": "jump",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/jump/jump-3.png",
+        "assets/sprites/guitar-boy/actions/jump/jump-4.png"
+      ],
+      "frameDuration": 5,
+      "loop": true,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "jump_apex": {
+      "group": "jump",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/jump/jump-5.png",
+        "assets/sprites/guitar-boy/actions/jump/jump-6.png"
+      ],
+      "frameDuration": 5,
+      "loop": true,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "jump_fall": {
+      "group": "jump",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/jump/jump-7.png",
+        "assets/sprites/guitar-boy/actions/jump/jump-8.png"
+      ],
+      "frameDuration": 5,
+      "loop": true,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "landing": {
+      "group": "jump",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/jump/jump-9.png",
+        "assets/sprites/guitar-boy/actions/jump/jump-10.png"
+      ],
+      "frameDuration": 4,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "double_jump": {
+      "group": "jump",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/jump/jump-11.png",
+        "assets/sprites/guitar-boy/actions/jump/jump-12.png"
+      ],
+      "frameDuration": 4,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "light_stand": {
+      "group": "light_attacks",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-1.png",
+        "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-2.png",
+        "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-3.png",
+        "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-4.png"
+      ],
+      "frameDuration": 4,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      },
+      "phases": {
+        "startup": [
+          "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-1.png"
+        ],
+        "active": [
+          "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-2.png"
+        ],
+        "recovery": [
+          "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-3.png",
+          "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-4.png"
+        ]
+      }
+    },
+    "light_crouch": {
+      "group": "light_attacks",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-5.png",
+        "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-6.png",
+        "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-7.png",
+        "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-8.png"
+      ],
+      "frameDuration": 4,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      },
+      "phases": {
+        "startup": [
+          "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-5.png"
+        ],
+        "active": [
+          "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-6.png"
+        ],
+        "recovery": [
+          "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-7.png",
+          "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-8.png"
+        ]
+      }
+    },
+    "light_air": {
+      "group": "light_attacks",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-9.png",
+        "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-10.png",
+        "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-11.png",
+        "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-12.png"
+      ],
+      "frameDuration": 4,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      },
+      "phases": {
+        "startup": [
+          "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-9.png"
+        ],
+        "active": [
+          "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-10.png"
+        ],
+        "recovery": [
+          "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-11.png",
+          "assets/sprites/guitar-boy/actions/light_attacks/light_attacks-12.png"
+        ]
+      }
+    },
+    "heavy_stand": {
+      "group": "heavy_attacks",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-1.png",
+        "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-2.png",
+        "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-3.png",
+        "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-4.png"
+      ],
+      "frameDuration": 7,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      },
+      "phases": {
+        "startup": [
+          "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-1.png"
+        ],
+        "active": [
+          "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-2.png"
+        ],
+        "recovery": [
+          "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-3.png",
+          "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-4.png"
+        ]
+      }
+    },
+    "heavy_crouch": {
+      "group": "heavy_attacks",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-5.png",
+        "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-6.png",
+        "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-7.png",
+        "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-8.png"
+      ],
+      "frameDuration": 7,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      },
+      "phases": {
+        "startup": [
+          "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-5.png"
+        ],
+        "active": [
+          "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-6.png"
+        ],
+        "recovery": [
+          "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-7.png",
+          "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-8.png"
+        ]
+      }
+    },
+    "heavy_air": {
+      "group": "heavy_attacks",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-9.png",
+        "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-10.png",
+        "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-11.png",
+        "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-12.png"
+      ],
+      "frameDuration": 7,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      },
+      "phases": {
+        "startup": [
+          "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-9.png"
+        ],
+        "active": [
+          "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-10.png"
+        ],
+        "recovery": [
+          "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-11.png",
+          "assets/sprites/guitar-boy/actions/heavy_attacks/heavy_attacks-12.png"
+        ]
+      }
+    },
+    "guard_high": {
+      "group": "guard",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/guard/guard-1.png",
+        "assets/sprites/guitar-boy/actions/guard/guard-2.png"
+      ],
+      "frameDuration": 6,
+      "loop": true,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "guard_low": {
+      "group": "guard",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/guard/guard-3.png",
+        "assets/sprites/guitar-boy/actions/guard/guard-4.png"
+      ],
+      "frameDuration": 6,
+      "loop": true,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "just_guard": {
+      "group": "guard",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/guard/guard-5.png",
+        "assets/sprites/guitar-boy/actions/guard/guard-6.png"
+      ],
+      "frameDuration": 3,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "throw_start": {
+      "group": "throw",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/throw/throw-1.png",
+        "assets/sprites/guitar-boy/actions/throw/throw-2.png"
+      ],
+      "frameDuration": 4,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "throw_success": {
+      "group": "throw",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/throw/throw-3.png",
+        "assets/sprites/guitar-boy/actions/throw/throw-4.png"
+      ],
+      "frameDuration": 5,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "throw_miss": {
+      "group": "throw",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/throw/throw-5.png",
+        "assets/sprites/guitar-boy/actions/throw/throw-6.png"
+      ],
+      "frameDuration": 5,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "thrown": {
+      "group": "throw",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/throw/throw-7.png",
+        "assets/sprites/guitar-boy/actions/throw/throw-8.png"
+      ],
+      "frameDuration": 5,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "throw_break": {
+      "group": "throw",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/throw/throw-9.png",
+        "assets/sprites/guitar-boy/actions/throw/throw-10.png"
+      ],
+      "frameDuration": 4,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "special_start": {
+      "group": "special",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/special/special-1.png",
+        "assets/sprites/guitar-boy/actions/special/special-2.png",
+        "assets/sprites/guitar-boy/actions/special/special-3.png"
+      ],
+      "frameDuration": 6,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "special_active": {
+      "group": "special",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/special/special-4.png",
+        "assets/sprites/guitar-boy/actions/special/special-5.png",
+        "assets/sprites/guitar-boy/actions/special/special-6.png"
+      ],
+      "frameDuration": 4,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "special_recovery": {
+      "group": "special",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/special/special-7.png",
+        "assets/sprites/guitar-boy/actions/special/special-8.png",
+        "assets/sprites/guitar-boy/actions/special/special-9.png"
+      ],
+      "frameDuration": 7,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "hit_light": {
+      "group": "damage",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/damage/damage-1.png",
+        "assets/sprites/guitar-boy/actions/damage/damage-2.png"
+      ],
+      "frameDuration": 5,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "hit_heavy": {
+      "group": "damage",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/damage/damage-3.png",
+        "assets/sprites/guitar-boy/actions/damage/damage-4.png"
+      ],
+      "frameDuration": 6,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "hit_crouch": {
+      "group": "damage",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/damage/damage-5.png",
+        "assets/sprites/guitar-boy/actions/damage/damage-6.png"
+      ],
+      "frameDuration": 5,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "air_hit": {
+      "group": "damage",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/damage/damage-7.png",
+        "assets/sprites/guitar-boy/actions/damage/damage-8.png"
+      ],
+      "frameDuration": 5,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "knockback": {
+      "group": "damage",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/damage/damage-9.png",
+        "assets/sprites/guitar-boy/actions/damage/damage-10.png"
+      ],
+      "frameDuration": 5,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "knockdown": {
+      "group": "damage",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/damage/damage-11.png",
+        "assets/sprites/guitar-boy/actions/damage/damage-12.png"
+      ],
+      "frameDuration": 8,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "down_idle": {
+      "group": "damage",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/damage/damage-13.png",
+        "assets/sprites/guitar-boy/actions/damage/damage-14.png"
+      ],
+      "frameDuration": 12,
+      "loop": true,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "wakeup": {
+      "group": "damage",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/damage/damage-15.png",
+        "assets/sprites/guitar-boy/actions/damage/damage-16.png"
+      ],
+      "frameDuration": 8,
+      "loop": false,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "victory": {
+      "group": "result",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/result/result-1.png",
+        "assets/sprites/guitar-boy/actions/result/result-2.png",
+        "assets/sprites/guitar-boy/actions/result/result-3.png"
+      ],
+      "frameDuration": 10,
+      "loop": true,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    },
+    "defeat": {
+      "group": "result",
+      "frames": [
+        "assets/sprites/guitar-boy/actions/result/result-4.png",
+        "assets/sprites/guitar-boy/actions/result/result-5.png",
+        "assets/sprites/guitar-boy/actions/result/result-6.png"
+      ],
+      "frameDuration": 12,
+      "loop": true,
+      "origin": {
+        "x": 128,
+        "y": 233
+      },
+      "groundPoint": {
+        "x": 128,
+        "y": 233
+      }
+    }
+  }
+}

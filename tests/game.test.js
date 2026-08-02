@@ -1,24 +1,146 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ANIMATION_CLIPS, CHARACTERS, CHARACTER_IDS, DIFFICULTIES, STAGES, getOpponentId } from "../src/data.js";
+import fs from "node:fs";
+import { ANIMATION_CLIPS, CHARACTERS, CHARACTER_IDS, DIFFICULTIES, MENU_ITEMS, SETTINGS_ITEMS, STAGE_BOUNDS, STAGES, getOpponentId } from "../src/data.js";
 import { FIXED_DT, FIXED_UPDATE_ORDER, activeFrame, aiPlan, applyDamage, createFighterState, createProjectile, evaluateStrike, evaluateThrow, fixedStep, getFighterBoxes, projectileIsActive, rectsOverlap, resolvePushboxes, scoreForEvent, stageOpponent, continueCount, rankForScore } from "../src/engine.js";
 import { STORAGE_KEY, loadSave, resetSave, safeStorage, saveData, validateSave } from "../src/storage.js";
-import { Game, formatDuration } from "../src/game.js";
+import { DEFAULT_SPRITE_SCALE, Game, SCREEN, advanceVisualSequence, animationNameFor, animationSelectionFor, formatDuration, setVisualSequence, spriteDrawPlacement } from "../src/game.js";
+import { EXPANDED_FIGHTER_IDS, REQUIRED_ANIMATION_CLIPS } from "../src/sprite-manifest.js";
+import { isTouchAvailable } from "../src/touch-input.js";
 
-test("data exposes the eight required Japanese fighters and all 32 clips", () => {
+test("data exposes the eight required Japanese fighters and all required clips", () => {
   assert.equal(CHARACTER_IDS.length, 8);
   assert.deepEqual(CHARACTER_IDS.map((id) => CHARACTERS[id].name), ["\u30ae\u30bf\u30fc\u5c11\u5e74", "\u3069\u308d\u3069\u308d\u30b9\u30e9\u30a4\u30e0", "\u30dc\u30d6\u306e\u5973\u306e\u5b50", "\u304a\u3058\u3055\u3093", "\u3089\u3059\u3066\u3043\u30fc", "\u304b\u305a\u3057\u3052", "\u306e\u308a\u304a", "\u30c8\u30b3"]);
-  assert.equal(ANIMATION_CLIPS.length, 32);
+  assert.equal(ANIMATION_CLIPS.length, 41);
+  assert.deepEqual(ANIMATION_CLIPS, REQUIRED_ANIMATION_CLIPS);
   assert.equal(new Set(CHARACTER_IDS.map((id) => CHARACTERS[id].special.specialType)).size, 8);
   for (const id of CHARACTER_IDS) {
     const fighter = CHARACTERS[id];
-    assert.equal(Object.keys(fighter.animation).length, 32);
+    assert.equal(Object.keys(fighter.animation).length, 41);
     assert.equal(fighter.sprite.frames.length, 4);
     assert.equal(fighter.special.unblockable, true);
     assert.equal(fighter.special.meterCost, 100);
     assert.notEqual(fighter.stats.speed, undefined);
     assert.notEqual(fighter.moves.light_attack_neutral.damage, fighter.moves.strong_attack_neutral.damage);
   }
+});
+
+test("the original four fighters use expanded authored animation frames", () => {
+  for (const id of EXPANDED_FIGHTER_IDS) {
+    const fighter = CHARACTERS[id];
+    assert.match(fighter.animation.idle.frames[0], new RegExp(`assets/sprites/${id}/actions/idle/idle-1\\.png$`));
+    assert.equal(fighter.animation.throw_break.frames.length, 2);
+    assert.equal(fighter.animation.down_idle.loop, true);
+  }
+});
+
+test("runtime actions select canonical clips and special phases", () => {
+  assert.equal(animationNameFor({ action: "light_attack_neutral" }), "light_stand");
+  assert.equal(animationNameFor({ action: "jump_up", vy: 0.5 }), "jump_apex");
+  const currentMove = { startupFrames: 5, activeFrames: 3 };
+  assert.equal(animationNameFor({ action: "special_start", actionFrame: 2, currentMove }), "special_start");
+  assert.equal(animationNameFor({ action: "special_start", actionFrame: 6, currentMove }), "special_active");
+  assert.equal(animationNameFor({ action: "special_start", actionFrame: 10, currentMove }), "special_recovery");
+  assert.deepEqual(animationSelectionFor({ action: "special_start", actionFrame: 6, currentMove }), { name: "special_active", frame: 1 });
+  assert.deepEqual(animationSelectionFor({ action: "throw_start", actionFrame: 8, currentMove }), { name: "throw_miss", frame: 0 });
+});
+
+test("event visuals use clip-local frames and advance through their sequence", () => {
+  const fighter = {};
+  setVisualSequence(fighter, [{ name: "hit_heavy", duration: 2 }, { name: "knockback", duration: 2 }]);
+  assert.deepEqual(animationSelectionFor(fighter), { name: "hit_heavy", frame: 0 });
+  advanceVisualSequence(fighter);
+  assert.deepEqual(animationSelectionFor(fighter), { name: "hit_heavy", frame: 1 });
+  advanceVisualSequence(fighter);
+  assert.deepEqual(animationSelectionFor(fighter), { name: "knockback", frame: 0 });
+});
+
+test("crouch input visibly transitions and diagonals remain crouched", () => {
+  const game = new Game(null);
+  const fighter = createFighterState("guitar-boy", 100, 1);
+  const input = { left: true, right: false, up: false, down: true, light: false, strong: false, guard: false, special: false, throwHeld: false, leftPressed: true, rightPressed: false, upPressed: false, downPressed: true, lightPressed: false, strongPressed: false, specialPressed: false, throwPressed: false };
+  game.updateFighter(fighter, input, true);
+  assert.equal(fighter.state, "crouching");
+  assert.equal(fighter.action, "crouch");
+  assert.equal(fighter.visualAction, "crouch_start");
+  assert.equal(fighter.vx, 0);
+  game.updateFighter(fighter, { ...input, left: false, leftPressed: false, down: false, downPressed: false }, true);
+  assert.equal(fighter.visualAction, "crouch_end");
+});
+
+test("phone-sized viewports expose the virtual pad even with incomplete capability flags", () => {
+  const phoneWindow = { PointerEvent: class {}, innerWidth: 390, innerHeight: 844, matchMedia: () => ({ matches: false }) };
+  assert.equal(isTouchAvailable(phoneWindow, { maxTouchPoints: 0 }), true);
+  const desktopWindow = { PointerEvent: class {}, innerWidth: 1440, innerHeight: 900, matchMedia: () => ({ matches: false }) };
+  assert.equal(isTouchAvailable(desktopWindow, { maxTouchPoints: 0 }), false);
+});
+
+test("combat transitions select just guard, throw, hit, and down-idle visuals", () => {
+  const game = new Game(null);
+  const blank = { left: false, right: false, up: false, down: false, light: false, strong: false, guard: false, special: false, throwHeld: false, leftPressed: false, rightPressed: false, upPressed: false, downPressed: false, lightPressed: false, strongPressed: false, specialPressed: false, throwPressed: false };
+
+  const strongAttacker = createFighterState("guitar-boy", 100, 1);
+  const strongDefender = createFighterState("uncle", 125, -1);
+  strongAttacker.state = "attacking";
+  strongAttacker.currentMove = CHARACTERS["guitar-boy"].moves.strong_attack_neutral;
+  strongAttacker.actionFrame = strongAttacker.currentMove.startupFrames;
+  game.handleCombat(strongAttacker, strongDefender);
+  assert.equal(strongDefender.visualAction, "hit_heavy");
+  assert.equal(strongDefender.visualQueue[0].name, "knockback");
+
+  const thrower = createFighterState("guitar-boy", 100, 1);
+  const thrown = createFighterState("uncle", 112, -1);
+  thrown.actionFrame = 46;
+  game.startThrow(thrower);
+  thrower.actionFrame = thrower.currentMove.startupFrames;
+  game.handleCombat(thrower, thrown);
+  assert.equal(thrower.visualAction, "throw_success");
+  assert.equal(thrown.visualAction, "thrown");
+  assert.equal(thrown.actionFrame, 0);
+
+  const guardAttacker = createFighterState("guitar-boy", 100, 1);
+  const guardDefender = createFighterState("uncle", 125, -1);
+  game.player = guardDefender;
+  guardAttacker.state = "attacking";
+  guardAttacker.currentMove = CHARACTERS["guitar-boy"].moves.light_attack_neutral;
+  guardAttacker.actionFrame = guardAttacker.currentMove.startupFrames;
+  guardDefender.guardHeld = true;
+  guardDefender.guardStartedFrame = game.frame - 1;
+  guardDefender.action = "guard_high";
+  game.handleCombat(guardAttacker, guardDefender);
+  assert.equal(guardDefender.visualAction, "just_guard");
+
+  const downed = createFighterState("uncle", 125, -1);
+  downed.state = "knockdown";
+  downed.actionFrame = 18;
+  game.updateFighter(downed, blank, false);
+  assert.equal(downed.action, "down_idle");
+});
+
+test("generated JSON metadata stays consistent with the runtime manifest", () => {
+  for (const id of EXPANDED_FIGHTER_IDS) {
+    const metadata = JSON.parse(fs.readFileSync(new URL(`../assets/sprites/${id}/metadata/${id}-animations.json`, import.meta.url), "utf8"));
+    assert.deepEqual(Object.keys(metadata.actions), REQUIRED_ANIMATION_CLIPS);
+    for (const name of REQUIRED_ANIMATION_CLIPS) assert.deepEqual(metadata.actions[name].frames, CHARACTERS[id].animation[name].frames);
+  }
+});
+
+test("settings are grouped under one main-menu route", () => {
+  assert.deepEqual(MENU_ITEMS, ["GAME START", "HOW TO PLAY", "SCORE", "SETTINGS"]);
+  assert.deepEqual(SETTINGS_ITEMS, ["SOUND", "BGM", "SE", "DEBUG OVERLAY", "RESET DATA", "BACK"]);
+  assert.equal(SCREEN.settings, "settings");
+});
+
+test("sprite placement uses the authored anchor on the visible stage floor", () => {
+  const sprite = CHARACTERS["guitar-boy"].sprite;
+  const grounded = spriteDrawPlacement({ x: 150, y: 0 }, sprite);
+  assert.equal(grounded.originX, 150);
+  assert.equal(grounded.baselineY, STAGE_BOUNDS.floor);
+  assert.equal(grounded.drawX + sprite.anchor.x * DEFAULT_SPRITE_SCALE, 0);
+  assert.equal(grounded.drawY + sprite.anchor.y * DEFAULT_SPRITE_SCALE, 0);
+  assert.equal(grounded.width, sprite.cellWidth * DEFAULT_SPRITE_SCALE);
+  const airborne = spriteDrawPlacement({ x: 150, y: 40 }, sprite);
+  assert.equal(airborne.baselineY, STAGE_BOUNDS.floor - 40);
 });
 
 test("stage order and mirror opponent progression are deterministic", () => {
@@ -125,11 +247,13 @@ test("projectile specials cannot double-hit and all specials knock down", () => 
   const strikeGame = new Game();
   strikeGame.player = createFighterState("guitar-boy", 100, 1);
   strikeGame.cpu = createFighterState("toko", 130, -1);
+  strikeGame.cpu.actionFrame = 46;
   strikeGame.player.currentMove = CHARACTERS["guitar-boy"].special;
   strikeGame.player.state = "attacking";
   strikeGame.player.actionFrame = CHARACTERS["guitar-boy"].special.startupFrames;
   strikeGame.handleCombat(strikeGame.player, strikeGame.cpu);
   assert.equal(strikeGame.cpu.state, "knockdown");
+  assert.equal(strikeGame.cpu.actionFrame, 0);
 });
 
 test("clear time is formatted for the final score screen", () => {

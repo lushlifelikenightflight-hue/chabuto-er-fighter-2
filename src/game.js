@@ -1,6 +1,6 @@
 import {
   ANIMATION_CLIPS, CHARACTERS, CHARACTER_IDS, DIFFICULTIES, GAME_TITLE,
-  INTERNAL_HEIGHT, INTERNAL_WIDTH, MAX_METER, MENU_ITEMS, ROUND_TIME_SECONDS,
+  INTERNAL_HEIGHT, INTERNAL_WIDTH, MAX_METER, MENU_ITEMS, ROUND_TIME_SECONDS, SETTINGS_ITEMS,
   STAGE_BOUNDS, STAGES,
 } from "./data.js";
 import {
@@ -9,16 +9,76 @@ import {
   resolvePushboxes, resolveRound, scoreForEvent, stageOpponent,
 } from "./engine.js";
 import { appendHighScore, loadSave, resetSave, saveData } from "./storage.js";
+import { RUNTIME_ANIMATION_ALIASES } from "./sprite-manifest.js";
+import { TouchInput } from "./touch-input.js";
 
 export const SCREEN = Object.freeze({
   boot: "boot", title: "title", menu: "menu", difficultySelect: "difficultySelect",
-  characterSelect: "characterSelect", colorSelect: "colorSelect", howToPlay: "howToPlay",
+  characterSelect: "characterSelect", colorSelect: "colorSelect", howToPlay: "howToPlay", settings: "settings",
   stageIntro: "stageIntro", roundIntro: "roundIntro", battle: "battle", pause: "pause",
   roundResult: "roundResult", stageResult: "stageResult", continue: "continue",
   gameOver: "gameOver", ending: "ending", score: "score",
 });
 
 const FRAME = 1000 / FIXED_HZ;
+export const DEFAULT_SPRITE_SCALE = 0.82;
+
+export function spriteDrawPlacement(fighter, sprite, scale = DEFAULT_SPRITE_SCALE) {
+  const anchor = sprite?.anchor || { x: 128, y: 233 };
+  const cellWidth = sprite?.cellWidth || 256;
+  const cellHeight = sprite?.cellHeight || 256;
+  const baselineY = STAGE_BOUNDS.floor - Math.max(0, Number(fighter?.y) || 0);
+  return {
+    originX: Number(fighter?.x) || 0,
+    baselineY,
+    drawX: -anchor.x * scale,
+    drawY: -anchor.y * scale,
+    width: cellWidth * scale,
+    height: cellHeight * scale,
+  };
+}
+
+export function animationSelectionFor(fighter) {
+  if (fighter?.visualAction) return { name: fighter.visualAction, frame: Math.max(0, fighter.visualFrame || 0) };
+  if (fighter?.state === "wakeup") return { name: "wakeup", frame: Math.max(0, fighter?.actionFrame || 0) };
+  const action = fighter?.action || "idle";
+  const move = fighter?.currentMove;
+  const frame = Math.max(0, fighter?.actionFrame || 0);
+  if (action === "special_start" && move) {
+    if (frame < move.startupFrames) return { name: "special_start", frame };
+    if (frame < move.startupFrames + move.activeFrames) return { name: "special_active", frame: frame - move.startupFrames };
+    return { name: "special_recovery", frame: frame - move.startupFrames - move.activeFrames };
+  }
+  if (action === "throw_start" && move && frame >= move.startupFrames + move.activeFrames) {
+    return { name: "throw_miss", frame: frame - move.startupFrames - move.activeFrames };
+  }
+  if (action === "jump_up" && Math.abs(fighter?.vy || 0) < 1) return { name: "jump_apex", frame };
+  return { name: RUNTIME_ANIMATION_ALIASES[action] || action, frame };
+}
+
+export function animationNameFor(fighter) {
+  return animationSelectionFor(fighter).name;
+}
+
+export function setVisualSequence(fighter, sequence) {
+  const entries = sequence.filter((entry) => entry?.name && entry.duration > 0).map((entry) => ({ ...entry }));
+  const first = entries.shift();
+  fighter.visualQueue = entries;
+  fighter.visualAction = first?.name || "";
+  fighter.visualFrame = 0;
+  fighter.visualFramesRemaining = first?.duration || 0;
+}
+
+export function advanceVisualSequence(fighter) {
+  if (!fighter?.visualAction) return;
+  fighter.visualFrame += 1;
+  fighter.visualFramesRemaining -= 1;
+  if (fighter.visualFramesRemaining > 0) return;
+  const next = fighter.visualQueue?.shift();
+  fighter.visualAction = next?.name || "";
+  fighter.visualFrame = 0;
+  fighter.visualFramesRemaining = next?.duration || 0;
+}
 
 export function formatDuration(durationMs = 0) {
   const totalSeconds = Math.max(0, Math.floor((Number(durationMs) || 0) / 1000));
@@ -56,6 +116,7 @@ export class Game {
     this.panel = this.root?.querySelector?.("[data-panel]") || byId("panel");
     this.hud = this.root?.querySelector?.("[data-hud]") || byId("hud");
     this.hint = this.root?.querySelector?.("[data-hint]") || byId("hint");
+    this.touchInput = new TouchInput(this.root?.querySelector?.(".lcd") || this.root);
     this.save = loadSave();
     this.images = new Map();
     this.backgrounds = new Map();
@@ -75,6 +136,7 @@ export class Game {
     this.state = {
       screen: SCREEN.boot,
       menuIndex: 0,
+      settingsIndex: 0,
       difficulty: "normal",
       selectedId: "guitar-boy",
       color: 1,
@@ -133,6 +195,7 @@ export class Game {
     this.justKeys.clear();
     this.padHeld.clear();
     this.padJust.clear();
+    this.touchInput?.reset();
   }
 
   destroy() {
@@ -142,6 +205,7 @@ export class Game {
       window.removeEventListener("blur", this.onBlur);
       window.removeEventListener("focus", this.onFocus);
     }
+    this.touchInput?.destroy();
     if (this.bgm) this.bgm.pause();
     this.running = false;
   }
@@ -222,6 +286,8 @@ export class Game {
     else if (this.state.screen === SCREEN.colorSelect) this.tickColor(input);
     else if (this.state.screen === SCREEN.howToPlay) {
       if (input.cancel || input.confirm) this.setScreen(SCREEN.menu);
+    } else if (this.state.screen === SCREEN.settings) {
+      this.tickSettings(input);
     } else if (this.state.screen === SCREEN.score) {
       if (input.cancel || input.confirm) this.setScreen(SCREEN.menu);
     } else if (this.state.screen === SCREEN.stageIntro) {
@@ -247,38 +313,42 @@ export class Game {
       if (input.confirm || this.state.screenFrames > 240) this.finishEnding();
     }
     this.justKeys.clear();
+    this.touchInput?.clearEdges();
   }
 
   readInput() {
     const gamepad = this.pollGamepad();
+    const touch = this.touchInput?.getSnapshot() || { held: new Set(), pressed: new Set() };
     const held = (key) => this.keys.has(key);
     const pressed = (...keys) => keys.some((key) => this.justKeys.has(key));
     const button = (key, aliases = []) => held(key) || aliases.some((alias) => held(alias));
-    const left = button("arrowleft", ["a"]) || gamepad.left;
-    const right = button("arrowright", ["d"]) || gamepad.right;
-    const up = button("arrowup", ["w"]) || gamepad.up;
-    const down = button("arrowdown", ["s"]) || gamepad.down;
-    const leftPressed = pressed("arrowleft", "a") || gamepad.leftPressed;
-    const rightPressed = pressed("arrowright", "d") || gamepad.rightPressed;
-    const upPressed = pressed("arrowup", "w") || gamepad.upPressed;
-    const downPressed = pressed("arrowdown", "s") || gamepad.downPressed;
-    let light = button("j", ["z"]) || gamepad.light;
-    let strong = button("k", ["x"]) || gamepad.strong;
-    let guard = button("l", ["c"]) || gamepad.guard;
-    const special = button("i", ["v"]) || gamepad.special;
-    const throwHeld = light && strong;
-    const lightPressed = pressed("j", "z") || gamepad.lightPressed;
-    const strongPressed = pressed("k", "x") || gamepad.strongPressed;
-    const specialPressed = pressed("i", "v") || gamepad.specialPressed;
+    const touchHeld = (key) => touch.held.has(key);
+    const touchPressed = (key) => touch.pressed.has(key);
+    const left = button("arrowleft", ["a"]) || gamepad.left || touchHeld("left");
+    const right = button("arrowright", ["d"]) || gamepad.right || touchHeld("right");
+    const up = button("arrowup", ["w"]) || gamepad.up || touchHeld("up") || touchHeld("jump");
+    const down = button("arrowdown", ["s"]) || gamepad.down || touchHeld("down");
+    const leftPressed = pressed("arrowleft", "a") || gamepad.leftPressed || touchPressed("left");
+    const rightPressed = pressed("arrowright", "d") || gamepad.rightPressed || touchPressed("right");
+    const upPressed = pressed("arrowup", "w") || gamepad.upPressed || touchPressed("up") || touchPressed("jump");
+    const downPressed = pressed("arrowdown", "s") || gamepad.downPressed || touchPressed("down");
+    let light = button("j", ["z"]) || gamepad.light || touchHeld("light");
+    let strong = button("k", ["x"]) || gamepad.strong || touchHeld("strong");
+    let guard = button("l", ["c"]) || gamepad.guard || touchHeld("guard");
+    const special = button("i", ["v"]) || gamepad.special || touchHeld("special");
+    const throwHeld = (light && strong) || touchHeld("throw");
+    const lightPressed = pressed("j", "z") || gamepad.lightPressed || touchPressed("light");
+    const strongPressed = pressed("k", "x") || gamepad.strongPressed || touchPressed("strong");
+    const specialPressed = pressed("i", "v") || gamepad.specialPressed || touchPressed("special");
     const confirm = pressed("enter", " ") || gamepad.confirmPressed;
     const cancel = pressed("escape", "backspace");
-    const pause = cancel;
+    const pause = cancel || touchPressed("pause");
     // A held J+K is a throw, while the individual attack edges remain usable.
     if (throwHeld) { light = false; strong = false; }
     return {
       left, right, up, down, light, strong, guard, special, throwHeld,
       leftPressed, rightPressed, upPressed, downPressed, lightPressed, strongPressed, specialPressed,
-      throwPressed: throwHeld && (lightPressed || strongPressed),
+      throwPressed: touchPressed("throw") || (throwHeld && (lightPressed || strongPressed)),
       confirm, cancel, pause, start: confirm,
     };
   }
@@ -316,6 +386,7 @@ export class Game {
     this.state.screen = screen;
     this.state.screenFrames = 0;
     this.resetInput();
+    this.touchInput?.setMode(screen === SCREEN.battle ? "battle" : screen === SCREEN.howToPlay ? "howToPlay" : "hidden");
     if (screen !== SCREEN.battle) this.state.result = this.state.result || "";
     this.beep(screen === SCREEN.battle ? 330 : 220, 0.045);
     this.syncBgm();
@@ -332,16 +403,37 @@ export class Game {
     if (index === 0) this.setScreen(SCREEN.difficultySelect);
     else if (index === 1) this.setScreen(SCREEN.howToPlay);
     else if (index === 2) this.setScreen(SCREEN.score);
-    else if (index === 3) {
+    else if (index === 3) this.setScreen(SCREEN.settings);
+  }
+
+  tickSettings(input) {
+    if (input.upPressed) this.state.settingsIndex = (this.state.settingsIndex + SETTINGS_ITEMS.length - 1) % SETTINGS_ITEMS.length;
+    if (input.downPressed) this.state.settingsIndex = (this.state.settingsIndex + 1) % SETTINGS_ITEMS.length;
+    if (input.confirm) this.activateSettings(this.state.settingsIndex);
+    else if (input.cancel) this.setScreen(SCREEN.menu);
+  }
+
+  activateSettings(index) {
+    if (index === 0) {
       const enabled = !(this.state.bgmEnabled && this.state.seEnabled);
-      this.state.bgmEnabled = enabled;
-      this.state.seEnabled = enabled;
+      this.state.bgmEnabled = enabled; this.state.seEnabled = enabled; this.state.sound = enabled;
+    } else if (index === 1) {
+      this.state.bgmEnabled = !this.state.bgmEnabled;
       this.state.sound = this.state.bgmEnabled || this.state.seEnabled;
-      this.save = saveData({ ...this.save, sound: this.state.sound, bgmEnabled: this.state.bgmEnabled, seEnabled: this.state.seEnabled, debug: this.state.debug });
-      this.syncBgm();
-      this.beep(440);
+    } else if (index === 2) {
+      this.state.seEnabled = !this.state.seEnabled;
+      this.state.sound = this.state.bgmEnabled || this.state.seEnabled;
+    } else if (index === 3) {
+      this.state.debug = !this.state.debug;
+    } else if (index === 4) {
+      this.save = resetSave(); this.state.sound = true; this.state.bgmEnabled = true; this.state.seEnabled = true; this.state.debug = false;
+      this.beep(160, 0.1);
+    } else if (index === 5) {
+      this.setScreen(SCREEN.menu); return;
     }
-    else if (index === 4) { this.save = resetSave(); this.state.sound = true; this.state.bgmEnabled = true; this.state.seEnabled = true; this.state.debug = false; this.beep(160, 0.1); }
+    this.save = saveData({ ...this.save, sound: this.state.sound, bgmEnabled: this.state.bgmEnabled, seEnabled: this.state.seEnabled, debug: this.state.debug });
+    this.syncBgm();
+    this.renderPanel();
   }
 
   tickDifficulty(input) {
@@ -444,6 +536,7 @@ export class Game {
 
   updateFighter(fighter, input, isPlayer) {
     const character = CHARACTERS[fighter.id];
+    advanceVisualSequence(fighter);
     const moveLocked = ACTION_LOCK_STATES.has(fighter.state);
     fighter.invulnerableFrames = Math.max(0, fighter.invulnerableFrames - 1);
     if (fighter.stunFrames > 0) {
@@ -453,6 +546,7 @@ export class Game {
     }
     if (fighter.state === "knockdown") {
       fighter.boxProfile = "down";
+      fighter.action = fighter.actionFrame < 18 ? "knockdown" : "down_idle";
       if (fighter.actionFrame++ > 45 && fighter.hp > 0) { fighter.state = "wakeup"; fighter.actionFrame = 0; }
       return;
     }
@@ -514,9 +608,12 @@ export class Game {
     } else {
       fighter.guardHeld = false;
       if (fighter.grounded) {
+        const wasCrouching = fighter.crouching;
         fighter.crouching = input.down;
         fighter.boxProfile = input.down ? "crouch" : "standing";
-        if (direction !== 0) {
+        if (input.down && !wasCrouching) setVisualSequence(fighter, [{ name: "crouch_start", duration: 8 }]);
+        else if (!input.down && wasCrouching) setVisualSequence(fighter, [{ name: "crouch_end", duration: 8 }]);
+        if (direction !== 0 && !input.down) {
           const doubleTap = (input.leftPressed || input.rightPressed) && this.frame - fighter.lastDirectionFrame <= 14 && direction === fighter.lastDirection;
           // A backstep is a backward double-tap; crouch+back remains a normal
           // walk/crouch input and never silently changes movement semantics.
@@ -606,8 +703,11 @@ export class Game {
         applyDamage(defender, move.damage, { knockbackX: move.knockbackX || 5, knockbackY: 2, hitstunFrames: move.hitstunFrames });
         defender.state = "knockdown";
         defender.action = "knockdown";
+        defender.actionFrame = 0;
+        setVisualSequence(defender, [{ name: "thrown", duration: 10 }]);
         this.onHit(attacker, defender, move, false, true);
         attacker.action = "throw_hit";
+        setVisualSequence(attacker, [{ name: "throw_success", duration: 10 }]);
       }
       return;
     }
@@ -626,15 +726,25 @@ export class Game {
         this.state.score += scoreForEvent("justGuard");
       }
       defender.state = "idle";
+      setVisualSequence(defender, [{ name: "just_guard", duration: 6 }]);
       attacker.stunFrames = 8;
       this.beep(880, 0.08, "triangle");
       return;
     }
+    const wasAirborne = !defender.grounded;
+    const wasCrouching = defender.crouching || defender.boxProfile === "crouch";
     const damage = result.damage * (defender === this.cpu ? 1 : 0.92);
     applyDamage(defender, damage, { blocked: result.blocked, knockbackX: move.knockbackX, knockbackY: move.knockbackY, hitstunFrames: result.blocked ? move.blockstunFrames : move.hitstunFrames });
+    if (!result.blocked && defender.hp > 0) {
+      const firstHit = wasAirborne ? "air_hit" : wasCrouching ? "hit_crouch" : move.id.includes("strong") || move.kind === "special" ? "hit_heavy" : "hit_light";
+      const sequence = [{ name: firstHit, duration: firstHit === "hit_heavy" ? 12 : 10 }];
+      if (move.kind === "special" || move.knockbackX >= 4) sequence.push({ name: "knockback", duration: 10 });
+      setVisualSequence(defender, sequence);
+    }
     if (!result.blocked && move.kind === "special" && defender.hp > 0) {
       defender.state = "knockdown";
       defender.action = "knockdown";
+      defender.actionFrame = 0;
       defender.boxProfile = "down";
     }
     attacker.meter = clamp(attacker.meter + (result.blocked ? move.meterGainOnBlock : move.meterGainOnHit), 0, MAX_METER);
@@ -678,9 +788,11 @@ export class Game {
         const attacker = projectile.owner === "player" ? this.player : this.cpu;
         attacker.hitRegistry.add(`projectile:${target.id}`);
         applyDamage(target, projectile.damage, { hitstunFrames: 32, knockbackX: 4, knockbackY: 2 });
+        if (target.hp > 0) setVisualSequence(target, [{ name: "hit_heavy", duration: 12 }, { name: "knockback", duration: 10 }]);
         if (target.hp > 0) {
           target.state = "knockdown";
           target.action = "knockdown";
+          target.actionFrame = 0;
           target.boxProfile = "down";
         }
         if (projectile.owner === "player") this.state.score += scoreForEvent("special");
@@ -699,6 +811,8 @@ export class Game {
     this.projectiles = [];
     this.player.hitRegistry.clear();
     this.cpu.hitRegistry.clear();
+    setVisualSequence(this.player, []);
+    setVisualSequence(this.cpu, []);
     if (outcome.result === "loss") this.state.perfect = false;
     if (outcome.result === "win") {
       this.player.state = "victory";
@@ -824,22 +938,19 @@ export class Game {
     return this.backgrounds.get(source);
   }
 
-  loadSprite(id, frame) {
+  loadSprite(id, animationName, actionFrame = 0) {
     const character = CHARACTERS[id];
-    const source = character?.sprite.frames[Math.max(0, Math.min(3, frame))];
+    const clip = character?.animation?.[animationName] || character?.animation?.idle;
+    const frames = clip?.frames || [0];
+    const rawIndex = Math.floor(Math.max(0, actionFrame) / Math.max(1, clip?.frameDuration || 8));
+    const frameIndex = clip?.loop ? rawIndex % frames.length : Math.min(frames.length - 1, rawIndex);
+    const frame = frames[Math.max(0, frameIndex)];
+    const source = typeof frame === "string"
+      ? frame
+      : character?.sprite.frames[Math.max(0, Math.min(3, Number(frame) || 0))];
     if (!source) return null;
     if (!this.images.has(source)) this.images.set(source, makeImage(source));
     return this.images.get(source);
-  }
-
-  frameFor(fighter) {
-    const action = fighter.action || "idle";
-    if (action.includes("special")) return fighter.actionFrame < (fighter.currentMove?.startupFrames || 0) ? 2 : 3;
-    if (action.includes("strong") || action === "throw_hit") return 2;
-    if (action.includes("light")) return 1;
-    if (["hit_light", "hit_heavy", "knockdown", "defeat"].includes(action)) return 3;
-    if (["guard_high", "guard_low", "just_guard", "victory"].includes(action)) return 2;
-    return fighter.actionFrame % 90 < 45 ? 0 : 1;
   }
 
   render() {
@@ -873,19 +984,20 @@ export class Game {
   }
 
   drawFighter(ctx, fighter) {
-    const image = this.loadSprite(fighter.id, this.frameFor(fighter));
+    const selection = animationSelectionFor(fighter);
+    const image = this.loadSprite(fighter.id, selection.name, selection.frame);
     const character = CHARACTERS[fighter.id];
-    const x = fighter.x;
-    const y = INTERNAL_HEIGHT - STAGE_BOUNDS.floor - fighter.y;
-    const width = 112;
-    const height = 112;
+    const placement = spriteDrawPlacement(fighter, character?.sprite);
+    const x = placement.originX;
+    const y = placement.baselineY;
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = fighter.hp <= 0 ? 0.66 : 1;
     if (fighter.color === 2) ctx.filter = "hue-rotate(70deg) saturate(1.2)";
     if (image?.complete && image.naturalWidth) {
-      if (fighter.facing < 0) { ctx.translate(x, y); ctx.scale(-1, 1); ctx.drawImage(image, -width / 2, -height, width, height); }
-      else ctx.drawImage(image, x - width / 2, y - height, width, height);
+      ctx.translate(x, y);
+      if (fighter.facing < 0) ctx.scale(-1, 1);
+      ctx.drawImage(image, placement.drawX, placement.drawY, placement.width, placement.height);
     }
     ctx.restore();
     if (fighter.state === "guarding") {
@@ -922,12 +1034,13 @@ export class Game {
       const boxes = getFighterBoxes(fighter, fighter.currentMove);
       for (const part of [...boxes.hurtboxes, boxes.pushbox, ...(boxes.hitbox ? [boxes.hitbox] : []), boxes.throwbox]) {
         ctx.strokeStyle = part.type === "hitbox" ? "#ff5252" : part.type === "pushbox" ? "#75ff8b" : part.type === "throwbox" ? "#c672ff" : "#59b8ff";
-        ctx.strokeRect(part.x, INTERNAL_HEIGHT - STAGE_BOUNDS.floor - part.y - part.h, part.w, part.h);
+        ctx.strokeRect(part.x, STAGE_BOUNDS.floor - part.y - part.h, part.w, part.h);
       }
       ctx.fillStyle = "#fff";
       ctx.font = "7px monospace";
-      ctx.fillText(`${fighter.id} ${fighter.state}/${fighter.action} f${fighter.actionFrame}`, fighter.x - 34, INTERNAL_HEIGHT - STAGE_BOUNDS.floor - fighter.y - 108);
-      ctx.fillText(`origin ${Math.round(fighter.x)},${Math.round(fighter.y)} foot ${Math.round(fighter.x)},${STAGE_BOUNDS.floor}`, fighter.x - 34, INTERNAL_HEIGHT - STAGE_BOUNDS.floor - fighter.y - 99);
+      const debugY = STAGE_BOUNDS.floor - fighter.y;
+      ctx.fillText(`${fighter.id} ${fighter.state}/${fighter.action} f${fighter.actionFrame}`, fighter.x - 34, debugY - 108);
+      ctx.fillText(`origin ${Math.round(fighter.x)},${Math.round(fighter.y)} foot ${Math.round(fighter.x)},${STAGE_BOUNDS.floor}`, fighter.x - 34, debugY - 99);
     }
     const recent = this.state.inputHistory.slice(-8).map((entry) => `${entry.frame}:${entry.left ? "L" : ""}${entry.right ? "R" : ""}${entry.up ? "U" : ""}${entry.down ? "D" : ""}${entry.light ? "j" : ""}${entry.strong ? "k" : ""}${entry.guard ? "g" : ""}${entry.special ? "i" : ""}`).join(" ");
     ctx.fillStyle = "#ffe795";
@@ -941,16 +1054,19 @@ export class Game {
     this.panel.innerHTML = "";
     this.panel.dataset.screen = screen;
     const heading = (title, subtitle = "") => { const h = document.createElement("h1"); h.textContent = title; this.panel.appendChild(h); if (subtitle) { const p = document.createElement("p"); p.textContent = subtitle; this.panel.appendChild(p); } };
-    const button = (label, onClick, selected = false) => { const b = document.createElement("button"); b.type = "button"; b.textContent = label; if (selected) b.classList.add("selected"); b.addEventListener("click", () => { this.ensureAudio(); onClick(); }); this.panel.appendChild(b); return b; };
+    const button = (label, onClick, selected = false, parent = this.panel) => { const b = document.createElement("button"); b.type = "button"; b.textContent = label; b.setAttribute("aria-label", String(label)); if (selected) { b.classList.add("selected"); b.setAttribute("aria-current", "true"); } b.addEventListener("click", () => { this.ensureAudio(); onClick(); }); parent.appendChild(b); return b; };
+    const buttonRow = (items) => { const row = document.createElement("div"); row.className = "action-button-row"; this.panel.appendChild(row); items.forEach(({ label, onClick, selected = false }) => button(label, onClick, selected, row)); return row; };
     if (screen === SCREEN.boot) heading(GAME_TITLE, "LOADING...");
     else if (screen === SCREEN.title) { heading(GAME_TITLE, "RETRO DUEL / PRESS ENTER"); button("START", () => this.setScreen(SCREEN.menu)); }
     else if (screen === SCREEN.menu) {
       heading(GAME_TITLE, "MAIN MENU");
-      MENU_ITEMS.forEach((item, index) => button(item === "SOUND" ? `${item}: ${this.state.bgmEnabled ? "ON" : "OFF"}` : item, () => this.activateMenu(index), index === this.state.menuIndex));
-      button(`BGM: ${this.state.bgmEnabled ? "ON" : "OFF"}`, () => { this.state.bgmEnabled = !this.state.bgmEnabled; this.state.sound = this.state.bgmEnabled || this.state.seEnabled; this.save = saveData({ ...this.save, sound: this.state.sound, bgmEnabled: this.state.bgmEnabled, seEnabled: this.state.seEnabled }); this.syncBgm(); });
-      button(`SE: ${this.state.seEnabled ? "ON" : "OFF"}`, () => { this.state.seEnabled = !this.state.seEnabled; this.state.sound = this.state.bgmEnabled || this.state.seEnabled; this.save = saveData({ ...this.save, sound: this.state.sound, bgmEnabled: this.state.bgmEnabled, seEnabled: this.state.seEnabled }); });
-      button("DEBUG OVERLAY: " + (this.state.debug ? "ON" : "OFF"), () => { this.state.debug = !this.state.debug; saveData({ ...this.save, sound: this.state.sound, debug: this.state.debug }); });
+      MENU_ITEMS.forEach((item, index) => button(item, () => this.activateMenu(index), index === this.state.menuIndex));
       this.hintText("↑↓ SELECT   ENTER OK");
+    } else if (screen === SCREEN.settings) {
+      heading("SETTINGS", "SOUND / DATA / DEBUG");
+      const settingsLabel = (item) => item === "SOUND" ? `${item}: ${this.state.sound ? "ON" : "OFF"}` : item === "BGM" ? `${item}: ${this.state.bgmEnabled ? "ON" : "OFF"}` : item === "SE" ? `${item}: ${this.state.seEnabled ? "ON" : "OFF"}` : item === "DEBUG OVERLAY" ? `${item}: ${this.state.debug ? "ON" : "OFF"}` : item;
+      SETTINGS_ITEMS.forEach((item, index) => button(settingsLabel(item), () => this.activateSettings(index), index === this.state.settingsIndex));
+      this.hintText("↑↓ SELECT   ENTER OK   ESC BACK");
     } else if (screen === SCREEN.difficultySelect) {
       heading("SELECT DIFFICULTY", "CPU REACTION IS DELAYED, NEVER READS LIVE INPUT");
       DIFFICULTY_IDS.forEach((id) => button(DIFFICULTIES[id].label, () => { this.state.difficulty = id; this.setScreen(SCREEN.characterSelect); }, id === this.state.difficulty));
@@ -958,16 +1074,16 @@ export class Game {
     } else if (screen === SCREEN.characterSelect) {
       heading("SELECT FIGHTER", "8 FIGHTERS / DISTINCT STATS");
       const grid = document.createElement("div"); grid.className = "character-grid";
-      CHARACTER_IDS.forEach((id) => { const b = document.createElement("button"); b.className = this.state.selectedId === id ? "selected" : ""; b.innerHTML = `<img alt="" src="${CHARACTERS[id].sprite.frames[0]}"><strong>${CHARACTERS[id].name}</strong><small>${CHARACTERS[id].type}</small>`; b.addEventListener("click", () => { this.state.selectedId = id; this.beep(320); }); grid.appendChild(b); });
+      CHARACTER_IDS.forEach((id) => { const b = document.createElement("button"); b.type = "button"; b.className = this.state.selectedId === id ? "selected" : ""; b.setAttribute("aria-label", `${CHARACTERS[id].name}を選択`); if (this.state.selectedId === id) b.setAttribute("aria-current", "true"); b.innerHTML = `<img alt="" src="${CHARACTERS[id].sprite.frames[0]}"><strong>${CHARACTERS[id].name}</strong><small>${CHARACTERS[id].type}</small>`; b.addEventListener("click", () => { this.ensureAudio(); this.state.selectedId = id; this.beep(320); this.renderPanel(); }); grid.appendChild(b); });
       this.panel.appendChild(grid);
-      button("CONFIRM", () => this.setScreen(SCREEN.colorSelect)); button("BACK", () => this.setScreen(SCREEN.difficultySelect));
+      buttonRow([{ label: "CONFIRM", onClick: () => this.setScreen(SCREEN.colorSelect) }, { label: "BACK", onClick: () => this.setScreen(SCREEN.difficultySelect) }]);
     } else if (screen === SCREEN.colorSelect) {
       heading("COLOR VARIATION", `${CHARACTERS[this.state.selectedId].name} / SELECT COLOR`);
-      [1, 2].forEach((color) => button(`COLOR ${color}`, () => { this.state.color = color; }, color === this.state.color));
-      button("FIGHT", () => this.startMatch()); button("BACK", () => this.setScreen(SCREEN.characterSelect));
+      [1, 2].forEach((color) => button(`COLOR ${color}`, () => { this.state.color = color; this.renderPanel(); }, color === this.state.color));
+      buttonRow([{ label: "FIGHT", onClick: () => this.startMatch() }, { label: "BACK", onClick: () => this.setScreen(SCREEN.characterSelect) }]);
     } else if (screen === SCREEN.howToPlay) {
-      heading("HOW TO PLAY", "FIXED 60 HZ / 480×270 PIXEL ARENA");
-      const p = document.createElement("pre"); p.textContent = "A/D or ←/→  MOVE / DASH\nW or ↑  JUMP / DOUBLE JUMP\nS or ↓  CROUCH / LOW GUARD\nJ  LIGHT   K  STRONG   J+K  THROW\nL  HIGH GUARD   I  100-METER UNBLOCKABLE\nESC  PAUSE      DEBUG: menu toggle"; this.panel.appendChild(p); button("BACK", () => this.setScreen(SCREEN.menu));
+      heading("HOW TO PLAY", "基本操作・攻撃・防御");
+      const p = document.createElement("pre"); p.textContent = "A/D・←/→  移動　同方向を素早く2回：ダッシュ／バックステップ\nW・↑  ジャンプ　空中でもう1回：二段ジャンプ\nS・↓  しゃがむ／下段ガード\nJ  弱攻撃　　K  強攻撃　　J+K  投げ\nL  上段ガード　攻撃直前のガード：ジャストガード\nI  ゲージ100で必殺技（ガード不能）\nESC  ポーズ／再開"; this.panel.appendChild(p); button("BACK", () => this.setScreen(SCREEN.menu));
     } else if (screen === SCREEN.stageIntro) {
       const stage = STAGES[this.state.stage - 1]; heading(`STAGE ${this.state.stage}`, stage.name); this.panel.appendChild(this.stagePreview(stage)); button("START ROUND", () => this.beginRound());
     } else if (screen === SCREEN.roundIntro) {
