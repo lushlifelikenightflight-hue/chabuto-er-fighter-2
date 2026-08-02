@@ -1,6 +1,7 @@
 import {
   ANIMATION_CLIPS, CHARACTERS, CHARACTER_IDS, DIFFICULTIES, GAME_TITLE,
-  INTERNAL_HEIGHT, INTERNAL_WIDTH, MAX_METER, MENU_ITEMS, ROUND_TIME_SECONDS, SETTINGS_ITEMS,
+  INTERNAL_HEIGHT, INTERNAL_WIDTH, MAX_HP, MAX_METER, MENU_ITEMS, ROUND_TIME_SECONDS, SETTINGS_ITEMS,
+  TRAINING_SETTINGS_ITEMS,
   STAGE_BOUNDS, STAGES,
 } from "./data.js";
 import {
@@ -14,7 +15,8 @@ import { TouchInput } from "./touch-input.js";
 
 export const SCREEN = Object.freeze({
   boot: "boot", title: "title", menu: "menu", difficultySelect: "difficultySelect",
-  characterSelect: "characterSelect", colorSelect: "colorSelect", howToPlay: "howToPlay", settings: "settings",
+  characterSelect: "characterSelect", colorSelect: "colorSelect", trainingSettings: "trainingSettings",
+  howToPlay: "howToPlay", settings: "settings",
   stageIntro: "stageIntro", roundIntro: "roundIntro", battle: "battle", pause: "pause",
   roundResult: "roundResult", stageResult: "stageResult", continue: "continue",
   gameOver: "gameOver", ending: "ending", score: "score",
@@ -86,8 +88,11 @@ export function formatDuration(durationMs = 0) {
   const seconds = totalSeconds % 60;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
-const GRAVITY = 0.34;
-const JUMP_CUTOFF = 0.45;
+// A held jump key must not reduce gravity indefinitely.  Constant gravity
+// keeps jumps short and deterministic, while the air-frame guard below is a
+// last-resort safety net for malformed/custom fighter data.
+const GRAVITY = 0.48;
+const MAX_AIR_FRAMES = 48;
 const ACTION_LOCK_STATES = new Set(["attacking", "hitstun", "blockstun", "knockdown", "throwing"]);
 const DIFFICULTY_IDS = Object.keys(DIFFICULTIES);
 const MOVE_KEYS = Object.freeze({ light: "light_attack_neutral", strong: "strong_attack_neutral" });
@@ -101,6 +106,10 @@ function makeImage(src) {
   image.decoding = "async";
   image.src = src;
   return image;
+}
+
+function imageReady(image) {
+  return Boolean(image?.complete && (typeof image.naturalWidth === "undefined" || image.naturalWidth > 0));
 }
 
 export class Game {
@@ -119,6 +128,10 @@ export class Game {
     this.touchInput = new TouchInput(this.root?.querySelector?.(".lcd") || this.root);
     this.save = loadSave();
     this.images = new Map();
+    // Keep the last decoded frame for each fighter.  Animation frames load
+    // asynchronously; retaining a ready frame prevents a one-frame blank
+    // whenever a newly requested action image has not decoded yet.
+    this.lastReadySprites = new Map();
     this.backgrounds = new Map();
     this.keys = new Set();
     this.justKeys = new Set();
@@ -137,7 +150,13 @@ export class Game {
       screen: SCREEN.boot,
       menuIndex: 0,
       settingsIndex: 0,
+      trainingSettingsIndex: 0,
       difficulty: "normal",
+      mode: "arcade",
+      trainingCpuMove: false,
+      trainingCpuAttack: false,
+      trainingDamage: 0,
+      combatNotice: { text: "", kind: "", damage: 0, x: 240, y: 120, frames: 0 },
       selectedId: "guitar-boy",
       color: 1,
       stage: 1,
@@ -284,6 +303,7 @@ export class Game {
     else if (this.state.screen === SCREEN.difficultySelect) this.tickDifficulty(input);
     else if (this.state.screen === SCREEN.characterSelect) this.tickCharacter(input);
     else if (this.state.screen === SCREEN.colorSelect) this.tickColor(input);
+    else if (this.state.screen === SCREEN.trainingSettings) this.tickTrainingSettings(input);
     else if (this.state.screen === SCREEN.howToPlay) {
       if (input.cancel || input.confirm) this.setScreen(SCREEN.menu);
     } else if (this.state.screen === SCREEN.settings) {
@@ -400,10 +420,11 @@ export class Game {
   }
 
   activateMenu(index) {
-    if (index === 0) this.setScreen(SCREEN.difficultySelect);
-    else if (index === 1) this.setScreen(SCREEN.howToPlay);
-    else if (index === 2) this.setScreen(SCREEN.score);
-    else if (index === 3) this.setScreen(SCREEN.settings);
+    if (index === 0) { this.state.mode = "arcade"; this.setScreen(SCREEN.difficultySelect); }
+    else if (index === 1) { this.state.mode = "training"; this.state.trainingSettingsIndex = 0; this.setScreen(SCREEN.characterSelect); }
+    else if (index === 2) this.setScreen(SCREEN.howToPlay);
+    else if (index === 3) this.setScreen(SCREEN.score);
+    else if (index === 4) this.setScreen(SCREEN.settings);
   }
 
   tickSettings(input) {
@@ -441,7 +462,7 @@ export class Game {
     if (input.upPressed) index = (index + DIFFICULTY_IDS.length - 1) % DIFFICULTY_IDS.length;
     if (input.downPressed) index = (index + 1) % DIFFICULTY_IDS.length;
     this.state.difficulty = DIFFICULTY_IDS[index];
-    if (input.confirm) { this.state.menuIndex = 0; this.setScreen(SCREEN.characterSelect); }
+    if (input.confirm) { this.state.mode = "arcade"; this.state.menuIndex = 0; this.setScreen(SCREEN.characterSelect); }
     else if (input.cancel) this.setScreen(SCREEN.menu);
   }
 
@@ -454,16 +475,30 @@ export class Game {
     if (input.downPressed) next = (index + 4) % CHARACTER_IDS.length;
     this.state.selectedId = CHARACTER_IDS[next];
     if (input.confirm) { this.state.color = 1; this.setScreen(SCREEN.colorSelect); }
-    else if (input.cancel) this.setScreen(SCREEN.difficultySelect);
+    else if (input.cancel) this.setScreen(this.state.mode === "training" ? SCREEN.menu : SCREEN.difficultySelect);
   }
 
   tickColor(input) {
     if (input.leftPressed || input.rightPressed || input.upPressed || input.downPressed) this.state.color = this.state.color === 1 ? 2 : 1;
-    if (input.confirm) this.startMatch();
+    if (input.confirm) this.state.mode === "training" ? this.setScreen(SCREEN.trainingSettings) : this.startMatch();
     else if (input.cancel) this.setScreen(SCREEN.characterSelect);
   }
 
+  tickTrainingSettings(input) {
+    const items = TRAINING_SETTINGS_ITEMS;
+    if (input.upPressed) this.state.trainingSettingsIndex = (this.state.trainingSettingsIndex + items.length - 1) % items.length;
+    if (input.downPressed) this.state.trainingSettingsIndex = (this.state.trainingSettingsIndex + 1) % items.length;
+    if (input.confirm) {
+      const index = this.state.trainingSettingsIndex;
+      if (index === 0) this.state.trainingCpuMove = !this.state.trainingCpuMove;
+      else if (index === 1) this.state.trainingCpuAttack = !this.state.trainingCpuAttack;
+      else if (index === 2) this.startTraining();
+      else if (index === 3) this.setScreen(SCREEN.colorSelect);
+    } else if (input.cancel) this.setScreen(SCREEN.colorSelect);
+  }
+
   startMatch() {
+    this.state.mode = "arcade";
     this.state.stage = 1;
     this.state.round = 1;
     this.state.playerRounds = 0;
@@ -478,6 +513,22 @@ export class Game {
     this.state.finalStats = null;
     this.state.perfect = true;
     this.startStage();
+  }
+
+  startTraining() {
+    this.state.mode = "training";
+    this.state.stage = 1;
+    this.state.round = 1;
+    this.state.playerRounds = 0;
+    this.state.cpuRounds = 0;
+    this.state.score = 0;
+    this.state.combo = 0;
+    this.state.maxCombo = 0;
+    this.state.justGuards = 0;
+    this.state.specialHits = 0;
+    this.state.trainingDamage = 0;
+    this.state.combatNotice = { text: "", kind: "", damage: 0, x: 240, y: 120, frames: 0 };
+    this.beginTrainingRound();
   }
 
   startStage() {
@@ -502,14 +553,32 @@ export class Game {
     this.setScreen(SCREEN.roundIntro);
   }
 
+  beginTrainingRound() {
+    // Keep a predictable dummy opponent while allowing every selected fighter
+    // to be practiced, including Toko (who otherwise mirrors himself).
+    const opponentId = this.state.selectedId === "toko" ? "guitar-boy" : "toko";
+    this.player = createFighterState(this.state.selectedId, 150, 1);
+    this.cpu = createFighterState(opponentId, 330, -1);
+    this.player.color = this.state.color;
+    this.cpu.color = this.state.color === 1 ? 2 : 1;
+    this.player.boxProfile = "standing";
+    this.cpu.boxProfile = "standing";
+    this.state.timerFrames = Number.POSITIVE_INFINITY;
+    this.state.stageFrame = 0;
+    this.projectiles = [];
+    this.setScreen(SCREEN.roundIntro);
+  }
+
   tickBattle(input) {
-    this.state.timerFrames = Math.max(0, this.state.timerFrames - 1);
+    const training = this.state.mode === "training";
+    if (!training) this.state.timerFrames = Math.max(0, this.state.timerFrames - 1);
     this.state.stageFrame += 1;
     this.state.comboTimer = Math.max(0, this.state.comboTimer - 1);
     if (this.state.comboTimer === 0) this.state.combo = 0;
+    if (this.state.combatNotice?.frames > 0) this.state.combatNotice.frames -= 1;
     this.updateFighter(this.player, input, true);
-    const plan = aiPlan({ self: this.cpu, opponent: this.player, difficulty: this.state.difficulty, nowFrame: this.frame });
-    const aiInput = this.inputForPlan(plan);
+    const plan = training ? null : aiPlan({ self: this.cpu, opponent: this.player, difficulty: this.state.difficulty, nowFrame: this.frame });
+    const aiInput = training ? this.trainingInput() : this.inputForPlan(plan);
     this.updateFighter(this.cpu, aiInput, false);
     resolvePushboxes(this.player, this.cpu);
     this.player.facing = this.player.x <= this.cpu.x ? 1 : -1;
@@ -517,7 +586,47 @@ export class Game {
     this.handleCombat(this.player, this.cpu);
     this.handleCombat(this.cpu, this.player);
     this.updateProjectiles();
-    if (this.player.hp <= 0 || this.cpu.hp <= 0 || this.state.timerFrames <= 0) this.finishRound();
+    if (training) this.resetTrainingDamageDummy();
+    else if (this.player.hp <= 0 || this.cpu.hp <= 0 || this.state.timerFrames <= 0) this.finishRound();
+  }
+
+  trainingInput() {
+    const blank = { left: false, right: false, up: false, down: false, light: false, strong: false, guard: false, special: false, throwHeld: false, leftPressed: false, rightPressed: false, upPressed: false, downPressed: false, lightPressed: false, strongPressed: false, specialPressed: false, throwPressed: false };
+    if (this.state.trainingCpuMove) {
+      const direction = this.cpu.x < this.player.x ? 1 : -1;
+      blank[direction < 0 ? "left" : "right"] = true;
+    }
+    if (this.state.trainingCpuAttack && this.frame % 36 === 0) {
+      const distance = Math.abs(this.cpu.x - this.player.x);
+      if (distance < 130) {
+        blank.light = true;
+        blank.lightPressed = true;
+      } else {
+        blank.strong = true;
+        blank.strongPressed = true;
+      }
+    }
+    return blank;
+  }
+
+  resetTrainingDamageDummy() {
+    if (this.cpu.hp <= 0) {
+      const id = this.cpu.id;
+      const color = this.cpu.color;
+      this.cpu = createFighterState(id, 330, -1);
+      this.cpu.color = color;
+    }
+    if (this.player.hp <= 0) {
+      this.player.hp = MAX_HP;
+      this.player.state = "idle";
+      this.player.action = "idle";
+      this.player.actionFrame = 0;
+      this.player.stunFrames = 0;
+      this.player.grounded = true;
+      this.player.y = 0;
+      this.player.vy = 0;
+      this.player.boxProfile = "standing";
+    }
   }
 
   inputForPlan(plan) {
@@ -573,6 +682,20 @@ export class Game {
         fighter.projectileSpawned = false;
       }
       this.applyMoveMotion(fighter, move);
+      if (!fighter.grounded) {
+        fighter.airFrames = (fighter.airFrames || 0) + 1;
+        fighter.vy -= GRAVITY;
+        fighter.y += fighter.vy;
+        if (fighter.y <= 0 || fighter.airFrames >= MAX_AIR_FRAMES) {
+          fighter.y = 0;
+          fighter.vy = 0;
+          fighter.grounded = true;
+          fighter.airFrames = 0;
+          fighter.jumpsUsed = 0;
+          fighter.doubleJumpAvailable = true;
+          fighter.boxProfile = "standing";
+        }
+      }
       return;
     }
     const direction = (input.right ? 1 : 0) - (input.left ? 1 : 0);
@@ -580,6 +703,7 @@ export class Game {
       if (fighter.jumpsUsed === 0) {
         fighter.vy = character.stats.jumpVelocity;
         fighter.grounded = false;
+        fighter.airFrames = 0;
         fighter.jumpsUsed = 1;
         fighter.state = "jumping";
         fighter.boxProfile = "air";
@@ -587,6 +711,7 @@ export class Game {
       } else if (fighter.doubleJumpAvailable) {
         fighter.vy = character.stats.jumpVelocity * 0.88;
         fighter.doubleJumpAvailable = false;
+        fighter.airFrames = 0;
         fighter.state = "jumping";
         fighter.boxProfile = "air";
         fighter.action = "double_jump";
@@ -594,6 +719,7 @@ export class Game {
     } else if (!fighter.grounded && input.upPressed && fighter.doubleJumpAvailable) {
       fighter.vy = character.stats.jumpVelocity * 0.88;
       fighter.doubleJumpAvailable = false;
+      fighter.airFrames = 0;
       fighter.action = "double_jump";
     }
     if (!moveLocked && input.throwPressed) this.startThrow(fighter);
@@ -628,8 +754,11 @@ export class Game {
           fighter.vx *= 0.65;
           fighter.state = input.down ? "crouching" : "idle";
           fighter.action = input.down ? "crouch" : "idle";
+          fighter.actionFrame = 0;
         }
       } else {
+        fighter.airFrames = (fighter.airFrames || 0) + 1;
+        fighter.actionFrame += 1;
         fighter.state = "jumping";
         fighter.action = fighter.vy > 0 ? "jump_up" : "jump_fall";
         fighter.vx = direction * character.stats.speed * character.stats.airControl;
@@ -637,17 +766,20 @@ export class Game {
     }
     fighter.x += fighter.vx;
     if (!fighter.grounded) {
-      fighter.vy -= (input.up && fighter.vy > 0 ? GRAVITY * JUMP_CUTOFF : GRAVITY);
+      fighter.vy -= GRAVITY;
       fighter.y += fighter.vy;
-      if (fighter.y <= 0) {
+      if (fighter.y <= 0 || (fighter.airFrames || 0) >= MAX_AIR_FRAMES) {
         fighter.y = 0;
         fighter.vy = 0;
         fighter.grounded = true;
+        fighter.airFrames = 0;
         fighter.jumpsUsed = 0;
         fighter.doubleJumpAvailable = true;
         fighter.state = "idle";
         fighter.action = "landing";
+        fighter.actionFrame = 0;
         fighter.boxProfile = "standing";
+        setVisualSequence(fighter, [{ name: "landing", duration: 6 }]);
       }
     }
     fighter.x = clamp(fighter.x, STAGE_BOUNDS.left, STAGE_BOUNDS.right);
@@ -700,12 +832,12 @@ export class Game {
     if (move.kind === "throw" && activeFrame(move, attacker.actionFrame)) {
       if (!attacker.hitRegistry.has(`throw:${defender.id}`) && evaluateThrow(attacker, defender, attacker.actionFrame)) {
         attacker.hitRegistry.add(`throw:${defender.id}`);
-        applyDamage(defender, move.damage, { knockbackX: move.knockbackX || 5, knockbackY: 2, hitstunFrames: move.hitstunFrames });
+        const damage = applyDamage(defender, move.damage, { knockbackX: move.knockbackX || 5, knockbackY: 2, hitstunFrames: move.hitstunFrames });
         defender.state = "knockdown";
         defender.action = "knockdown";
         defender.actionFrame = 0;
         setVisualSequence(defender, [{ name: "thrown", duration: 10 }]);
-        this.onHit(attacker, defender, move, false, true);
+        this.onHit(attacker, defender, move, false, true, damage);
         attacker.action = "throw_hit";
         setVisualSequence(attacker, [{ name: "throw_success", duration: 10 }]);
       }
@@ -728,13 +860,14 @@ export class Game {
       defender.state = "idle";
       setVisualSequence(defender, [{ name: "just_guard", duration: 6 }]);
       attacker.stunFrames = 8;
+      this.showCombatNotice("GUARD", "guard", 0, defender);
       this.beep(880, 0.08, "triangle");
       return;
     }
     const wasAirborne = !defender.grounded;
     const wasCrouching = defender.crouching || defender.boxProfile === "crouch";
     const damage = result.damage * (defender === this.cpu ? 1 : 0.92);
-    applyDamage(defender, damage, { blocked: result.blocked, knockbackX: move.knockbackX, knockbackY: move.knockbackY, hitstunFrames: result.blocked ? move.blockstunFrames : move.hitstunFrames });
+    const dealtDamage = applyDamage(defender, damage, { blocked: result.blocked, knockbackX: move.knockbackX, knockbackY: move.knockbackY, hitstunFrames: result.blocked ? move.blockstunFrames : move.hitstunFrames });
     if (!result.blocked && defender.hp > 0) {
       const firstHit = wasAirborne ? "air_hit" : wasCrouching ? "hit_crouch" : move.id.includes("strong") || move.kind === "special" ? "hit_heavy" : "hit_light";
       const sequence = [{ name: firstHit, duration: firstHit === "hit_heavy" ? 12 : 10 }];
@@ -749,16 +882,25 @@ export class Game {
     }
     attacker.meter = clamp(attacker.meter + (result.blocked ? move.meterGainOnBlock : move.meterGainOnHit), 0, MAX_METER);
     if (!result.blocked) defender.meter = clamp(defender.meter + Math.max(1, (move.meterGainOnHit || 4) * 0.5), 0, MAX_METER);
-    this.onHit(attacker, defender, move, result.blocked, false);
+    this.onHit(attacker, defender, move, result.blocked, false, dealtDamage);
   }
 
-  onHit(attacker, defender, move, blocked, thrown) {
+  showCombatNotice(textValue, kind, damage = 0, defender = null) {
+    const x = Number(defender?.x) || 240;
+    const y = STAGE_BOUNDS.floor - (Number(defender?.y) || 0) - 104;
+    this.state.combatNotice = { text: textValue, kind, damage: Number(damage) || 0, x, y, frames: 42 };
+    if (kind === "guard") this.beep(180, 0.035);
+  }
+
+  onHit(attacker, defender, move, blocked, thrown, damage = 0) {
     const playerAttacker = attacker === this.player;
     if (blocked) {
       if (playerAttacker) this.state.score += scoreForEvent("light", move.chipDamage);
-      this.beep(180, 0.035);
+      this.showCombatNotice("GUARD", "guard", 0, defender);
       return;
     }
+    this.showCombatNotice(`HIT ${Math.round(Number(damage) || 0)}`, "hit", damage, defender);
+    if (this.state.mode === "training") this.state.trainingDamage = Math.round(Number(damage) || 0);
     if (!playerAttacker) {
       // CPU damage never awards player points/combo and ends a perfect run.
       this.state.perfect = false;
@@ -787,7 +929,9 @@ export class Game {
         projectile.hit = true;
         const attacker = projectile.owner === "player" ? this.player : this.cpu;
         attacker.hitRegistry.add(`projectile:${target.id}`);
-        applyDamage(target, projectile.damage, { hitstunFrames: 32, knockbackX: 4, knockbackY: 2 });
+        const damage = applyDamage(target, projectile.damage, { hitstunFrames: 32, knockbackX: 4, knockbackY: 2 });
+        this.showCombatNotice(`HIT ${Math.round(Number(damage) || 0)}`, "hit", damage, target);
+        if (this.state.mode === "training") this.state.trainingDamage = Math.round(Number(damage) || 0);
         if (target.hp > 0) setVisualSequence(target, [{ name: "hit_heavy", duration: 12 }, { name: "knockback", duration: 10 }]);
         if (target.hp > 0) {
           target.state = "knockdown";
@@ -950,7 +1094,17 @@ export class Game {
       : character?.sprite.frames[Math.max(0, Math.min(3, Number(frame) || 0))];
     if (!source) return null;
     if (!this.images.has(source)) this.images.set(source, makeImage(source));
-    return this.images.get(source);
+    const image = this.images.get(source);
+    if (imageReady(image)) {
+      this.lastReadySprites.set(id, image);
+      return image;
+    }
+    // A frame can be requested before its PNG has decoded (or after a failed
+    // request). Reuse the last ready frame for this fighter so the character
+    // remains visible while the next frame arrives.
+    const fallback = this.lastReadySprites.get(id);
+    if (imageReady(fallback)) return fallback;
+    return image;
   }
 
   render() {
@@ -994,7 +1148,7 @@ export class Game {
     ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = fighter.hp <= 0 ? 0.66 : 1;
     if (fighter.color === 2) ctx.filter = "hue-rotate(70deg) saturate(1.2)";
-    if (image?.complete && image.naturalWidth) {
+    if (imageReady(image)) {
       ctx.translate(x, y);
       if (fighter.facing < 0) ctx.scale(-1, 1);
       ctx.drawImage(image, placement.drawX, placement.drawY, placement.width, placement.height);
@@ -1021,9 +1175,28 @@ export class Game {
     ctx.fillStyle = "#f6f5de"; ctx.font = "bold 9px monospace";
     ctx.fillText(CHARACTERS[this.player.id]?.name || "1P", 16, 9);
     ctx.textAlign = "right"; ctx.fillText(CHARACTERS[this.cpu.id]?.name || "CPU", 464, 9);
-    ctx.textAlign = "center"; ctx.font = "bold 18px monospace"; ctx.fillText(String(Math.ceil(this.state.timerFrames / FIXED_HZ)).padStart(2, "0"), 240, 21);
+    ctx.textAlign = "center"; ctx.font = "bold 18px monospace";
+    const timerLabel = this.state.mode === "training" ? "--" : String(Math.ceil(this.state.timerFrames / FIXED_HZ)).padStart(2, "0");
+    ctx.fillText(timerLabel, 240, 21);
     ctx.font = "bold 9px monospace"; ctx.fillText(`R${this.state.playerRounds}-${this.state.cpuRounds}  STAGE ${this.state.stage}`, 240, 34);
     ctx.textAlign = "left"; ctx.fillStyle = "#ffe795"; ctx.fillText(`${this.state.score.toString().padStart(6, "0")}  COMBO ${this.state.combo}`, 16, 45);
+    if (this.state.mode === "training") {
+      ctx.fillStyle = "#9de8ff";
+      ctx.font = "bold 9px monospace";
+      ctx.fillText(`TRAINING  DAMAGE ${Math.round(this.state.trainingDamage || 0)}`, 16, 57);
+    }
+    const notice = this.state.combatNotice;
+    if (notice?.frames > 0 && notice.text) {
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.font = "900 15px monospace";
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(5,7,15,.9)";
+      ctx.fillStyle = notice.kind === "guard" ? "#7de7ff" : "#ffda66";
+      ctx.strokeText(notice.text, clamp(notice.x, 38, INTERNAL_WIDTH - 38), clamp(notice.y, 62, STAGE_BOUNDS.floor - 20));
+      ctx.fillText(notice.text, clamp(notice.x, 38, INTERNAL_WIDTH - 38), clamp(notice.y, 62, STAGE_BOUNDS.floor - 20));
+      ctx.restore();
+    }
     ctx.textAlign = "right";
     if (this.state.screen === SCREEN.pause) { ctx.fillStyle = "rgba(0,0,0,.7)"; ctx.fillRect(0, 0, INTERNAL_WIDTH, INTERNAL_HEIGHT); ctx.fillStyle = "#fff"; ctx.font = "bold 28px monospace"; ctx.fillText("PAUSE", 268, 130); }
     ctx.textAlign = "left";
@@ -1067,6 +1240,18 @@ export class Game {
       const settingsLabel = (item) => item === "SOUND" ? `${item}: ${this.state.sound ? "ON" : "OFF"}` : item === "BGM" ? `${item}: ${this.state.bgmEnabled ? "ON" : "OFF"}` : item === "SE" ? `${item}: ${this.state.seEnabled ? "ON" : "OFF"}` : item === "DEBUG OVERLAY" ? `${item}: ${this.state.debug ? "ON" : "OFF"}` : item;
       SETTINGS_ITEMS.forEach((item, index) => button(settingsLabel(item), () => this.activateSettings(index), index === this.state.settingsIndex));
       this.hintText("↑↓ SELECT   ENTER OK   ESC BACK");
+    } else if (screen === SCREEN.trainingSettings) {
+      heading("TRAINING MODE", "SELECT OPTIONS / DAMAGE DISPLAY ON");
+      const trainingLabel = (item) => item === "CPU MOVE" ? `${item}: ${this.state.trainingCpuMove ? "ON" : "OFF"}` : item === "CPU ATTACK" ? `${item}: ${this.state.trainingCpuAttack ? "ON" : "OFF"}` : item;
+      TRAINING_SETTINGS_ITEMS.forEach((item, index) => button(trainingLabel(item), () => {
+        this.state.trainingSettingsIndex = index;
+        if (index === 0) this.state.trainingCpuMove = !this.state.trainingCpuMove;
+        else if (index === 1) this.state.trainingCpuAttack = !this.state.trainingCpuAttack;
+        else if (index === 2) this.startTraining();
+        else this.setScreen(SCREEN.colorSelect);
+        this.renderPanel();
+      }, index === this.state.trainingSettingsIndex));
+      this.hintText("UP/DOWN SELECT   ENTER TOGGLE / START   ESC BACK");
     } else if (screen === SCREEN.difficultySelect) {
       heading("SELECT DIFFICULTY", "CPU REACTION IS DELAYED, NEVER READS LIVE INPUT");
       DIFFICULTY_IDS.forEach((id) => button(DIFFICULTIES[id].label, () => { this.state.difficulty = id; this.setScreen(SCREEN.characterSelect); }, id === this.state.difficulty));
@@ -1076,18 +1261,18 @@ export class Game {
       const grid = document.createElement("div"); grid.className = "character-grid";
       CHARACTER_IDS.forEach((id) => { const b = document.createElement("button"); b.type = "button"; b.className = this.state.selectedId === id ? "selected" : ""; b.setAttribute("aria-label", `${CHARACTERS[id].name}を選択`); if (this.state.selectedId === id) b.setAttribute("aria-current", "true"); b.innerHTML = `<img alt="" src="${CHARACTERS[id].sprite.frames[0]}"><strong>${CHARACTERS[id].name}</strong><small>${CHARACTERS[id].type}</small>`; b.addEventListener("click", () => { this.ensureAudio(); this.state.selectedId = id; this.beep(320); this.renderPanel(); }); grid.appendChild(b); });
       this.panel.appendChild(grid);
-      buttonRow([{ label: "CONFIRM", onClick: () => this.setScreen(SCREEN.colorSelect) }, { label: "BACK", onClick: () => this.setScreen(SCREEN.difficultySelect) }]);
+      buttonRow([{ label: "CONFIRM", onClick: () => this.setScreen(SCREEN.colorSelect) }, { label: "BACK", onClick: () => this.setScreen(this.state.mode === "training" ? SCREEN.menu : SCREEN.difficultySelect) }]);
     } else if (screen === SCREEN.colorSelect) {
       heading("COLOR VARIATION", `${CHARACTERS[this.state.selectedId].name} / SELECT COLOR`);
       [1, 2].forEach((color) => button(`COLOR ${color}`, () => { this.state.color = color; this.renderPanel(); }, color === this.state.color));
-      buttonRow([{ label: "FIGHT", onClick: () => this.startMatch() }, { label: "BACK", onClick: () => this.setScreen(SCREEN.characterSelect) }]);
+      buttonRow([{ label: "FIGHT", onClick: () => this.state.mode === "training" ? this.setScreen(SCREEN.trainingSettings) : this.startMatch() }, { label: "BACK", onClick: () => this.setScreen(SCREEN.characterSelect) }]);
     } else if (screen === SCREEN.howToPlay) {
       heading("HOW TO PLAY", "基本操作・攻撃・防御");
       const p = document.createElement("pre"); p.textContent = "A/D・←/→  移動　同方向を素早く2回：ダッシュ／バックステップ\nW・↑  ジャンプ　空中でもう1回：二段ジャンプ\nS・↓  しゃがむ／下段ガード\nJ  弱攻撃　　K  強攻撃　　J+K  投げ\nL  上段ガード　攻撃直前のガード：ジャストガード\nI  ゲージ100で必殺技（ガード不能）\nESC  ポーズ／再開"; this.panel.appendChild(p); button("BACK", () => this.setScreen(SCREEN.menu));
     } else if (screen === SCREEN.stageIntro) {
       const stage = STAGES[this.state.stage - 1]; heading(`STAGE ${this.state.stage}`, stage.name); this.panel.appendChild(this.stagePreview(stage)); button("START ROUND", () => this.beginRound());
     } else if (screen === SCREEN.roundIntro) {
-      heading(`ROUND ${this.state.round}`, `${CHARACTERS[this.player.id].name}  VS  ${CHARACTERS[this.cpu.id].name}`); button("FIGHT", () => this.setScreen(SCREEN.battle));
+      heading(this.state.mode === "training" ? "TRAINING" : `ROUND ${this.state.round}`, `${CHARACTERS[this.player.id].name}  VS  ${CHARACTERS[this.cpu.id].name}`); button("FIGHT", () => this.setScreen(SCREEN.battle));
     } else if (screen === SCREEN.battle) {
       this.hintText("A/D MOVE  W JUMP  S CROUCH  J/K ATTACK  L GUARD  I SPECIAL  ESC PAUSE");
     } else if (screen === SCREEN.pause) { heading("PAUSE", "PRESS ESC OR ENTER TO RESUME"); button("RESUME", () => this.setScreen(SCREEN.battle)); button("QUIT TO TITLE", () => this.returnTitle()); }

@@ -26,20 +26,10 @@ function canUseDom() {
 
 export function isTouchAvailable(win = typeof window !== "undefined" ? window : null, nav = typeof navigator !== "undefined" ? navigator : null) {
   if (!win || typeof win.PointerEvent === "undefined") return false;
-  let coarse = false;
-  try { coarse = Boolean(win.matchMedia?.("(pointer: coarse)")?.matches); } catch { coarse = false; }
-  const touchCapable = Number(nav?.maxTouchPoints || 0) > 0 || "ontouchstart" in win;
-  const width = Number(win.innerWidth || 0);
-  const height = Number(win.innerHeight || 0);
-  const shortSide = Math.min(width, height);
-  const longSide = Math.max(width, height);
-  // Some mobile browsers and embedded webviews do not expose reliable touch
-  // capability flags until after their first interaction. A phone-sized
-  // viewport is still a safe signal for showing the on-screen controls.
-  const phoneViewport = shortSide > 0 && shortSide <= 620 && longSide <= 960;
-  const tabletViewport = shortSide > 0 && shortSide <= 1024 && longSide <= 1366;
-  const compactTouchViewport = shortSide > 0 && shortSide <= 820 && longSide <= 1180;
-  return phoneViewport || (coarse && tabletViewport) || (touchCapable && compactTouchViewport);
+  // Pointer events work for both touch and mouse/stylus.  Keep the virtual
+  // pad available on desktop as well as mobile so controls are discoverable
+  // and usable regardless of viewport or capability heuristics.
+  return true;
 }
 
 export class TouchInput {

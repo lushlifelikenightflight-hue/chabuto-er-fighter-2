@@ -68,11 +68,45 @@ test("crouch input visibly transitions and diagonals remain crouched", () => {
   assert.equal(fighter.visualAction, "crouch_end");
 });
 
-test("phone-sized viewports expose the virtual pad even with incomplete capability flags", () => {
+test("held crouch settles on one pose and jump returns to ground promptly", () => {
+  const game = new Game(null);
+  const fighter = createFighterState("guitar-boy", 100, 1);
+  const crouch = { left: false, right: false, up: false, down: true, light: false, strong: false, guard: false, special: false, throwHeld: false, leftPressed: false, rightPressed: false, upPressed: false, downPressed: true, lightPressed: false, strongPressed: false, specialPressed: false, throwPressed: false };
+  for (let i = 0; i < 16; i += 1) game.updateFighter(fighter, crouch, true);
+  assert.equal(fighter.state, "crouching");
+  assert.equal(fighter.visualAction, "");
+  assert.deepEqual(animationSelectionFor(fighter), { name: "crouch_idle", frame: 0 });
+
+  const jump = createFighterState("guitar-boy", 100, 1);
+  game.updateFighter(jump, { ...crouch, down: false, downPressed: false, upPressed: true }, true);
+  assert.equal(jump.grounded, false);
+  for (let i = 0; i < 60 && !jump.grounded; i += 1) game.updateFighter(jump, { ...crouch, down: false, downPressed: false, upPressed: false }, true);
+  assert.equal(jump.grounded, true);
+  assert.equal(jump.y, 0);
+});
+
+test("training mode starts with an idle dummy and independently toggles CPU options", () => {
+  const game = new Game(null);
+  game.state.selectedId = "rusty";
+  game.startTraining();
+  assert.equal(game.state.mode, "training");
+  assert.equal(game.state.screen, SCREEN.roundIntro);
+  assert.equal(game.state.timerFrames, Infinity);
+  game.setScreen(SCREEN.battle);
+  const blank = { left: false, right: false, up: false, down: false, light: false, strong: false, guard: false, special: false, throwHeld: false, leftPressed: false, rightPressed: false, upPressed: false, downPressed: false, lightPressed: false, strongPressed: false, specialPressed: false, throwPressed: false };
+  game.tickBattle(blank);
+  assert.equal(game.cpu.state, "idle");
+  assert.equal(game.state.trainingCpuMove, false);
+  assert.equal(game.state.trainingCpuAttack, false);
+  game.state.trainingCpuMove = true;
+  assert.notEqual(game.trainingInput().left || game.trainingInput().right, false);
+});
+
+test("virtual pad is available on pointer-capable desktop and mobile viewports", () => {
   const phoneWindow = { PointerEvent: class {}, innerWidth: 390, innerHeight: 844, matchMedia: () => ({ matches: false }) };
   assert.equal(isTouchAvailable(phoneWindow, { maxTouchPoints: 0 }), true);
   const desktopWindow = { PointerEvent: class {}, innerWidth: 1440, innerHeight: 900, matchMedia: () => ({ matches: false }) };
-  assert.equal(isTouchAvailable(desktopWindow, { maxTouchPoints: 0 }), false);
+  assert.equal(isTouchAvailable(desktopWindow, { maxTouchPoints: 0 }), true);
 });
 
 test("combat transitions select just guard, throw, hit, and down-idle visuals", () => {
@@ -109,6 +143,7 @@ test("combat transitions select just guard, throw, hit, and down-idle visuals", 
   guardDefender.action = "guard_high";
   game.handleCombat(guardAttacker, guardDefender);
   assert.equal(guardDefender.visualAction, "just_guard");
+  assert.equal(game.state.combatNotice.text, "GUARD");
 
   const downed = createFighterState("uncle", 125, -1);
   downed.state = "knockdown";
@@ -126,7 +161,7 @@ test("generated JSON metadata stays consistent with the runtime manifest", () =>
 });
 
 test("settings are grouped under one main-menu route", () => {
-  assert.deepEqual(MENU_ITEMS, ["GAME START", "HOW TO PLAY", "SCORE", "SETTINGS"]);
+  assert.deepEqual(MENU_ITEMS, ["GAME START", "TRAINING MODE", "HOW TO PLAY", "SCORE", "SETTINGS"]);
   assert.deepEqual(SETTINGS_ITEMS, ["SOUND", "BGM", "SE", "DEBUG OVERLAY", "RESET DATA", "BACK"]);
   assert.equal(SCREEN.settings, "settings");
 });

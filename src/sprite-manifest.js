@@ -1,5 +1,6 @@
 export const EXPANDED_FIGHTER_IDS = Object.freeze([
   "guitar-boy", "green-slime", "bob-girl", "uncle",
+  "rusty", "kazushige", "norio", "toko",
 ]);
 
 export const REQUIRED_ANIMATION_CLIPS = Object.freeze([
@@ -34,7 +35,10 @@ const GROUPS = Object.freeze({
   dash: ["movement", 7, 3, 3, false],
   backstep: ["movement", 10, 3, 4, false],
   crouch_start: ["crouch", 1, 2, 4, false],
-  crouch_idle: ["crouch", 3, 2, 10, true],
+  // The held crouch pose is a settled keyframe, not a looping animation.
+  // Keeping the clip non-looping lets the runtime clamp to one stable frame
+  // while the down input remains held.
+  crouch_idle: ["crouch", 3, 2, 10, false],
   crouch_end: ["crouch", 5, 2, 4, false],
   jump_start: ["jump", 1, 2, 4, false],
   jump_rise: ["jump", 3, 2, 5, true],

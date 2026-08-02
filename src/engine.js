@@ -151,6 +151,7 @@ export function createFighterState(id, x, facing = 1) {
     action: "idle",
     actionFrame: 0,
     grounded: true,
+    airFrames: 0,
     crouching: false,
     jumpsUsed: 0,
     doubleJumpAvailable: true,
