@@ -4,9 +4,9 @@ import fs from "node:fs";
 import { ANIMATION_CLIPS, CHARACTERS, CHARACTER_IDS, DIFFICULTIES, MENU_ITEMS, SETTINGS_ITEMS, STAGE_BOUNDS, STAGES, getOpponentId } from "../src/data.js";
 import { FIXED_DT, FIXED_UPDATE_ORDER, activeFrame, aiPlan, applyDamage, createFighterState, createProjectile, evaluateStrike, evaluateThrow, fixedStep, getFighterBoxes, projectileIsActive, rectsOverlap, resolvePushboxes, scoreForEvent, stageOpponent, continueCount, rankForScore } from "../src/engine.js";
 import { STORAGE_KEY, loadSave, resetSave, safeStorage, saveData, validateSave } from "../src/storage.js";
-import { DEFAULT_SPRITE_SCALE, Game, SCREEN, advanceVisualSequence, animationNameFor, animationSelectionFor, formatDuration, setVisualSequence, spriteDrawPlacement, spriteScaleFor } from "../src/game.js";
+import { DEFAULT_SPRITE_SCALE, Game, SCREEN, STAGE_DIALOGUE_FRAMES, advanceVisualSequence, animationNameFor, animationSelectionFor, formatDuration, setVisualSequence, spriteDrawPlacement, spriteScaleFor } from "../src/game.js";
 import { EXPANDED_FIGHTER_IDS, REQUIRED_ANIMATION_CLIPS } from "../src/sprite-manifest.js";
-import { isTouchAvailable } from "../src/touch-input.js";
+import { isTouchAvailable, stickActionsFromVector } from "../src/touch-input.js";
 
 test("data exposes the eight required Japanese fighters and all required clips", () => {
   assert.equal(CHARACTER_IDS.length, 8);
@@ -182,17 +182,21 @@ test("virtual pad has an always-visible slot below the LCD and title preview mod
   assert.match(gameSource, /screen === SCREEN\.battle \|\| screen === SCREEN\.pause \? "battle" : "howToPlay"/);
 });
 
-test("virtual pad confirm starts the title and cancel is available on menus", () => {
+test("virtual pad A confirms and B cancels on menus", () => {
   const game = new Game(null);
-  game.touchInput = { getSnapshot: () => ({ held: new Set(), pressed: new Set(["confirm"]) }) };
+  game.touchInput = { getSnapshot: () => ({ held: new Set(), pressed: new Set(["a"]) }) };
   const confirm = game.readInput();
   assert.equal(confirm.confirm, true);
   assert.equal(confirm.start, true);
-  game.touchInput = { getSnapshot: () => ({ held: new Set(), pressed: new Set(["cancel"]) }) };
+  game.touchInput = { getSnapshot: () => ({ held: new Set(), pressed: new Set(["b"]) }) };
   assert.equal(game.readInput().cancel, true);
   const source = fs.readFileSync(new URL("../src/touch-input.js", import.meta.url), "utf8");
-  assert.match(source, /key: "confirm", label: "決定"/);
-  assert.match(source, /key: "cancel", label: "戻る"/);
+  assert.match(source, /key: "a", label: "A"/);
+  assert.match(source, /key: "b", label: "B"/);
+  assert.doesNotMatch(source, /key: "confirm"/);
+  assert.doesNotMatch(source, /key: "cancel"/);
+  assert.match(source, /virtual-pad__system-control/);
+  assert.doesNotMatch(source, /actions\.appendChild\(this\.createButton\("pause"/);
 });
 
 test("combat transitions select just guard, throw, hit, and down-idle visuals", () => {
@@ -517,4 +521,89 @@ test("AI uses delayed state observations and difficulty-sensitive score rules", 
   const rankValue = { D: 0, C: 1, B: 2, A: 3, S: 4 };
   assert.ok(rankValue[rankForScore(45000, { difficulty: "hard" })] >= rankValue[rankForScore(45000, { difficulty: "easy" })]);
   assert.ok(scoreForEvent("stage") > 0 && scoreForEvent("clear") > 0 && scoreForEvent("continue") > 0 && scoreForEvent("whiffSpecial") < 0);
+});
+
+test("analog stick helper applies dead zone and directional snapshots", () => {
+  assert.deepEqual(stickActionsFromVector(0.1, 0), []);
+  assert.deepEqual(stickActionsFromVector(0.9, 0), ["right"]);
+  assert.deepEqual(stickActionsFromVector(-0.9, -0.9), ["left", "up"]);
+});
+
+test("battle touch mapping exposes A/B/X/Y combos without menu aliases", () => {
+  const game = new Game(null);
+  game.state.screen = SCREEN.battle;
+  game.touchInput = { getSnapshot: () => ({ held: new Set(["a", "right"]), pressed: new Set(["a", "right"]) }) };
+  let input = game.readInput();
+  assert.equal(input.strong, true);
+  assert.equal(input.light, false);
+  assert.equal(input.strongPressed, true);
+  game.touchInput = { getSnapshot: () => ({ held: new Set(["x", "left"]), pressed: new Set(["x", "left"]) }) };
+  input = game.readInput();
+  assert.equal(input.counterThrow, true);
+  assert.equal(input.throwPressed, true);
+  assert.equal(input.guard, false);
+  game.touchInput = { getSnapshot: () => ({ held: new Set(["b", "right"]), pressed: new Set(["b", "right"]) }) };
+  input = game.readInput();
+  assert.equal(input.dashPressed, true);
+  assert.equal(input.cancel, false);
+});
+
+test("gamepad guard plus light still emits one timed counter throw edge", () => {
+  const game = new Game(null);
+  game.state.screen = SCREEN.battle;
+  game.pollGamepad = () => ({
+    left: false, right: false, up: false, down: false,
+    leftPressed: false, rightPressed: false, upPressed: false, downPressed: false,
+    light: true, strong: false, guard: true, special: false,
+    lightPressed: true, strongPressed: false, guardPressed: true, specialPressed: false,
+    confirmPressed: false,
+  });
+  game.touchInput = { getSnapshot: () => ({ held: new Set(), pressed: new Set() }) };
+  const input = game.readInput();
+  assert.equal(input.throwHeld, true);
+  assert.equal(input.throwPressed, true);
+  assert.equal(input.counterThrow, true);
+  assert.equal(input.light, false);
+  assert.equal(input.guard, false);
+});
+
+test("stage dialogue threshold is exactly four seconds at 60 Hz", () => {
+  assert.equal(STAGE_DIALOGUE_FRAMES, 240);
+  const game = new Game(null);
+  game.state.screen = SCREEN.stageIntro;
+  game.state.screenFrames = STAGE_DIALOGUE_FRAMES - 1;
+  game.tick();
+  assert.equal(game.state.screen, SCREEN.roundIntro);
+});
+
+test("touch counter throw only succeeds during an opponent active attack", () => {
+  const game = new Game(null);
+  const attacker = createFighterState("guitar-boy", 100, 1);
+  const defender = createFighterState("uncle", 112, -1);
+  game.player = attacker;
+  game.cpu = defender;
+  game.startThrow(attacker, { counter: true });
+  attacker.actionFrame = attacker.currentMove.startupFrames;
+  game.handleCombat(attacker, defender);
+  assert.equal(attacker.throwTarget, null);
+
+  // The defender starts an attack during throw startup; the early command
+  // must remain a miss because its captured timing was inactive.
+  defender.state = "attacking";
+  defender.currentMove = CHARACTERS.uncle.moves.light_attack_neutral;
+  defender.actionFrame = defender.currentMove.startupFrames;
+  attacker.actionFrame = attacker.currentMove.startupFrames + 1;
+  game.handleCombat(attacker, defender);
+  assert.equal(attacker.throwTarget, null);
+
+  defender.currentMove = CHARACTERS.uncle.moves.light_attack_neutral;
+  defender.actionFrame = defender.currentMove.startupFrames;
+  game.startThrow(attacker, { counter: true });
+  attacker.actionFrame = attacker.currentMove.startupFrames;
+  game.handleCombat(attacker, defender);
+  assert.equal(attacker.throwTarget, defender);
+  const hpBefore = defender.hp;
+  attacker.actionFrame = attacker.currentMove.startupFrames + attacker.currentMove.activeFrames + 6;
+  game.updateThrowSequence();
+  assert.ok(defender.hp < hpBefore);
 });

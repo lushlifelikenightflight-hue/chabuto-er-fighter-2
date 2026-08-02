@@ -23,6 +23,7 @@ export const SCREEN = Object.freeze({
 });
 
 const FRAME = 1000 / FIXED_HZ;
+export const STAGE_DIALOGUE_FRAMES = 4 * FIXED_HZ;
 export const DEFAULT_SPRITE_SCALE = 0.82;
 
 // Action PNGs are normalized around their authored 128,233 anchor, so runtime
@@ -319,7 +320,9 @@ export class Game {
     } else if (this.state.screen === SCREEN.score) {
       if (input.cancel || input.confirm) this.setScreen(SCREEN.menu);
     } else if (this.state.screen === SCREEN.stageIntro) {
-      if (input.confirm || this.state.screenFrames > 90) this.beginRound();
+      // Stage dialogue is shown for exactly four seconds at the fixed 60 Hz
+      // simulation rate. Confirm remains an explicit skip affordance.
+      if (input.confirm || this.state.screenFrames >= STAGE_DIALOGUE_FRAMES) this.beginRound();
     } else if (this.state.screen === SCREEN.roundIntro) {
       if (input.confirm || this.state.screenFrames > 70) this.setScreen(SCREEN.battle);
     } else if (this.state.screen === SCREEN.battle) {
@@ -351,40 +354,72 @@ export class Game {
 
   readInput() {
     const gamepad = this.pollGamepad();
-    const touch = this.touchInput?.getSnapshot() || { held: new Set(), pressed: new Set() };
+    const touchSnapshot = this.touchInput?.getSnapshot?.() || {};
+    const touch = {
+      held: touchSnapshot.held instanceof Set ? touchSnapshot.held : new Set(touchSnapshot.held || []),
+      pressed: touchSnapshot.pressed instanceof Set ? touchSnapshot.pressed : new Set(touchSnapshot.pressed || []),
+    };
     const held = (key) => this.keys.has(key);
     const pressed = (...keys) => keys.some((key) => this.justKeys.has(key));
     const button = (key, aliases = []) => held(key) || aliases.some((alias) => held(alias));
     const touchHeld = (key) => touch.held.has(key);
     const touchPressed = (key) => touch.pressed.has(key);
+    const battleScreen = this.state.screen === SCREEN.battle;
     const left = button("arrowleft", ["a"]) || gamepad.left || touchHeld("left");
     const right = button("arrowright", ["d"]) || gamepad.right || touchHeld("right");
-    const up = button("arrowup", ["w"]) || gamepad.up || touchHeld("up") || touchHeld("jump");
+    const up = button("arrowup", ["w"]) || gamepad.up || touchHeld("up") || (battleScreen && touchHeld("y"));
     const down = button("arrowdown", ["s"]) || gamepad.down || touchHeld("down");
     const leftPressed = pressed("arrowleft", "a") || gamepad.leftPressed || touchPressed("left");
     const rightPressed = pressed("arrowright", "d") || gamepad.rightPressed || touchPressed("right");
-    const upPressed = pressed("arrowup", "w") || gamepad.upPressed || touchPressed("up") || touchPressed("jump");
+    const upPressed = pressed("arrowup", "w") || gamepad.upPressed || touchPressed("up") || (battleScreen && touchPressed("y"));
     const downPressed = pressed("arrowdown", "s") || gamepad.downPressed || touchPressed("down");
-    let light = button("j", ["z"]) || gamepad.light || touchHeld("light");
-    let strong = button("k", ["x"]) || gamepad.strong || touchHeld("strong");
-    let guard = button("l", ["c"]) || gamepad.guard || touchHeld("guard");
-    const special = button("i", ["v"]) || gamepad.special || touchHeld("special");
-    const guardPressed = pressed("l", "c") || gamepad.guardPressed || touchPressed("guard");
-    // Throw is guard + light on keyboard/gamepad; keep the dedicated touch
-    // throw button as a backwards-compatible virtual-pad shortcut.
-    const throwHeld = (guard && light) || touchHeld("throw");
-    const lightPressed = pressed("j", "z") || gamepad.lightPressed || touchPressed("light");
-    const strongPressed = pressed("k", "x") || gamepad.strongPressed || touchPressed("strong");
-    const specialPressed = pressed("i", "v") || gamepad.specialPressed || touchPressed("special");
-    const confirm = pressed("enter", " ") || gamepad.confirmPressed || touchPressed("confirm");
-    const cancel = pressed("escape", "backspace") || touchPressed("cancel");
-    const pause = cancel || touchPressed("pause");
-    // A held guard+light is a throw, while the individual attack edges remain usable.
+
+    // The touch face mapping is context-sensitive: A confirms menus, while
+    // battle A is weak unless held with the absolute screen-right stick edge.
+    const touchA = battleScreen && touchHeld("a");
+    const touchB = touchHeld("b");
+    const touchX = battleScreen && touchHeld("x");
+    const touchRight = battleScreen && touchHeld("right");
+    const touchLeft = battleScreen && touchHeld("left");
+    const touchStrong = touchA && touchRight;
+    const touchLight = touchA && !touchRight;
+    const touchStrongPressed = touchStrong && (touchPressed("a") || touchPressed("right"));
+    const touchLightPressed = touchLight && touchPressed("a");
+    const touchCounterThrow = touchX && touchLeft;
+    const touchCounterThrowPressed = touchCounterThrow && (touchPressed("x") || touchPressed("left"));
+    const dashPressed = battleScreen && touchB && touchRight && (touchPressed("b") || touchPressed("right"));
+    const backstepPressed = battleScreen && touchB && touchLeft && (touchPressed("b") || touchPressed("left"));
+
+    let light = button("j", ["z"]) || gamepad.light || touchLight;
+    let strong = button("k", ["x"]) || gamepad.strong || touchStrong;
+    let guard = button("l", ["c"]) || gamepad.guard || touchX;
+    const special = button("i", ["v"]) || gamepad.special;
+    const guardPressed = pressed("l", "c") || gamepad.guardPressed || touchPressed("x");
+    // Every user-facing throw command is a timed counter. Guard+light remains
+    // accepted for keyboard/gamepad compatibility; touch uses X+left.
+    const keyboardThrow = (button("l", ["c"]) && button("j", ["z"]));
+    const gamepadThrow = Boolean(gamepad.guard && gamepad.light);
+    const counterThrow = touchCounterThrow || keyboardThrow || gamepadThrow;
+    const throwHeld = counterThrow;
+    const lightPressed = pressed("j", "z") || gamepad.lightPressed || touchLightPressed;
+    const strongPressed = pressed("k", "x") || gamepad.strongPressed || touchStrongPressed;
+    const specialPressed = pressed("i", "v") || gamepad.specialPressed;
+    const keyboardCancel = pressed("escape", "backspace");
+    const menuCancel = !battleScreen && touchPressed("b");
+    const confirm = pressed("enter", " ") || gamepad.confirmPressed || (!battleScreen && touchPressed("a"));
+    const cancel = keyboardCancel || menuCancel;
+    const pause = (battleScreen && keyboardCancel) || touchPressed("pause");
+    const keyboardThrowPressed = keyboardThrow && (lightPressed || guardPressed);
+    const gamepadThrowPressed = gamepadThrow && (gamepad.lightPressed || gamepad.guardPressed);
+    // A held guard+light is a throw, while counter commands suppress their
+    // underlying guard/attack action on the same frame.
     if (throwHeld) { light = false; strong = false; }
+    if (counterThrow) guard = false;
     return {
-      left, right, up, down, light, strong, guard, special, throwHeld,
+      left, right, up, down, light, strong, guard, special, throwHeld, counterThrow,
       leftPressed, rightPressed, upPressed, downPressed, lightPressed, strongPressed, specialPressed,
-      throwPressed: touchPressed("throw") || (throwHeld && (lightPressed || guardPressed)),
+      dashPressed, backstepPressed,
+      throwPressed: touchCounterThrowPressed || keyboardThrowPressed || gamepadThrowPressed,
       confirm, cancel, pause, start: confirm,
     };
   }
@@ -791,7 +826,7 @@ export class Game {
       fighter.locomotionAction = "";
       fighter.locomotionFramesRemaining = 0;
     }
-    if (!moveLocked && input.throwPressed) this.startThrow(fighter);
+    if (!moveLocked && input.throwPressed) this.startThrow(fighter, { counter: input.counterThrow === true });
     else if (!moveLocked && input.specialPressed) this.startSpecial(fighter);
     else if (!moveLocked && (input.lightPressed || input.strongPressed)) this.startAttack(fighter, input);
     else if (!moveLocked && fighter.grounded && input.guard) {
@@ -808,13 +843,28 @@ export class Game {
         fighter.boxProfile = input.down ? "crouch" : "standing";
         if (input.down && !wasCrouching) setVisualSequence(fighter, [{ name: "crouch_start", duration: 8 }]);
         else if (!input.down && wasCrouching) setVisualSequence(fighter, [{ name: "crouch_end", duration: 8 }]);
+        const directDash = !input.down && input.dashPressed;
+        const directBackstep = !input.down && input.backstepPressed;
         const locomotionLocked = !input.down && fighter.locomotionFramesRemaining > 0 && (fighter.locomotionAction === "dash" || fighter.locomotionAction === "backstep");
-        if (locomotionLocked) {
+        if (directDash || directBackstep) {
+          // Touch B+direction commands use absolute screen directions. The
+          // existing double-tap path below remains facing-relative for keys.
+          const nextAction = directBackstep ? "backstep" : "dash";
+          fighter.crouching = false;
+          fighter.boxProfile = "standing";
+          fighter.action = nextAction;
+          fighter.actionFrame = 0;
+          fighter.locomotionAction = nextAction;
+          fighter.locomotionFramesRemaining = Math.max(0, (directBackstep ? BACKSTEP_LOCK_FRAMES : DASH_LOCK_FRAMES) - 1);
+          fighter.locomotionVelocity = directBackstep ? -character.stats.speed * 2.4 : character.stats.speed * 2.2;
+          fighter.vx = fighter.locomotionVelocity;
+          fighter.state = "moving";
+        } else if (locomotionLocked) {
           fighter.crouching = false;
           fighter.boxProfile = "standing";
           fighter.action = fighter.locomotionAction;
           fighter.actionFrame += 1;
-          fighter.vx = fighter.action === "backstep" ? -fighter.facing * character.stats.speed * 2.4 : fighter.facing * character.stats.speed * 2.2;
+          fighter.vx = fighter.locomotionVelocity ?? (fighter.action === "backstep" ? -fighter.facing * character.stats.speed * 2.4 : fighter.facing * character.stats.speed * 2.2);
           fighter.state = "moving";
           fighter.locomotionFramesRemaining -= 1;
         } else if (direction !== 0 && !input.down) {
@@ -833,9 +883,11 @@ export class Game {
           if (doubleTap) {
             fighter.locomotionAction = nextAction;
             fighter.locomotionFramesRemaining = Math.max(0, (isBackstep ? BACKSTEP_LOCK_FRAMES : DASH_LOCK_FRAMES) - 1);
+            fighter.locomotionVelocity = isBackstep ? -fighter.facing * character.stats.speed * 2.4 : direction * character.stats.speed * 2.2;
           } else {
             fighter.locomotionAction = "";
             fighter.locomotionFramesRemaining = 0;
+            fighter.locomotionVelocity = 0;
           }
           // Record the edge, not every held frame, so a real second tap is
           // required and the window remains deterministic for keyboard/touch.
@@ -848,6 +900,7 @@ export class Game {
           fighter.vx *= 0.65;
           fighter.locomotionAction = "";
           fighter.locomotionFramesRemaining = 0;
+          fighter.locomotionVelocity = 0;
           fighter.state = input.down ? "crouching" : "idle";
           fighter.action = input.down ? "crouch" : "idle";
           fighter.actionFrame = 0;
@@ -920,8 +973,11 @@ export class Game {
     }
   }
 
-  startThrow(fighter) {
-    fighter.currentMove = { id: "throw", kind: "throw", startupFrames: 5, activeFrames: 3, recoveryFrames: 22, damage: 150 * (CHARACTERS[fighter.id].stats.throwPower || 1), hitstunFrames: 30, scoreValue: 400, hitbox: null };
+  startThrow(fighter, { counter = false } = {}) {
+    const target = fighter === this.player ? this.cpu : this.player;
+    const targetMove = target?.currentMove;
+    const targetWasActive = Boolean(target && (target.state === "attacking" || target.state === "throwing") && activeFrame(targetMove, target.actionFrame));
+    fighter.currentMove = { id: "throw", kind: "throw", counterOnly: counter, counterTarget: targetWasActive ? target : null, startupFrames: 5, activeFrames: 3, recoveryFrames: 22, damage: 150 * (CHARACTERS[fighter.id].stats.throwPower || 1), hitstunFrames: 30, scoreValue: 400, hitbox: null };
     fighter.state = "throwing";
     fighter.action = "throw_start";
     fighter.actionFrame = 0;
@@ -943,7 +999,10 @@ export class Game {
     const move = attacker.currentMove;
     if (!move || attacker.state !== "attacking" && attacker.state !== "throwing") return;
     if (move.kind === "throw" && activeFrame(move, attacker.actionFrame)) {
-      if (!attacker.hitRegistry.has(`throw:${defender.id}`) && evaluateThrow(attacker, defender, attacker.actionFrame)) {
+      // Counter timing is captured when the command starts. A target that
+      // becomes active during throw startup must still be a miss.
+      const counterTimingOk = !move.counterOnly || move.counterTarget === defender;
+      if (counterTimingOk && !attacker.hitRegistry.has(`throw:${defender.id}`) && evaluateThrow(attacker, defender, attacker.actionFrame)) {
         attacker.hitRegistry.add(`throw:${defender.id}`);
         attacker.throwTarget = defender;
         attacker.throwReleased = false;
@@ -1397,7 +1456,7 @@ export class Game {
     } else if (screen === SCREEN.roundIntro) {
       heading(this.state.mode === "training" ? "TRAINING" : `ROUND ${this.state.round}`, `${CHARACTERS[this.player.id].name}  VS  ${CHARACTERS[this.cpu.id].name}`); button("FIGHT", () => this.setScreen(SCREEN.battle));
     } else if (screen === SCREEN.battle) {
-      this.hintText("A/D MOVE  W JUMP  S CROUCH  J/K ATTACK  →+J UNIQUE  L+J THROW  I SPECIAL  ESC PAUSE");
+      this.hintText("STICK MOVE/CROUCH/JUMP  A LIGHT  RIGHT+A STRONG  B+RIGHT DASH  B+LEFT BACKSTEP  X GUARD  X+LEFT COUNTER  Y JUMP  ESC PAUSE");
     } else if (screen === SCREEN.pause) { heading("PAUSE", this.state.mode === "training" ? "ENTER RESUME / ESC EXIT TRAINING" : "PRESS ESC OR ENTER TO RESUME"); button("RESUME", () => this.setScreen(SCREEN.battle)); button("QUIT TO TITLE", () => this.returnTitle()); }
     else if (screen === SCREEN.roundResult) { heading(this.state.result === "win" ? "ROUND WIN" : this.state.result === "loss" ? "ROUND LOSE" : "DRAW / REMATCH", `STAGE ${this.state.stage}  SCORE ${this.state.score}`); button("CONTINUE", () => this.resolveRoundResult()); }
     else if (screen === SCREEN.stageResult) { heading("STAGE CLEAR", `STAGE ${this.state.stage}  /  ${this.state.score} PTS`); button("NEXT STAGE", () => this.resolveStageResult()); }
