@@ -376,8 +376,8 @@ export class Game {
     const lightPressed = pressed("j", "z") || gamepad.lightPressed || touchPressed("light");
     const strongPressed = pressed("k", "x") || gamepad.strongPressed || touchPressed("strong");
     const specialPressed = pressed("i", "v") || gamepad.specialPressed || touchPressed("special");
-    const confirm = pressed("enter", " ") || gamepad.confirmPressed;
-    const cancel = pressed("escape", "backspace");
+    const confirm = pressed("enter", " ") || gamepad.confirmPressed || touchPressed("confirm");
+    const cancel = pressed("escape", "backspace") || touchPressed("cancel");
     const pause = cancel || touchPressed("pause");
     // A held guard+light is a throw, while the individual attack edges remain usable.
     if (throwHeld) { light = false; strong = false; }

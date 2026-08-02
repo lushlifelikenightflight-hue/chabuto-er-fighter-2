@@ -182,6 +182,19 @@ test("virtual pad has an always-visible slot below the LCD and title preview mod
   assert.match(gameSource, /screen === SCREEN\.battle \|\| screen === SCREEN\.pause \? "battle" : "howToPlay"/);
 });
 
+test("virtual pad confirm starts the title and cancel is available on menus", () => {
+  const game = new Game(null);
+  game.touchInput = { getSnapshot: () => ({ held: new Set(), pressed: new Set(["confirm"]) }) };
+  const confirm = game.readInput();
+  assert.equal(confirm.confirm, true);
+  assert.equal(confirm.start, true);
+  game.touchInput = { getSnapshot: () => ({ held: new Set(), pressed: new Set(["cancel"]) }) };
+  assert.equal(game.readInput().cancel, true);
+  const source = fs.readFileSync(new URL("../src/touch-input.js", import.meta.url), "utf8");
+  assert.match(source, /key: "confirm", label: "決定"/);
+  assert.match(source, /key: "cancel", label: "戻る"/);
+});
+
 test("combat transitions select just guard, throw, hit, and down-idle visuals", () => {
   const game = new Game(null);
   const blank = { left: false, right: false, up: false, down: false, light: false, strong: false, guard: false, special: false, throwHeld: false, leftPressed: false, rightPressed: false, upPressed: false, downPressed: false, lightPressed: false, strongPressed: false, specialPressed: false, throwPressed: false };

@@ -18,6 +18,8 @@ const ACTIONS = Object.freeze([
   { key: "throw", label: "投", ariaLabel: "投げ" },
   { key: "special", label: "必", ariaLabel: "必殺技" },
   { key: "jump", label: "J", ariaLabel: "ジャンプ" },
+  { key: "confirm", label: "決定", ariaLabel: "決定", className: "virtual-pad__menu-action" },
+  { key: "cancel", label: "戻る", ariaLabel: "キャンセル・戻る", className: "virtual-pad__menu-action" },
 ]);
 
 function canUseDom() {
@@ -85,7 +87,7 @@ export class TouchInput {
     actions.setAttribute("role", "group");
     actions.setAttribute("aria-label", "バトル操作");
     for (const item of ACTIONS) {
-      actions.appendChild(this.createButton(item.key, item.label, item.ariaLabel, [item.key], "virtual-pad__action"));
+      actions.appendChild(this.createButton(item.key, item.label, item.ariaLabel, [item.key], item.className || "virtual-pad__action"));
     }
     actions.appendChild(this.createButton("pause", "Ⅱ", "ポーズ", ["pause"], "virtual-pad__pause"));
     root.appendChild(actions);
@@ -122,7 +124,7 @@ export class TouchInput {
   }
 
   pressPointer(event, button, actions) {
-    if (this.destroyed || !this.available || this.mode !== TOUCH_MODES.battle) return;
+    if (this.destroyed || !this.available || this.mode === TOUCH_MODES.hidden) return;
     event.preventDefault();
     const pointerId = event.pointerId;
     if (this.pointers.has(pointerId)) this.releasePointer(pointerId);
@@ -187,7 +189,7 @@ export class TouchInput {
   updateVisibility() {
     if (!this.root) return;
     const visible = this.available && (this.mode === TOUCH_MODES.battle || this.mode === TOUCH_MODES.preview);
-    const interactive = visible && this.mode === TOUCH_MODES.battle;
+    const interactive = visible;
     this.root.hidden = !visible;
     this.root.setAttribute("aria-hidden", visible ? "false" : "true");
     for (const { button } of this.bindings) {

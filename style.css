@@ -111,7 +111,7 @@ body { display: grid; place-items: center; min-height: 100svh; overflow: auto; }
 }
 .virtual-pad[data-mode="battle"] button { pointer-events: auto; }
 .virtual-pad[data-mode="howToPlay"] { opacity: .6; }
-.virtual-pad[data-mode="howToPlay"] button { pointer-events: none; }
+.virtual-pad[data-mode="howToPlay"] button { pointer-events: auto; }
 .virtual-pad button:disabled { cursor: default; }
 .virtual-pad button[aria-pressed="true"] {
   filter: brightness(1.45);
@@ -132,11 +132,11 @@ body { display: grid; place-items: center; min-height: 100svh; overflow: auto; }
   border-radius: 50% !important;
   background: linear-gradient(145deg, #843951, #321526 75%) !important;
 }
+.virtual-pad__menu-action { border-color: #67defb !important; background: linear-gradient(145deg, #19506a, #0b2537 75%) !important; color: #e8fbff !important; font-size: clamp(10px, 2.5vw, 14px) !important; }
 .virtual-pad__pause {
-  grid-column: 1 / -1;
+  grid-column: 3;
   grid-row: 3;
-  justify-self: end;
-  width: 48px;
+  width: 100%;
   min-height: 44px !important;
   border-radius: 4px !important;
   color: #b9f0ff !important;
