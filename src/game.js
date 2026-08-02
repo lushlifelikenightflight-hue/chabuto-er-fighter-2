@@ -25,6 +25,14 @@ export const SCREEN = Object.freeze({
 const FRAME = 1000 / FIXED_HZ;
 export const DEFAULT_SPRITE_SCALE = 0.82;
 
+// Toko's authored idle pose has a tighter crop than the action sheets. Give
+// that one clip the extra runtime scale needed to keep its in-game silhouette
+// consistent with the action poses; every other fighter/clip keeps the shared
+// 0.82 scale contract.
+export function spriteScaleFor(fighter, animationName = "") {
+  return fighter?.id === "toko" && animationName === "idle" ? 0.92 : DEFAULT_SPRITE_SCALE;
+}
+
 export function spriteDrawPlacement(fighter, sprite, scale = DEFAULT_SPRITE_SCALE) {
   const anchor = sprite?.anchor || { x: 128, y: 233 };
   const cellWidth = sprite?.cellWidth || 256;
@@ -93,6 +101,8 @@ export function formatDuration(durationMs = 0) {
 // last-resort safety net for malformed/custom fighter data.
 const GRAVITY = 0.48;
 const MAX_AIR_FRAMES = 48;
+const DASH_LOCK_FRAMES = 9;
+const BACKSTEP_LOCK_FRAMES = 12;
 const ACTION_LOCK_STATES = new Set(["attacking", "hitstun", "blockstun", "knockdown", "throwing"]);
 const DIFFICULTY_IDS = Object.keys(DIFFICULTIES);
 const MOVE_KEYS = Object.freeze({ light: "light_attack_neutral", strong: "strong_attack_neutral" });
@@ -318,7 +328,12 @@ export class Game {
       if (input.pause || input.cancel) this.setScreen(SCREEN.pause);
       else this.tickBattle(input);
     } else if (this.state.screen === SCREEN.pause) {
-      if (input.pause || input.cancel || input.confirm) this.setScreen(SCREEN.battle);
+      // ENTER/the virtual pause button resumes. ESC is also a training escape
+      // route so a training session can be left without requiring a mouse.
+      if (input.cancel) {
+        if (this.state.mode === "training") this.returnTitle();
+        else this.setScreen(SCREEN.battle);
+      } else if (input.pause || input.confirm) this.setScreen(SCREEN.battle);
     } else if (this.state.screen === SCREEN.roundResult) {
       if (input.confirm || this.state.screenFrames > 100) this.resolveRoundResult();
     } else if (this.state.screen === SCREEN.stageResult) {
@@ -356,25 +371,28 @@ export class Game {
     let strong = button("k", ["x"]) || gamepad.strong || touchHeld("strong");
     let guard = button("l", ["c"]) || gamepad.guard || touchHeld("guard");
     const special = button("i", ["v"]) || gamepad.special || touchHeld("special");
-    const throwHeld = (light && strong) || touchHeld("throw");
+    const guardPressed = pressed("l", "c") || gamepad.guardPressed || touchPressed("guard");
+    // Throw is guard + light on keyboard/gamepad; keep the dedicated touch
+    // throw button as a backwards-compatible virtual-pad shortcut.
+    const throwHeld = (guard && light) || touchHeld("throw");
     const lightPressed = pressed("j", "z") || gamepad.lightPressed || touchPressed("light");
     const strongPressed = pressed("k", "x") || gamepad.strongPressed || touchPressed("strong");
     const specialPressed = pressed("i", "v") || gamepad.specialPressed || touchPressed("special");
     const confirm = pressed("enter", " ") || gamepad.confirmPressed;
     const cancel = pressed("escape", "backspace");
     const pause = cancel || touchPressed("pause");
-    // A held J+K is a throw, while the individual attack edges remain usable.
+    // A held guard+light is a throw, while the individual attack edges remain usable.
     if (throwHeld) { light = false; strong = false; }
     return {
       left, right, up, down, light, strong, guard, special, throwHeld,
       leftPressed, rightPressed, upPressed, downPressed, lightPressed, strongPressed, specialPressed,
-      throwPressed: touchPressed("throw") || (throwHeld && (lightPressed || strongPressed)),
+      throwPressed: touchPressed("throw") || (throwHeld && (lightPressed || guardPressed)),
       confirm, cancel, pause, start: confirm,
     };
   }
 
   pollGamepad() {
-    const blank = { left: false, right: false, up: false, down: false, leftPressed: false, rightPressed: false, upPressed: false, downPressed: false, light: false, strong: false, guard: false, special: false, lightPressed: false, strongPressed: false, specialPressed: false, confirmPressed: false };
+    const blank = { left: false, right: false, up: false, down: false, leftPressed: false, rightPressed: false, upPressed: false, downPressed: false, light: false, strong: false, guard: false, special: false, lightPressed: false, strongPressed: false, guardPressed: false, specialPressed: false, confirmPressed: false };
     if (typeof navigator === "undefined" || typeof navigator.getGamepads !== "function") { this.padHeld.clear(); return blank; }
     let pad = null;
     try { pad = Array.from(navigator.getGamepads() || []).find(Boolean); } catch { this.padHeld.clear(); return blank; }
@@ -396,7 +414,7 @@ export class Game {
       left, right, up, down,
       leftPressed: edge("left", left), rightPressed: edge("right", right), upPressed: edge("up", up), downPressed: edge("down", down),
       light, strong, guard, special,
-      lightPressed: edge("light", light), strongPressed: edge("strong", strong), specialPressed: edge("special", special), confirmPressed: edge("confirm", confirm),
+      lightPressed: edge("light", light), strongPressed: edge("strong", strong), guardPressed: edge("guard", guard), specialPressed: edge("special", special), confirmPressed: edge("confirm", confirm),
     };
     this.padJust.clear();
     return result;
@@ -708,6 +726,8 @@ export class Game {
         fighter.state = "jumping";
         fighter.boxProfile = "air";
         fighter.action = "jump_start";
+        fighter.locomotionAction = "";
+        fighter.locomotionFramesRemaining = 0;
       } else if (fighter.doubleJumpAvailable) {
         fighter.vy = character.stats.jumpVelocity * 0.88;
         fighter.doubleJumpAvailable = false;
@@ -715,12 +735,16 @@ export class Game {
         fighter.state = "jumping";
         fighter.boxProfile = "air";
         fighter.action = "double_jump";
+        fighter.locomotionAction = "";
+        fighter.locomotionFramesRemaining = 0;
       }
     } else if (!fighter.grounded && input.upPressed && fighter.doubleJumpAvailable) {
       fighter.vy = character.stats.jumpVelocity * 0.88;
       fighter.doubleJumpAvailable = false;
       fighter.airFrames = 0;
       fighter.action = "double_jump";
+      fighter.locomotionAction = "";
+      fighter.locomotionFramesRemaining = 0;
     }
     if (!moveLocked && input.throwPressed) this.startThrow(fighter);
     else if (!moveLocked && input.specialPressed) this.startSpecial(fighter);
@@ -739,19 +763,46 @@ export class Game {
         fighter.boxProfile = input.down ? "crouch" : "standing";
         if (input.down && !wasCrouching) setVisualSequence(fighter, [{ name: "crouch_start", duration: 8 }]);
         else if (!input.down && wasCrouching) setVisualSequence(fighter, [{ name: "crouch_end", duration: 8 }]);
-        if (direction !== 0 && !input.down) {
-          const doubleTap = (input.leftPressed || input.rightPressed) && this.frame - fighter.lastDirectionFrame <= 14 && direction === fighter.lastDirection;
+        const locomotionLocked = !input.down && fighter.locomotionFramesRemaining > 0 && (fighter.locomotionAction === "dash" || fighter.locomotionAction === "backstep");
+        if (locomotionLocked) {
+          fighter.crouching = false;
+          fighter.boxProfile = "standing";
+          fighter.action = fighter.locomotionAction;
+          fighter.actionFrame += 1;
+          fighter.vx = fighter.action === "backstep" ? -fighter.facing * character.stats.speed * 2.4 : fighter.facing * character.stats.speed * 2.2;
+          fighter.state = "moving";
+          fighter.locomotionFramesRemaining -= 1;
+        } else if (direction !== 0 && !input.down) {
+          const directionPressed = Boolean(input.leftPressed || input.rightPressed);
+          const doubleTap = directionPressed && this.frame - fighter.lastDirectionFrame <= 14 && direction === fighter.lastDirection;
           // A backstep is a backward double-tap; crouch+back remains a normal
           // walk/crouch input and never silently changes movement semantics.
           const isBackstep = doubleTap && direction === -fighter.facing;
-          if (isBackstep) { fighter.action = "backstep"; fighter.vx = -fighter.facing * character.stats.speed * 2.4; fighter.invulnerableFrames = 5; }
-          else if (doubleTap) { fighter.action = "dash"; fighter.vx = direction * character.stats.speed * 2.2; }
-          else { fighter.action = direction === fighter.facing ? "walk_forward" : "walk_backward"; fighter.vx = direction * character.stats.speed; }
-          fighter.lastDirection = direction;
-          fighter.lastDirectionFrame = this.frame;
+          const nextAction = isBackstep ? "backstep" : doubleTap ? "dash" : direction === fighter.facing ? "walk_forward" : "walk_backward";
+          if (fighter.action !== nextAction) fighter.actionFrame = 0;
+          else fighter.actionFrame += 1;
+          fighter.action = nextAction;
+          if (isBackstep) { fighter.vx = -fighter.facing * character.stats.speed * 2.4; fighter.invulnerableFrames = 5; }
+          else if (doubleTap) fighter.vx = direction * character.stats.speed * 2.2;
+          else fighter.vx = direction * character.stats.speed;
+          if (doubleTap) {
+            fighter.locomotionAction = nextAction;
+            fighter.locomotionFramesRemaining = Math.max(0, (isBackstep ? BACKSTEP_LOCK_FRAMES : DASH_LOCK_FRAMES) - 1);
+          } else {
+            fighter.locomotionAction = "";
+            fighter.locomotionFramesRemaining = 0;
+          }
+          // Record the edge, not every held frame, so a real second tap is
+          // required and the window remains deterministic for keyboard/touch.
+          if (directionPressed) {
+            fighter.lastDirection = direction;
+            fighter.lastDirectionFrame = this.frame;
+          }
           fighter.state = "moving";
         } else {
           fighter.vx *= 0.65;
+          fighter.locomotionAction = "";
+          fighter.locomotionFramesRemaining = 0;
           fighter.state = input.down ? "crouching" : "idle";
           fighter.action = input.down ? "crouch" : "idle";
           fighter.actionFrame = 0;
@@ -800,6 +851,8 @@ export class Game {
     fighter.state = "attacking";
     fighter.actionFrame = 0;
     fighter.hitRegistry.clear();
+    fighter.locomotionAction = "";
+    fighter.locomotionFramesRemaining = 0;
   }
 
   startSpecial(fighter) {
@@ -811,6 +864,8 @@ export class Game {
     fighter.action = "special_start";
     fighter.actionFrame = 0;
     fighter.hitRegistry.clear();
+    fighter.locomotionAction = "";
+    fighter.locomotionFramesRemaining = 0;
     if (move.specialType === "projectile") {
       fighter.pendingProjectile = { move, owner: fighter === this.player ? "player" : "cpu" };
       fighter.projectileSpawned = false;
@@ -818,11 +873,19 @@ export class Game {
   }
 
   startThrow(fighter) {
-    fighter.currentMove = { id: "throw", kind: "throw", startupFrames: 5, activeFrames: 3, recoveryFrames: 22, damage: 150 * CHARACTERS[fighter.id].stats.throw, hitstunFrames: 30, scoreValue: 400, hitbox: null };
+    fighter.currentMove = { id: "throw", kind: "throw", startupFrames: 5, activeFrames: 3, recoveryFrames: 22, damage: 150 * (CHARACTERS[fighter.id].stats.throwPower || 1), hitstunFrames: 30, scoreValue: 400, hitbox: null };
     fighter.state = "throwing";
     fighter.action = "throw_start";
     fighter.actionFrame = 0;
+    fighter.crouching = false;
+    fighter.boxProfile = "standing";
+    fighter.guardHeld = false;
     fighter.hitRegistry.clear();
+    fighter.locomotionAction = "";
+    fighter.locomotionFramesRemaining = 0;
+    // Do not let a prior crouch/guard transition mask the authored throw
+    // startup pose when the command is entered on the same frame.
+    setVisualSequence(fighter, []);
   }
 
   handleCombat(attacker, defender) {
@@ -1141,7 +1204,7 @@ export class Game {
     const selection = animationSelectionFor(fighter);
     const image = this.loadSprite(fighter.id, selection.name, selection.frame);
     const character = CHARACTERS[fighter.id];
-    const placement = spriteDrawPlacement(fighter, character?.sprite);
+    const placement = spriteDrawPlacement(fighter, character?.sprite, spriteScaleFor(fighter, selection.name));
     const x = placement.originX;
     const y = placement.baselineY;
     ctx.save();
@@ -1154,9 +1217,6 @@ export class Game {
       ctx.drawImage(image, placement.drawX, placement.drawY, placement.width, placement.height);
     }
     ctx.restore();
-    if (fighter.state === "guarding") {
-      ctx.strokeStyle = "#79dfff"; ctx.strokeRect(x - 25, y - 92, 50, 72);
-    }
     if (fighter.state === "attacking" && fighter.currentMove?.kind === "special" && fighter.actionFrame < fighter.currentMove.startupFrames) {
       ctx.fillStyle = "#ffe56e"; ctx.font = "bold 11px monospace"; ctx.fillText("!", x + fighter.facing * 24, y - 104);
     }
@@ -1268,14 +1328,14 @@ export class Game {
       buttonRow([{ label: "FIGHT", onClick: () => this.state.mode === "training" ? this.setScreen(SCREEN.trainingSettings) : this.startMatch() }, { label: "BACK", onClick: () => this.setScreen(SCREEN.characterSelect) }]);
     } else if (screen === SCREEN.howToPlay) {
       heading("HOW TO PLAY", "基本操作・攻撃・防御");
-      const p = document.createElement("pre"); p.textContent = "A/D・←/→  移動　同方向を素早く2回：ダッシュ／バックステップ\nW・↑  ジャンプ　空中でもう1回：二段ジャンプ\nS・↓  しゃがむ／下段ガード\nJ  弱攻撃　　K  強攻撃　　J+K  投げ\nL  上段ガード　攻撃直前のガード：ジャストガード\nI  ゲージ100で必殺技（ガード不能）\nESC  ポーズ／再開"; this.panel.appendChild(p); button("BACK", () => this.setScreen(SCREEN.menu));
+      const p = document.createElement("pre"); p.textContent = "A/D・←/→  移動　同方向を素早く2回：ダッシュ／バックステップ\nW・↑  ジャンプ　空中でもう1回：二段ジャンプ\nS・↓  しゃがむ／下段ガード\nJ  弱攻撃　　K  強攻撃　　L+J  投げ（ガード中に弱攻撃）\nL  上段ガード　攻撃直前のガード：ジャストガード\nI  ゲージ100で必殺技（ガード不能）\nESC  ポーズ／再開（トレーニング中はタイトルへ戻る）"; this.panel.appendChild(p); button("BACK", () => this.setScreen(SCREEN.menu));
     } else if (screen === SCREEN.stageIntro) {
       const stage = STAGES[this.state.stage - 1]; heading(`STAGE ${this.state.stage}`, stage.name); this.panel.appendChild(this.stagePreview(stage)); button("START ROUND", () => this.beginRound());
     } else if (screen === SCREEN.roundIntro) {
       heading(this.state.mode === "training" ? "TRAINING" : `ROUND ${this.state.round}`, `${CHARACTERS[this.player.id].name}  VS  ${CHARACTERS[this.cpu.id].name}`); button("FIGHT", () => this.setScreen(SCREEN.battle));
     } else if (screen === SCREEN.battle) {
-      this.hintText("A/D MOVE  W JUMP  S CROUCH  J/K ATTACK  L GUARD  I SPECIAL  ESC PAUSE");
-    } else if (screen === SCREEN.pause) { heading("PAUSE", "PRESS ESC OR ENTER TO RESUME"); button("RESUME", () => this.setScreen(SCREEN.battle)); button("QUIT TO TITLE", () => this.returnTitle()); }
+      this.hintText("A/D MOVE  W JUMP  S CROUCH  J/K ATTACK  L GUARD  L+J THROW  I SPECIAL  ESC PAUSE");
+    } else if (screen === SCREEN.pause) { heading("PAUSE", this.state.mode === "training" ? "ENTER RESUME / ESC EXIT TRAINING" : "PRESS ESC OR ENTER TO RESUME"); button("RESUME", () => this.setScreen(SCREEN.battle)); button("QUIT TO TITLE", () => this.returnTitle()); }
     else if (screen === SCREEN.roundResult) { heading(this.state.result === "win" ? "ROUND WIN" : this.state.result === "loss" ? "ROUND LOSE" : "DRAW / REMATCH", `STAGE ${this.state.stage}  SCORE ${this.state.score}`); button("CONTINUE", () => this.resolveRoundResult()); }
     else if (screen === SCREEN.stageResult) { heading("STAGE CLEAR", `STAGE ${this.state.stage}  /  ${this.state.score} PTS`); button("NEXT STAGE", () => this.resolveStageResult()); }
     else if (screen === SCREEN.continue) { const max = DIFFICULTIES[this.state.difficulty].continues; heading("CONTINUE?", `${max === Infinity ? "∞" : max - this.state.continueUsed} CONTINUES LEFT`); button("YES", () => this.continueMatch(true)); button("NO", () => this.continueMatch(false)); }

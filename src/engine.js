@@ -168,6 +168,11 @@ export function createFighterState(id, x, facing = 1) {
     projectileSpawned: false,
     lastDirection: 0,
     lastDirectionFrame: -999,
+    // A dash/backstep is a short authored locomotion action. Keep it latched
+    // for its clip duration instead of replacing it with walk on the first
+    // held-input tick after the double tap.
+    locomotionAction: "",
+    locomotionFramesRemaining: 0,
   };
 }
 

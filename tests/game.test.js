@@ -4,7 +4,7 @@ import fs from "node:fs";
 import { ANIMATION_CLIPS, CHARACTERS, CHARACTER_IDS, DIFFICULTIES, MENU_ITEMS, SETTINGS_ITEMS, STAGE_BOUNDS, STAGES, getOpponentId } from "../src/data.js";
 import { FIXED_DT, FIXED_UPDATE_ORDER, activeFrame, aiPlan, applyDamage, createFighterState, createProjectile, evaluateStrike, evaluateThrow, fixedStep, getFighterBoxes, projectileIsActive, rectsOverlap, resolvePushboxes, scoreForEvent, stageOpponent, continueCount, rankForScore } from "../src/engine.js";
 import { STORAGE_KEY, loadSave, resetSave, safeStorage, saveData, validateSave } from "../src/storage.js";
-import { DEFAULT_SPRITE_SCALE, Game, SCREEN, advanceVisualSequence, animationNameFor, animationSelectionFor, formatDuration, setVisualSequence, spriteDrawPlacement } from "../src/game.js";
+import { DEFAULT_SPRITE_SCALE, Game, SCREEN, advanceVisualSequence, animationNameFor, animationSelectionFor, formatDuration, setVisualSequence, spriteDrawPlacement, spriteScaleFor } from "../src/game.js";
 import { EXPANDED_FIGHTER_IDS, REQUIRED_ANIMATION_CLIPS } from "../src/sprite-manifest.js";
 import { isTouchAvailable } from "../src/touch-input.js";
 
@@ -85,6 +85,67 @@ test("held crouch settles on one pose and jump returns to ground promptly", () =
   assert.equal(jump.y, 0);
 });
 
+test("held walk advances its clip and direction double taps latch dash/backstep", () => {
+  const game = new Game(null);
+  const blank = { left: false, right: false, up: false, down: false, light: false, strong: false, guard: false, special: false, throwHeld: false, leftPressed: false, rightPressed: false, upPressed: false, downPressed: false, lightPressed: false, strongPressed: false, specialPressed: false, throwPressed: false };
+  const forward = createFighterState("guitar-boy", 100, 1);
+  game.frame = 1;
+  game.updateFighter(forward, { ...blank, right: true, rightPressed: true }, true);
+  game.frame = 2;
+  game.updateFighter(forward, { ...blank, right: true }, true);
+  assert.equal(forward.action, "walk_forward");
+  assert.ok(forward.actionFrame > 0);
+  game.frame = 3;
+  game.updateFighter(forward, { ...blank, right: true, rightPressed: true }, true);
+  assert.equal(forward.action, "dash");
+  const dashFrame = forward.actionFrame;
+  for (let frame = 4; frame <= 7; frame += 1) {
+    game.frame = frame;
+    game.updateFighter(forward, { ...blank, right: true }, true);
+    assert.equal(forward.action, "dash");
+  }
+  assert.ok(forward.actionFrame > dashFrame);
+  for (let frame = 8; frame <= 14; frame += 1) {
+    game.frame = frame;
+    game.updateFighter(forward, { ...blank, right: true }, true);
+  }
+  assert.equal(forward.action, "walk_forward");
+
+  const backward = createFighterState("guitar-boy", 160, 1);
+  game.frame = 10;
+  game.updateFighter(backward, { ...blank, left: true, leftPressed: true }, true);
+  game.frame = 11;
+  game.updateFighter(backward, { ...blank, left: true, leftPressed: false }, true);
+  game.frame = 12;
+  game.updateFighter(backward, { ...blank, left: true, leftPressed: true }, true);
+  assert.equal(backward.action, "backstep");
+  for (let frame = 13; frame <= 18; frame += 1) {
+    game.frame = frame;
+    game.updateFighter(backward, { ...blank, left: true }, true);
+    assert.equal(backward.action, "backstep");
+  }
+});
+
+test("throw input is guard plus light and Toko idle receives the authored scale", () => {
+  const game = new Game(null);
+  game.keys.add("l"); game.keys.add("j"); game.justKeys.add("l"); game.justKeys.add("j");
+  const input = game.readInput();
+  assert.equal(input.throwHeld, true);
+  assert.equal(input.throwPressed, true);
+  assert.equal(input.light, false);
+  assert.equal(spriteScaleFor({ id: "toko" }, "idle"), 0.92);
+  assert.equal(spriteScaleFor({ id: "toko" }, "throw_start"), DEFAULT_SPRITE_SCALE);
+});
+
+test("training pause can exit to title with ESC", () => {
+  const game = new Game(null);
+  game.state.mode = "training";
+  game.state.screen = SCREEN.pause;
+  game.justKeys.add("escape");
+  game.tick();
+  assert.equal(game.state.screen, SCREEN.title);
+});
+
 test("training mode starts with an idle dummy and independently toggles CPU options", () => {
   const game = new Game(null);
   game.state.selectedId = "rusty";
@@ -127,10 +188,15 @@ test("combat transitions select just guard, throw, hit, and down-idle visuals", 
   thrown.actionFrame = 46;
   game.startThrow(thrower);
   thrower.actionFrame = thrower.currentMove.startupFrames;
+  const hpBeforeThrow = thrown.hp;
   game.handleCombat(thrower, thrown);
   assert.equal(thrower.visualAction, "throw_success");
   assert.equal(thrown.visualAction, "thrown");
   assert.equal(thrown.actionFrame, 0);
+  assert.ok(thrown.hp < hpBeforeThrow);
+  const hpAfterThrow = thrown.hp;
+  game.handleCombat(thrower, thrown);
+  assert.equal(thrown.hp, hpAfterThrow);
 
   const guardAttacker = createFighterState("guitar-boy", 100, 1);
   const guardDefender = createFighterState("uncle", 125, -1);
