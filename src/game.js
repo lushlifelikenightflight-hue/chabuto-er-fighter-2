@@ -132,7 +132,7 @@ export class Game {
     this.panel = this.root?.querySelector?.("[data-panel]") || byId("panel");
     this.hud = this.root?.querySelector?.("[data-hud]") || byId("hud");
     this.hint = this.root?.querySelector?.("[data-hint]") || byId("hint");
-    this.touchInput = new TouchInput(this.root?.querySelector?.(".lcd") || this.root);
+    this.touchInput = new TouchInput(this.root?.querySelector?.("[data-virtual-pad]") || this.root);
     this.save = loadSave();
     this.images = new Map();
     // Keep the last decoded frame for each fighter.  Animation frames load
@@ -422,7 +422,8 @@ export class Game {
     this.state.screen = screen;
     this.state.screenFrames = 0;
     this.resetInput();
-    this.touchInput?.setMode(screen === SCREEN.battle ? "battle" : screen === SCREEN.howToPlay ? "howToPlay" : "hidden");
+    const touchMode = screen === SCREEN.battle || screen === SCREEN.pause ? "battle" : "howToPlay";
+    this.touchInput?.setMode(touchMode);
     if (screen !== SCREEN.battle) this.state.result = this.state.result || "";
     this.beep(screen === SCREEN.battle ? 330 : 220, 0.045);
     this.syncBgm();

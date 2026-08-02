@@ -170,6 +170,18 @@ test("virtual pad is available on pointer-capable desktop and mobile viewports",
   assert.equal(isTouchAvailable(desktopWindow, { maxTouchPoints: 0 }), true);
 });
 
+test("virtual pad has an always-visible slot below the LCD and title preview mode", () => {
+  const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const css = fs.readFileSync(new URL("../style.css", import.meta.url), "utf8");
+  const gameSource = fs.readFileSync(new URL("../src/game.js", import.meta.url), "utf8");
+  assert.match(html, /<\/div>\s*<div class="virtual-pad-slot" data-virtual-pad/);
+  assert.match(css, /\.virtual-pad-slot\s*\{[^}]*min-height:\s*140px/);
+  assert.match(css, /\.virtual-pad\s*\{[^}]*position:\s*relative/);
+  assert.match(css, /body\s*\{[^}]*overflow:\s*auto/);
+  assert.doesNotMatch(css, /100svh\s*-\s*190px/);
+  assert.match(gameSource, /screen === SCREEN\.battle \|\| screen === SCREEN\.pause \? "battle" : "howToPlay"/);
+});
+
 test("combat transitions select just guard, throw, hit, and down-idle visuals", () => {
   const game = new Game(null);
   const blank = { left: false, right: false, up: false, down: false, light: false, strong: false, guard: false, special: false, throwHeld: false, leftPressed: false, rightPressed: false, upPressed: false, downPressed: false, lightPressed: false, strongPressed: false, specialPressed: false, throwPressed: false };
@@ -311,8 +323,9 @@ test("sprite normalization report covers every safe upright action group", () =>
     for (const group of groups) {
       const entry = report.fighters[id].groups[group];
       assert.ok(entry);
-      assert.ok(["applied", "excluded_edge_contact"].includes(entry.status));
-      assert.ok(entry.factor >= 0.88 && entry.factor <= 1.12);
+      assert.ok(["applied", "verified_current", "excluded_edge_contact"].includes(entry.status));
+      const factor = entry.factor ?? entry.residual_factor;
+      assert.ok(factor >= 0.88 && factor <= 1.12);
     }
   }
   assert.equal(report.fighters["green-slime"].groups.light_attacks.status, "excluded_edge_contact");

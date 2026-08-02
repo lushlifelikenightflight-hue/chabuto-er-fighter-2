@@ -7,7 +7,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; background: #05060c; }
-body { display: grid; place-items: center; min-height: 100svh; overflow: hidden; }
+body { display: grid; place-items: center; min-height: 100svh; overflow: auto; }
 
 .cabinet {
   width: min(96vw, 760px);
@@ -57,13 +57,15 @@ body { display: grid; place-items: center; min-height: 100svh; overflow: hidden;
   #hint { display: none; }
 }
 
-/* Touch overlay stays inside the LCD and never shifts the battle layout. */
+.virtual-pad-slot { position: relative; width: 100%; min-height: 140px; margin-top: 6px; border: 1px solid rgba(83,102,129,.55); border-radius: 7px; background: rgba(5,8,16,.72); overflow: hidden; }
+/* The touch controls live below the LCD so they never cover the battle. */
 .virtual-pad {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  width: 100%;
+  min-height: 138px;
   z-index: 9;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
   padding: 8px calc(8px + env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) calc(8px + env(safe-area-inset-left, 0px));

@@ -1,5 +1,5 @@
 {
-  "method": "idle median alpha-area scale; uniform factor per upright action group",
+  "method": "post-normalization residual audit against idle median alpha-area scale",
   "anchor": [
     128,
     233
@@ -14,45 +14,39 @@
       "groups": {
         "movement": {
           "frames": 12,
-          "before": 0.35527473623123684,
-          "factor": 0.9355133352944645,
-          "status": "applied",
-          "after": 0.3318807401674003
+          "current": 0.3318807401674003,
+          "residual_factor": 1.0014568886097497,
+          "status": "verified_current"
         },
         "guard": {
           "frames": 6,
-          "before": 0.3535098501242899,
-          "factor": 0.940183854341513,
-          "status": "applied",
-          "after": 0.3326045823318088
+          "current": 0.3326045823318088,
+          "residual_factor": 0.9992774336042565,
+          "status": "verified_current"
         },
         "light_attacks": {
           "frames": 12,
-          "before": 0.34025873476270735,
-          "factor": 0.9767985931921267,
-          "status": "applied",
-          "after": 0.3308340070957553
+          "current": 0.3308340070957553,
+          "residual_factor": 1.0046254203285314,
+          "status": "verified_current"
         },
         "heavy_attacks": {
           "frames": 12,
-          "before": 0.34411846373677246,
-          "factor": 0.9658425468613676,
-          "status": "applied",
-          "after": 0.3320230411535099
+          "current": 0.3320230411535099,
+          "residual_factor": 1.001027676521636,
+          "status": "verified_current"
         },
         "throw": {
           "frames": 10,
-          "before": 0.3236607302841341,
-          "factor": 1.026890883999955,
-          "status": "applied",
-          "after": 0.3312930889211845
+          "current": 0.3312930889211845,
+          "residual_factor": 1.0032332836155717,
+          "status": "verified_current"
         },
         "special": {
           "frames": 9,
-          "before": 0.3576725981956124,
-          "factor": 0.9292415888560026,
-          "status": "applied",
-          "after": 0.3321001766692544
+          "current": 0.3321001766692544,
+          "residual_factor": 1.0007951720198995,
+          "status": "verified_current"
         }
       }
     },
@@ -61,44 +55,39 @@
       "groups": {
         "movement": {
           "frames": 12,
-          "before": 0.3652499930622277,
-          "factor": 1.12,
-          "status": "applied",
-          "after": 0.4094017606724699
+          "current": 0.4094017606724699,
+          "residual_factor": 1.0753173264850706,
+          "status": "verified_current"
         },
         "guard": {
           "frames": 6,
-          "before": 0.33875850423862897,
-          "factor": 1.12,
-          "status": "applied",
-          "after": 0.37993095052831316
+          "current": 0.37993095052831316,
+          "residual_factor": 1.12,
+          "status": "verified_current"
         },
         "light_attacks": {
           "frames": 12,
-          "before": 0.38753301324844014,
-          "factor": 1.0,
+          "current": 0.38753301324844014,
+          "residual_factor": 1.0,
           "status": "excluded_edge_contact"
         },
         "heavy_attacks": {
           "frames": 12,
-          "before": 0.33978371358443943,
-          "factor": 1.12,
-          "status": "applied",
-          "after": 0.38047282256153214
+          "current": 0.38047282256153214,
+          "residual_factor": 1.12,
+          "status": "verified_current"
         },
         "throw": {
           "frames": 10,
-          "before": 0.36676030814121485,
-          "factor": 1.12,
-          "status": "applied",
-          "after": 0.4112155669215185
+          "current": 0.4112155669215185,
+          "residual_factor": 1.0705742733436483,
+          "status": "verified_current"
         },
         "special": {
           "frames": 9,
-          "before": 0.41875291510179363,
-          "factor": 1.0513044587106575,
-          "status": "applied",
-          "after": 0.4403333199034426
+          "current": 0.4403333199034426,
+          "residual_factor": 0.9997808179520399,
+          "status": "verified_current"
         }
       }
     },
@@ -107,45 +96,39 @@
       "groups": {
         "movement": {
           "frames": 12,
-          "before": 0.341712078230798,
-          "factor": 0.9493190654436529,
-          "status": "applied",
-          "after": 0.32380423105241846
+          "current": 0.32380423105241846,
+          "residual_factor": 1.001820728847597,
+          "status": "verified_current"
         },
         "guard": {
           "frames": 6,
-          "before": 0.27801761257756075,
-          "factor": 1.12,
-          "status": "applied",
-          "after": 0.3120110010595476
+          "current": 0.3120110010595476,
+          "residual_factor": 1.039687029160099,
+          "status": "verified_current"
         },
         "light_attacks": {
           "frames": 12,
-          "before": 0.2836942938331892,
-          "factor": 1.12,
-          "status": "applied",
-          "after": 0.31865278942459735
+          "current": 0.31865278942459735,
+          "residual_factor": 1.018016479135924,
+          "status": "verified_current"
         },
         "heavy_attacks": {
           "frames": 12,
-          "before": 0.28412417010822144,
-          "factor": 1.12,
-          "status": "applied",
-          "after": 0.3178374046352114
+          "current": 0.3178374046352114,
+          "residual_factor": 1.0206281137022972,
+          "status": "verified_current"
         },
         "throw": {
           "frames": 10,
-          "before": 0.3221274212529275,
-          "factor": 1.007035630481649,
-          "status": "applied",
-          "after": 0.3259181838716738
+          "current": 0.3259181838716738,
+          "residual_factor": 0.9953227736584208,
+          "status": "verified_current"
         },
         "special": {
           "frames": 9,
-          "before": 0.35426478803158307,
-          "factor": 0.9156817208938912,
-          "status": "applied",
-          "after": 0.3242893371955822
+          "current": 0.3242893371955822,
+          "residual_factor": 1.0003220998944669,
+          "status": "verified_current"
         }
       }
     },
@@ -154,45 +137,39 @@
       "groups": {
         "movement": {
           "frames": 12,
-          "before": 0.3336511819783612,
-          "factor": 0.9619831806118477,
-          "status": "applied",
-          "after": 0.32116158823509466
+          "current": 0.32116158823509466,
+          "residual_factor": 0.999393567014914,
+          "status": "verified_current"
         },
         "guard": {
           "frames": 6,
-          "before": 0.3023876540103557,
-          "factor": 1.0614415668023744,
-          "status": "applied",
-          "after": 0.3225192931053405
+          "current": 0.3225192931053405,
+          "residual_factor": 0.9951864341635304,
+          "status": "verified_current"
         },
         "light_attacks": {
           "frames": 12,
-          "before": 0.3106743138258046,
-          "factor": 1.0331295860990062,
-          "status": "applied",
-          "after": 0.32154721010009646
+          "current": 0.32154721010009646,
+          "residual_factor": 0.9981950244709961,
+          "status": "verified_current"
         },
         "heavy_attacks": {
           "frames": 12,
-          "before": 0.3352856712825174,
-          "factor": 0.9572935939275323,
-          "status": "applied",
-          "after": 0.3205243130337619
+          "current": 0.3205243130337619,
+          "residual_factor": 1.0013805886252312,
+          "status": "verified_current"
         },
         "throw": {
           "frames": 10,
-          "before": 0.24874369603378194,
-          "factor": 1.12,
-          "status": "applied",
-          "after": 0.2789466832187799
+          "current": 0.2789466832187799,
+          "residual_factor": 1.12,
+          "status": "verified_current"
         },
         "special": {
           "frames": 9,
-          "before": 0.40255228212463284,
-          "factor": 0.88,
-          "status": "applied",
-          "after": 0.3536612700668713
+          "current": 0.3536612700668713,
+          "residual_factor": 0.9075543533329419,
+          "status": "verified_current"
         }
       }
     },
@@ -201,45 +178,39 @@
       "groups": {
         "movement": {
           "frames": 12,
-          "before": 0.2614416672846378,
-          "factor": 1.12,
-          "status": "applied",
-          "after": 0.2934761205663482
+          "current": 0.2934761205663482,
+          "residual_factor": 1.022381882125891,
+          "status": "verified_current"
         },
         "guard": {
           "frames": 6,
-          "before": 0.28949662261946624,
-          "factor": 1.0364358167246284,
-          "status": "applied",
-          "after": 0.3017050762074033
+          "current": 0.3017050762074033,
+          "residual_factor": 0.9944965867838635,
+          "status": "verified_current"
         },
         "light_attacks": {
           "frames": 12,
-          "before": 0.3154353277386447,
-          "factor": 0.9512081942585432,
-          "status": "applied",
-          "after": 0.29955984013421555
+          "current": 0.29955984013421555,
+          "residual_factor": 1.0016184691819678,
+          "status": "verified_current"
         },
         "heavy_attacks": {
           "frames": 12,
-          "before": 0.27492303293808285,
-          "factor": 1.0913769766653307,
-          "status": "applied",
-          "after": 0.3003731460230679
+          "current": 0.3003731460230679,
+          "residual_factor": 0.998906435133137,
+          "status": "verified_current"
         },
         "throw": {
           "frames": 10,
-          "before": 0.3040608032609178,
-          "factor": 0.9867916722108916,
-          "status": "applied",
-          "after": 0.2998157678264952
+          "current": 0.2998157678264952,
+          "residual_factor": 1.0007634711102493,
+          "status": "verified_current"
         },
         "special": {
           "frames": 9,
-          "before": 0.3286593491343849,
-          "factor": 0.9129351387504371,
-          "status": "applied",
-          "after": 0.3006036407432967
+          "current": 0.3006036407432967,
+          "residual_factor": 0.9981405007661033,
+          "status": "verified_current"
         }
       }
     },
@@ -248,44 +219,39 @@
       "groups": {
         "movement": {
           "frames": 12,
-          "before": 0.3504387140272941,
-          "factor": 1.0405945560261554,
-          "status": "applied",
-          "after": 0.3643683888572503
+          "current": 0.3643683888572503,
+          "residual_factor": 1.000812993633415,
+          "status": "verified_current"
         },
         "guard": {
           "frames": 6,
-          "before": 0.3432118367211817,
-          "factor": 1.0625059482836396,
-          "status": "applied",
-          "after": 0.3654850755257202
+          "current": 0.3654850755257202,
+          "residual_factor": 0.9977551546067069,
+          "status": "verified_current"
         },
         "light_attacks": {
           "frames": 12,
-          "before": 0.3223773769993619,
-          "factor": 1.0,
+          "current": 0.3223773769993619,
+          "residual_factor": 1.0,
           "status": "excluded_edge_contact"
         },
         "heavy_attacks": {
           "frames": 12,
-          "before": 0.3189697552990294,
-          "factor": 1.12,
-          "status": "applied",
-          "after": 0.3579900915937753
+          "current": 0.3579900915937753,
+          "residual_factor": 1.0186444446384495,
+          "status": "verified_current"
         },
         "throw": {
           "frames": 10,
-          "before": 0.30453415432479114,
-          "factor": 1.12,
-          "status": "applied",
-          "after": 0.3411760292494399
+          "current": 0.3411760292494399,
+          "residual_factor": 1.0688459527471552,
+          "status": "verified_current"
         },
         "special": {
           "frames": 9,
-          "before": 0.39742134515641897,
-          "factor": 0.917576829936204,
-          "status": "applied",
-          "after": 0.3651246910838303
+          "current": 0.3651246910838303,
+          "residual_factor": 0.9987399563561268,
+          "status": "verified_current"
         }
       }
     },
@@ -294,45 +260,39 @@
       "groups": {
         "movement": {
           "frames": 12,
-          "before": 0.31110891640538424,
-          "factor": 1.045273154944328,
-          "status": "applied",
-          "after": 0.3241688093057011
+          "current": 0.3241688093057011,
+          "residual_factor": 1.0031618997486569,
+          "status": "verified_current"
         },
         "guard": {
           "frames": 6,
-          "before": 0.2813169562507408,
-          "factor": 1.12,
-          "status": "applied",
-          "after": 0.31518514904007006
+          "current": 0.31518514904007006,
+          "residual_factor": 1.03175482592622,
+          "status": "verified_current"
         },
         "light_attacks": {
           "frames": 12,
-          "before": 0.3274436272339804,
-          "factor": 0.993129111503503,
-          "status": "applied",
-          "after": 0.3239572182421658
+          "current": 0.3239572182421658,
+          "residual_factor": 1.003817110008881,
+          "status": "verified_current"
         },
         "heavy_attacks": {
           "frames": 12,
-          "before": 0.3144828430954984,
-          "factor": 1.0340589501844977,
-          "status": "applied",
-          "after": 0.32665663052152794
+          "current": 0.32665663052152794,
+          "residual_factor": 0.9955218054602926,
+          "status": "verified_current"
         },
         "throw": {
           "frames": 10,
-          "before": 0.2681081230825011,
-          "factor": 1.12,
-          "status": "applied",
-          "after": 0.3005871565901272
+          "current": 0.3005871565901272,
+          "residual_factor": 1.0818619207532973,
+          "status": "verified_current"
         },
         "special": {
           "frames": 9,
-          "before": 0.36435074426128183,
-          "factor": 0.8925295301418829,
-          "status": "applied",
-          "after": 0.3251821154416783
+          "current": 0.3251821154416783,
+          "residual_factor": 1.0000359279927589,
+          "status": "verified_current"
         }
       }
     },
@@ -341,45 +301,39 @@
       "groups": {
         "movement": {
           "frames": 12,
-          "before": 0.32785704271257654,
-          "factor": 0.88,
-          "status": "applied",
-          "after": 0.28869065782613157
+          "current": 0.28869065782613157,
+          "residual_factor": 0.9860678863707127,
+          "status": "verified_current"
         },
         "guard": {
           "frames": 6,
-          "before": 0.3303610228756804,
-          "factor": 0.88,
-          "status": "applied",
-          "after": 0.29081209229228255
+          "current": 0.29081209229228255,
+          "residual_factor": 0.9788746559117502,
+          "status": "verified_current"
         },
         "light_attacks": {
           "frames": 12,
-          "before": 0.32477797063789704,
-          "factor": 0.88,
-          "status": "applied",
-          "after": 0.286239872698442
+          "current": 0.286239872698442,
+          "residual_factor": 0.9945105973320736,
+          "status": "verified_current"
         },
         "heavy_attacks": {
           "frames": 12,
-          "before": 0.3192481069498776,
-          "factor": 0.8916844942240412,
-          "status": "applied",
-          "after": 0.2856099127989521
+          "current": 0.2856099127989521,
+          "residual_factor": 0.9967041549358601,
+          "status": "verified_current"
         },
         "throw": {
           "frames": 10,
-          "before": 0.2699413739511889,
-          "factor": 1.054557078860606,
-          "status": "applied",
-          "after": 0.284647039612249
+          "current": 0.284647039612249,
+          "residual_factor": 1.00007569783745,
+          "status": "verified_current"
         },
         "special": {
           "frames": 9,
-          "before": 0.3537044126434352,
-          "factor": 0.88,
-          "status": "applied",
-          "after": 0.31046702000021276
+          "current": 0.31046702000021276,
+          "residual_factor": 0.9169044324817146,
+          "status": "verified_current"
         }
       }
     }

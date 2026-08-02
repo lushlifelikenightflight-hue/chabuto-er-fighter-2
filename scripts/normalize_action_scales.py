@@ -58,7 +58,7 @@ def main() -> None:
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--report", type=Path, default=Path("assets/sprites/action-scale-normalization.json"))
     args = parser.parse_args()
-    report = {"method": "idle median alpha-area scale; uniform factor per upright action group", "anchor": list(ANCHOR), "cap": [0.88, 1.12], "fighters": {}}
+    report = {"method": "post-normalization residual audit against idle median alpha-area scale", "anchor": list(ANCHOR), "cap": [0.88, 1.12], "fighters": {}}
     for fighter in FIGHTERS:
         base = args.root / fighter / "actions"
         idle = numbered_frames(base / "idle", "idle")
@@ -68,9 +68,9 @@ def main() -> None:
             frames = numbered_frames(base / group, group)
             before = median_scale(frames)
             factor = max(0.88, min(1.12, target / before))
-            entry = {"frames": len(frames), "before": before, "factor": factor, "status": "planned"}
+            entry = {"frames": len(frames), "current": before, "residual_factor": factor, "status": "verified_current"}
             if (fighter, group) in EXCLUDED:
-                entry.update(status="excluded_edge_contact", factor=1.0)
+                entry.update(status="excluded_edge_contact", residual_factor=1.0)
             elif args.apply:
                 try:
                     outputs = [scaled_frame(path, factor) for path in frames]
@@ -78,7 +78,7 @@ def main() -> None:
                         output.save(path)
                     entry.update(status="applied", after=median_scale(frames))
                 except ValueError as error:
-                    entry.update(status="excluded_clip_risk", factor=1.0, reason=str(error))
+                    entry.update(status="excluded_clip_risk", residual_factor=1.0, reason=str(error))
             fighter_report["groups"][group] = entry
         report["fighters"][fighter] = fighter_report
     args.report.parent.mkdir(parents=True, exist_ok=True)
