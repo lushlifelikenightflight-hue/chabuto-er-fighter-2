@@ -1,3 +1,5 @@
+import { REQUIRED_ANIMATION_CLIPS, createExpandedAnimationManifest } from "./sprite-manifest.js";
+
 /**
  * Data-only definitions for 茶封筒erファイター2.
  * Every fighter uses the same runtime contract, while the values below keep
@@ -19,15 +21,7 @@ export const DIFFICULTIES = Object.freeze({
   hard: Object.freeze({ id: "hard", label: "HARD", reactionFrames: 7, error: 0.1, guardRate: 0.6, justGuardRate: 0.2, comboMax: 6, continues: 1 }),
 });
 
-export const ANIMATION_CLIPS = Object.freeze([
-  "idle", "walk_forward", "walk_backward", "dash", "backstep", "crouch",
-  "jump_start", "jump_up", "jump_fall", "landing", "double_jump",
-  "light_attack_neutral", "light_attack_crouch", "light_attack_air",
-  "strong_attack_neutral", "strong_attack_crouch", "strong_attack_air",
-  "guard_high", "guard_low", "just_guard", "throw_start", "throw_hit",
-  "throw_miss", "special_start", "special_active", "special_recovery",
-  "hit_light", "hit_heavy", "knockdown", "wakeup", "victory", "defeat",
-]);
+export const ANIMATION_CLIPS = REQUIRED_ANIMATION_CLIPS;
 
 export const ANIMATION_CONTRACT = Object.freeze(Object.fromEntries(
   ANIMATION_CLIPS.map((name, index) => [name, Object.freeze({
@@ -160,12 +154,13 @@ function createCharacter([id, name, archetypeName], index) {
   const archetype = ARCHETYPES[archetypeName];
   const palette1 = [archetype.tint, "#f5f1d6", "#1d2433", "#d94c54"];
   const palette2 = ["#f4f4f4", archetype.tint, "#16121d", "#47a6d4"];
-  const animation = Object.fromEntries(ANIMATION_CLIPS.map((clip) => [clip, {
+  const fallbackAnimation = Object.fromEntries(ANIMATION_CLIPS.map((clip) => [clip, {
     ...ANIMATION_CONTRACT[clip],
     frames: [ANIMATION_CONTRACT[clip].frame],
     sheet: `assets/sprites/${id}/sheet-transparent.png`,
     combatFrames: [1, 2, 3, 4],
   }]));
+  const animation = createExpandedAnimationManifest(id) || fallbackAnimation;
   return Object.freeze({
     id,
     name,
@@ -217,7 +212,8 @@ export const STAGES = Object.freeze([
   Object.freeze({ number: 5, id: "mirror", name: "ミラーマッチ", opponent: "mirror", background: "assets/stages/stage-mirror.png" }),
 ]);
 
-export const MENU_ITEMS = Object.freeze(["GAME START", "HOW TO PLAY", "SCORE", "SOUND", "RESET DATA"]);
+export const MENU_ITEMS = Object.freeze(["GAME START", "HOW TO PLAY", "SCORE", "SETTINGS"]);
+export const SETTINGS_ITEMS = Object.freeze(["SOUND", "BGM", "SE", "DEBUG OVERLAY", "RESET DATA", "BACK"]);
 
 export function getOpponentId(stageNumber, selectedId) {
   const stage = STAGES[Math.max(1, Math.min(STAGES.length, stageNumber)) - 1];

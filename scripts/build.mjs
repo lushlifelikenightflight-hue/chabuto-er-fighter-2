@@ -1,5 +1,5 @@
 import { cp, mkdir, rm, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { extname, relative, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 const dist = resolve(root, "dist");
@@ -10,9 +10,20 @@ await rm(dist, { recursive: true, force: true });
 await mkdir(client, { recursive: true });
 await mkdir(server, { recursive: true });
 
-for (const entry of ["index.html", "style.css", "src", "assets"]) {
+function deployableAsset(source) {
+  const normalized = relative(root, source).replaceAll("\\", "/");
+  if (!normalized.includes("/actions/")) return true;
+  if (!extname(source)) return true;
+  if (normalized.endsWith("/actions/character-scale-profile.json")) return true;
+  const match = normalized.match(/\/actions\/([^/]+)\/([^/]+)-(\d+)\.png$/);
+  return Boolean(match && match[1] === match[2]);
+}
+
+for (const entry of ["index.html", "style.css", "src"]) {
   await cp(resolve(root, entry), resolve(client, entry), { recursive: true });
 }
+await cp(resolve(root, "assets"), resolve(client, "assets"), { recursive: true, filter: deployableAsset });
+await cp(resolve(root, ".openai"), resolve(dist, ".openai"), { recursive: true });
 
 const worker = `export default {
   async fetch(request, env) {
