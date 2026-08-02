@@ -145,7 +145,8 @@ export function createFighterState(id, x, facing = 1) {
     vx: 0,
     vy: 0,
     facing,
-    hp: MAX_HP,
+    hp: character.stats.hp,
+    maxHp: character.stats.hp,
     meter: 0,
     state: "idle",
     action: "idle",
@@ -173,13 +174,17 @@ export function createFighterState(id, x, facing = 1) {
     // held-input tick after the double tap.
     locomotionAction: "",
     locomotionFramesRemaining: 0,
+    throwTarget: null,
+    thrownBy: null,
+    throwReleased: false,
   };
 }
 
 export function applyDamage(defender, amount, { blocked = false, knockbackX = 0, knockbackY = 0, hitstunFrames = 0 } = {}) {
   if (!defender || defender.hp <= 0) return 0;
-  const damage = Math.max(0, Number(amount) || 0);
-  defender.hp = clamp(defender.hp - damage, 0, MAX_HP);
+  const defense = Math.max(0.1, CHARACTERS[defender.id]?.stats.defense || 1);
+  const damage = Math.max(0, Number(amount) || 0) / defense;
+  defender.hp = clamp(defender.hp - damage, 0, defender.maxHp || MAX_HP);
   if (!blocked) {
     defender.state = defender.hp <= 0 ? "defeat" : "hitstun";
     defender.action = defender.hp <= 0 ? "defeat" : "hit_light";

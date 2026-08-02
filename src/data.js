@@ -36,14 +36,14 @@ export const ANIMATION_CONTRACT = Object.freeze(Object.fromEntries(
 ));
 
 const ARCHETYPES = Object.freeze({
-  standard: { speed: 2.2, jump: 7.9, power: 1, reach: 1, defense: 1, air: 1, throw: 1, meter: 1, tint: "#f7c94a", special: "rush" },
-  speed: { speed: 2.8, jump: 8.4, power: 0.86, reach: 0.92, defense: 0.88, air: 1.24, throw: 0.88, meter: 1.18, tint: "#62e8ff", special: "time" },
-  power: { speed: 1.7, jump: 7.1, power: 1.28, reach: 1.08, defense: 1.15, air: 0.78, throw: 1.08, meter: 0.86, tint: "#ff875c", special: "ground" },
-  reach: { speed: 2.0, jump: 7.6, power: 0.98, reach: 1.42, defense: 0.98, air: 0.94, throw: 0.92, meter: 1.04, tint: "#b997ff", special: "projectile" },
-  air: { speed: 2.35, jump: 9.5, power: 0.93, reach: 1.02, defense: 0.9, air: 1.42, throw: 0.9, meter: 1.1, tint: "#72f2a7", special: "dive" },
-  defense: { speed: 1.9, jump: 7.4, power: 1.02, reach: 1.03, defense: 1.35, air: 0.88, throw: 1.02, meter: 0.8, tint: "#9cc5d9", special: "antiAir" },
-  throw: { speed: 2.05, jump: 7.6, power: 0.96, reach: 0.9, defense: 1.04, air: 0.98, throw: 1.5, meter: 1.0, tint: "#f28dc5", special: "commandThrow" },
-  tricky: { speed: 2.42, jump: 8.2, power: 0.91, reach: 1.16, defense: 0.92, air: 1.16, throw: 1.12, meter: 1.12, tint: "#d7f76c", special: "delayed" },
+  standard: { hp: 1000, speed: 2.2, jump: 7.9, power: 1, reach: 1, defense: 1, air: 1, throw: 1, meter: 1, tint: "#f7c94a", special: "rush" },
+  speed: { hp: 880, speed: 2.8, jump: 8.4, power: 0.86, reach: 0.92, defense: 0.88, air: 1.24, throw: 0.88, meter: 1.18, tint: "#62e8ff", special: "time" },
+  power: { hp: 1120, speed: 1.7, jump: 7.1, power: 1.28, reach: 1.08, defense: 1.15, air: 0.78, throw: 1.08, meter: 0.86, tint: "#ff875c", special: "ground" },
+  reach: { hp: 960, speed: 2.0, jump: 7.6, power: 0.98, reach: 1.42, defense: 0.98, air: 0.94, throw: 0.92, meter: 1.04, tint: "#b997ff", special: "projectile" },
+  air: { hp: 900, speed: 2.35, jump: 9.5, power: 0.93, reach: 1.02, defense: 0.9, air: 1.42, throw: 0.9, meter: 1.1, tint: "#72f2a7", special: "dive" },
+  defense: { hp: 1180, speed: 1.9, jump: 7.4, power: 1.02, reach: 1.03, defense: 1.35, air: 0.88, throw: 1.02, meter: 0.8, tint: "#9cc5d9", special: "antiAir" },
+  throw: { hp: 1040, speed: 2.05, jump: 7.6, power: 0.96, reach: 0.9, defense: 1.04, air: 0.98, throw: 1.5, meter: 1.0, tint: "#f28dc5", special: "commandThrow" },
+  tricky: { hp: 940, speed: 2.42, jump: 8.2, power: 0.91, reach: 1.16, defense: 0.92, air: 1.16, throw: 1.12, meter: 1.12, tint: "#d7f76c", special: "delayed" },
 });
 
 const SPECIAL_TEXT = Object.freeze({
@@ -126,6 +126,17 @@ function makeSpecial(archetype, id, index) {
 }
 
 function makeMoves(archetype, index) {
+  const commandProfiles = {
+    rush: { name: "ギタースライド", damage: 78, startupFrames: 7, activeFrames: 4, recoveryFrames: 12, reach: 48, movement: 1.8, knockbackX: 3.2, hitLevel: "mid", animation: "light_stand" },
+    delayed: { name: "のびるどろパンチ", damage: 68, startupFrames: 9, activeFrames: 6, recoveryFrames: 13, reach: 70, movement: 0.7, knockbackX: 2.6, hitLevel: "mid", animation: "heavy_stand" },
+    time: { name: "ボブステップキック", damage: 62, startupFrames: 5, activeFrames: 3, recoveryFrames: 10, reach: 42, movement: 2.4, knockbackX: 2.8, hitLevel: "mid", animation: "light_stand" },
+    antiAir: { name: "おじさん掌底", damage: 88, startupFrames: 8, activeFrames: 4, recoveryFrames: 15, reach: 40, movement: 1.1, knockbackX: 4.1, hitLevel: "mid", animation: "heavy_stand" },
+    ground: { name: "フランスパン二塁打", damage: 104, startupFrames: 11, activeFrames: 5, recoveryFrames: 18, reach: 55, movement: 1.2, knockbackX: 5.2, hitLevel: "overhead", animation: "heavy_stand" },
+    projectile: { name: "ロングリーチピック", damage: 74, startupFrames: 8, activeFrames: 5, recoveryFrames: 14, reach: 82, movement: 0.5, knockbackX: 3.4, hitLevel: "mid", animation: "light_stand" },
+    dive: { name: "のりお昇り打ち", damage: 72, startupFrames: 6, activeFrames: 5, recoveryFrames: 15, reach: 46, movement: 1.5, knockbackX: 2.8, knockbackY: 3.8, hitLevel: "mid", animation: "heavy_stand" },
+    commandThrow: { name: "トコ踏み込み蹴り", damage: 82, startupFrames: 7, activeFrames: 4, recoveryFrames: 13, reach: 44, movement: 2.0, knockbackX: 3.8, hitLevel: "low", animation: "light_stand" },
+  };
+  const command = commandProfiles[archetype.special];
   const moves = {
     light_attack_neutral: normalMove("light_attack_neutral", archetype),
     light_attack_crouch: normalMove("light_attack_crouch", archetype),
@@ -133,6 +144,21 @@ function makeMoves(archetype, index) {
     strong_attack_neutral: normalMove("strong_attack_neutral", archetype),
     strong_attack_crouch: normalMove("strong_attack_crouch", archetype),
     strong_attack_air: normalMove("strong_attack_air", archetype),
+    forward_light: normalMove("forward_light", archetype, {
+      name: command.name,
+      startupFrames: command.startupFrames,
+      activeFrames: command.activeFrames,
+      recoveryFrames: command.recoveryFrames,
+      damage: Math.round(command.damage * archetype.power),
+      knockbackX: command.knockbackX,
+      knockbackY: command.knockbackY || 0.8,
+      hitLevel: command.hitLevel,
+      movement: command.movement,
+      animation: command.animation,
+      hitboxFrames: Array.from({ length: command.activeFrames }, (_, frame) => command.startupFrames + frame),
+      hitbox: box(22, 82, command.reach * archetype.reach, 24),
+      scoreValue: 180,
+    }),
     special: makeSpecial(archetype, "special", index),
   };
   // Friendly aliases keep the data API ergonomic for tools and tests.
@@ -177,7 +203,7 @@ function createCharacter([id, name, archetypeName], index) {
     }),
     palettes: Object.freeze({ color1: palette1, color2: palette2 }),
     stats: Object.freeze({
-      hp: MAX_HP,
+      hp: archetype.hp,
       speed: archetype.speed,
       jumpVelocity: archetype.jump,
       power: archetype.power,
@@ -205,11 +231,11 @@ export const CHARACTER_IDS = Object.freeze(CHARACTER_ROWS.map(([id]) => id));
 export const CHARACTER_NAMES = Object.freeze(CHARACTER_ROWS.map(([, name]) => name));
 
 export const STAGES = Object.freeze([
-  Object.freeze({ number: 1, id: "toko", name: "トコ戦", opponent: "toko", background: "assets/stages/stage-toko.png" }),
-  Object.freeze({ number: 2, id: "norio", name: "のりお戦", opponent: "norio", background: "assets/stages/stage-norio.png" }),
-  Object.freeze({ number: 3, id: "kazushige", name: "かずしげ戦", opponent: "kazushige", background: "assets/stages/stage-kazushige.png" }),
-  Object.freeze({ number: 4, id: "rusty", name: "らすてぃー戦", opponent: "rusty", background: "assets/stages/stage-rusty.png" }),
-  Object.freeze({ number: 5, id: "mirror", name: "ミラーマッチ", opponent: "mirror", background: "assets/stages/stage-mirror.png" }),
+  Object.freeze({ number: 1, id: "toko", name: "トコ戦", opponent: "toko", dialogue: "メンバーサイン付き写真２万８千円になりまーす！", background: "assets/stages/stage-toko.png" }),
+  Object.freeze({ number: 2, id: "norio", name: "のりお戦", opponent: "norio", dialogue: "始めます。", background: "assets/stages/stage-norio.png" }),
+  Object.freeze({ number: 3, id: "kazushige", name: "かずしげ戦", opponent: "kazushige", dialogue: "どうも,かずしげです", background: "assets/stages/stage-kazushige.png" }),
+  Object.freeze({ number: 4, id: "rusty", name: "らすてぃー戦", opponent: "rusty", dialogue: "今日も一日　フランスパンで二塁打", background: "assets/stages/stage-rusty.png" }),
+  Object.freeze({ number: 5, id: "mirror", name: "ミラーマッチ", opponent: "mirror", dialogue: "…。", background: "assets/stages/stage-mirror.png" }),
 ]);
 
 export const MENU_ITEMS = Object.freeze(["GAME START", "TRAINING MODE", "HOW TO PLAY", "SCORE", "SETTINGS"]);

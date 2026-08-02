@@ -1,0 +1,387 @@
+{
+  "method": "idle median alpha-area scale; uniform factor per upright action group",
+  "anchor": [
+    128,
+    233
+  ],
+  "cap": [
+    0.88,
+    1.12
+  ],
+  "fighters": {
+    "guitar-boy": {
+      "idle_target": 0.3323642534375455,
+      "groups": {
+        "movement": {
+          "frames": 12,
+          "before": 0.35527473623123684,
+          "factor": 0.9355133352944645,
+          "status": "applied",
+          "after": 0.3318807401674003
+        },
+        "guard": {
+          "frames": 6,
+          "before": 0.3535098501242899,
+          "factor": 0.940183854341513,
+          "status": "applied",
+          "after": 0.3326045823318088
+        },
+        "light_attacks": {
+          "frames": 12,
+          "before": 0.34025873476270735,
+          "factor": 0.9767985931921267,
+          "status": "applied",
+          "after": 0.3308340070957553
+        },
+        "heavy_attacks": {
+          "frames": 12,
+          "before": 0.34411846373677246,
+          "factor": 0.9658425468613676,
+          "status": "applied",
+          "after": 0.3320230411535099
+        },
+        "throw": {
+          "frames": 10,
+          "before": 0.3236607302841341,
+          "factor": 1.026890883999955,
+          "status": "applied",
+          "after": 0.3312930889211845
+        },
+        "special": {
+          "frames": 9,
+          "before": 0.3576725981956124,
+          "factor": 0.9292415888560026,
+          "status": "applied",
+          "after": 0.3321001766692544
+        }
+      }
+    },
+    "green-slime": {
+      "idle_target": 0.4402368067446011,
+      "groups": {
+        "movement": {
+          "frames": 12,
+          "before": 0.3652499930622277,
+          "factor": 1.12,
+          "status": "applied",
+          "after": 0.4094017606724699
+        },
+        "guard": {
+          "frames": 6,
+          "before": 0.33875850423862897,
+          "factor": 1.12,
+          "status": "applied",
+          "after": 0.37993095052831316
+        },
+        "light_attacks": {
+          "frames": 12,
+          "before": 0.38753301324844014,
+          "factor": 1.0,
+          "status": "excluded_edge_contact"
+        },
+        "heavy_attacks": {
+          "frames": 12,
+          "before": 0.33978371358443943,
+          "factor": 1.12,
+          "status": "applied",
+          "after": 0.38047282256153214
+        },
+        "throw": {
+          "frames": 10,
+          "before": 0.36676030814121485,
+          "factor": 1.12,
+          "status": "applied",
+          "after": 0.4112155669215185
+        },
+        "special": {
+          "frames": 9,
+          "before": 0.41875291510179363,
+          "factor": 1.0513044587106575,
+          "status": "applied",
+          "after": 0.4403333199034426
+        }
+      }
+    },
+    "bob-girl": {
+      "idle_target": 0.3243937907568696,
+      "groups": {
+        "movement": {
+          "frames": 12,
+          "before": 0.341712078230798,
+          "factor": 0.9493190654436529,
+          "status": "applied",
+          "after": 0.32380423105241846
+        },
+        "guard": {
+          "frames": 6,
+          "before": 0.27801761257756075,
+          "factor": 1.12,
+          "status": "applied",
+          "after": 0.3120110010595476
+        },
+        "light_attacks": {
+          "frames": 12,
+          "before": 0.2836942938331892,
+          "factor": 1.12,
+          "status": "applied",
+          "after": 0.31865278942459735
+        },
+        "heavy_attacks": {
+          "frames": 12,
+          "before": 0.28412417010822144,
+          "factor": 1.12,
+          "status": "applied",
+          "after": 0.3178374046352114
+        },
+        "throw": {
+          "frames": 10,
+          "before": 0.3221274212529275,
+          "factor": 1.007035630481649,
+          "status": "applied",
+          "after": 0.3259181838716738
+        },
+        "special": {
+          "frames": 9,
+          "before": 0.35426478803158307,
+          "factor": 0.9156817208938912,
+          "status": "applied",
+          "after": 0.3242893371955822
+        }
+      }
+    },
+    "uncle": {
+      "idle_target": 0.3209668252544463,
+      "groups": {
+        "movement": {
+          "frames": 12,
+          "before": 0.3336511819783612,
+          "factor": 0.9619831806118477,
+          "status": "applied",
+          "after": 0.32116158823509466
+        },
+        "guard": {
+          "frames": 6,
+          "before": 0.3023876540103557,
+          "factor": 1.0614415668023744,
+          "status": "applied",
+          "after": 0.3225192931053405
+        },
+        "light_attacks": {
+          "frames": 12,
+          "before": 0.3106743138258046,
+          "factor": 1.0331295860990062,
+          "status": "applied",
+          "after": 0.32154721010009646
+        },
+        "heavy_attacks": {
+          "frames": 12,
+          "before": 0.3352856712825174,
+          "factor": 0.9572935939275323,
+          "status": "applied",
+          "after": 0.3205243130337619
+        },
+        "throw": {
+          "frames": 10,
+          "before": 0.24874369603378194,
+          "factor": 1.12,
+          "status": "applied",
+          "after": 0.2789466832187799
+        },
+        "special": {
+          "frames": 9,
+          "before": 0.40255228212463284,
+          "factor": 0.88,
+          "status": "applied",
+          "after": 0.3536612700668713
+        }
+      }
+    },
+    "rusty": {
+      "idle_target": 0.300044668503628,
+      "groups": {
+        "movement": {
+          "frames": 12,
+          "before": 0.2614416672846378,
+          "factor": 1.12,
+          "status": "applied",
+          "after": 0.2934761205663482
+        },
+        "guard": {
+          "frames": 6,
+          "before": 0.28949662261946624,
+          "factor": 1.0364358167246284,
+          "status": "applied",
+          "after": 0.3017050762074033
+        },
+        "light_attacks": {
+          "frames": 12,
+          "before": 0.3154353277386447,
+          "factor": 0.9512081942585432,
+          "status": "applied",
+          "after": 0.29955984013421555
+        },
+        "heavy_attacks": {
+          "frames": 12,
+          "before": 0.27492303293808285,
+          "factor": 1.0913769766653307,
+          "status": "applied",
+          "after": 0.3003731460230679
+        },
+        "throw": {
+          "frames": 10,
+          "before": 0.3040608032609178,
+          "factor": 0.9867916722108916,
+          "status": "applied",
+          "after": 0.2998157678264952
+        },
+        "special": {
+          "frames": 9,
+          "before": 0.3286593491343849,
+          "factor": 0.9129351387504371,
+          "status": "applied",
+          "after": 0.3006036407432967
+        }
+      }
+    },
+    "kazushige": {
+      "idle_target": 0.3646646180376089,
+      "groups": {
+        "movement": {
+          "frames": 12,
+          "before": 0.3504387140272941,
+          "factor": 1.0405945560261554,
+          "status": "applied",
+          "after": 0.3643683888572503
+        },
+        "guard": {
+          "frames": 6,
+          "before": 0.3432118367211817,
+          "factor": 1.0625059482836396,
+          "status": "applied",
+          "after": 0.3654850755257202
+        },
+        "light_attacks": {
+          "frames": 12,
+          "before": 0.3223773769993619,
+          "factor": 1.0,
+          "status": "excluded_edge_contact"
+        },
+        "heavy_attacks": {
+          "frames": 12,
+          "before": 0.3189697552990294,
+          "factor": 1.12,
+          "status": "applied",
+          "after": 0.3579900915937753
+        },
+        "throw": {
+          "frames": 10,
+          "before": 0.30453415432479114,
+          "factor": 1.12,
+          "status": "applied",
+          "after": 0.3411760292494399
+        },
+        "special": {
+          "frames": 9,
+          "before": 0.39742134515641897,
+          "factor": 0.917576829936204,
+          "status": "applied",
+          "after": 0.3651246910838303
+        }
+      }
+    },
+    "norio": {
+      "idle_target": 0.3251937985823672,
+      "groups": {
+        "movement": {
+          "frames": 12,
+          "before": 0.31110891640538424,
+          "factor": 1.045273154944328,
+          "status": "applied",
+          "after": 0.3241688093057011
+        },
+        "guard": {
+          "frames": 6,
+          "before": 0.2813169562507408,
+          "factor": 1.12,
+          "status": "applied",
+          "after": 0.31518514904007006
+        },
+        "light_attacks": {
+          "frames": 12,
+          "before": 0.3274436272339804,
+          "factor": 0.993129111503503,
+          "status": "applied",
+          "after": 0.3239572182421658
+        },
+        "heavy_attacks": {
+          "frames": 12,
+          "before": 0.3144828430954984,
+          "factor": 1.0340589501844977,
+          "status": "applied",
+          "after": 0.32665663052152794
+        },
+        "throw": {
+          "frames": 10,
+          "before": 0.2681081230825011,
+          "factor": 1.12,
+          "status": "applied",
+          "after": 0.3005871565901272
+        },
+        "special": {
+          "frames": 9,
+          "before": 0.36435074426128183,
+          "factor": 0.8925295301418829,
+          "status": "applied",
+          "after": 0.3251821154416783
+        }
+      }
+    },
+    "toko": {
+      "idle_target": 0.2846685867775842,
+      "groups": {
+        "movement": {
+          "frames": 12,
+          "before": 0.32785704271257654,
+          "factor": 0.88,
+          "status": "applied",
+          "after": 0.28869065782613157
+        },
+        "guard": {
+          "frames": 6,
+          "before": 0.3303610228756804,
+          "factor": 0.88,
+          "status": "applied",
+          "after": 0.29081209229228255
+        },
+        "light_attacks": {
+          "frames": 12,
+          "before": 0.32477797063789704,
+          "factor": 0.88,
+          "status": "applied",
+          "after": 0.286239872698442
+        },
+        "heavy_attacks": {
+          "frames": 12,
+          "before": 0.3192481069498776,
+          "factor": 0.8916844942240412,
+          "status": "applied",
+          "after": 0.2856099127989521
+        },
+        "throw": {
+          "frames": 10,
+          "before": 0.2699413739511889,
+          "factor": 1.054557078860606,
+          "status": "applied",
+          "after": 0.284647039612249
+        },
+        "special": {
+          "frames": 9,
+          "before": 0.3537044126434352,
+          "factor": 0.88,
+          "status": "applied",
+          "after": 0.31046702000021276
+        }
+      }
+    }
+  }
+}

@@ -126,14 +126,14 @@ test("held walk advances its clip and direction double taps latch dash/backstep"
   }
 });
 
-test("throw input is guard plus light and Toko idle receives the authored scale", () => {
+test("throw input is guard plus light and all normalized actions share one scale", () => {
   const game = new Game(null);
   game.keys.add("l"); game.keys.add("j"); game.justKeys.add("l"); game.justKeys.add("j");
   const input = game.readInput();
   assert.equal(input.throwHeld, true);
   assert.equal(input.throwPressed, true);
   assert.equal(input.light, false);
-  assert.equal(spriteScaleFor({ id: "toko" }, "idle"), 0.92);
+  assert.equal(spriteScaleFor({ id: "toko" }, "idle"), DEFAULT_SPRITE_SCALE);
   assert.equal(spriteScaleFor({ id: "toko" }, "throw_start"), DEFAULT_SPRITE_SCALE);
 });
 
@@ -193,6 +193,12 @@ test("combat transitions select just guard, throw, hit, and down-idle visuals", 
   assert.equal(thrower.visualAction, "throw_success");
   assert.equal(thrown.visualAction, "thrown");
   assert.equal(thrown.actionFrame, 0);
+  assert.equal(thrown.state, "grabbed");
+  assert.equal(thrown.hp, hpBeforeThrow);
+  thrower.actionFrame = thrower.currentMove.startupFrames + thrower.currentMove.activeFrames + 6;
+  game.player = thrower;
+  game.cpu = thrown;
+  game.updateThrowSequence();
   assert.ok(thrown.hp < hpBeforeThrow);
   const hpAfterThrow = thrown.hp;
   game.handleCombat(thrower, thrown);
@@ -216,6 +222,101 @@ test("combat transitions select just guard, throw, hit, and down-idle visuals", 
   downed.actionFrame = 18;
   game.updateFighter(downed, blank, false);
   assert.equal(downed.action, "down_idle");
+});
+
+test("all fighters have distinct forward+J commands, stats, and specials", () => {
+  const statTuples = new Set();
+  const commandTuples = new Set();
+  const specialTypes = new Set();
+  for (const id of CHARACTER_IDS) {
+    const character = CHARACTERS[id];
+    const command = character.moves.forward_light;
+    assert.ok(command.name);
+    assert.ok(command.animation === "light_stand" || command.animation === "heavy_stand");
+    statTuples.add(JSON.stringify(character.stats));
+    commandTuples.add([command.name, command.damage, command.startupFrames, command.hitbox.w].join(":"));
+    specialTypes.add(character.special.specialType);
+  }
+  assert.equal(statTuples.size, 8);
+  assert.equal(commandTuples.size, 8);
+  assert.equal(specialTypes.size, 8);
+});
+
+test("forward-relative light selects the character command normal", () => {
+  const game = new Game(null);
+  const fighter = createFighterState("rusty", 100, 1);
+  const blank = { left: false, right: false, up: false, down: false, light: false, strong: false, guard: false, special: false, throwHeld: false, leftPressed: false, rightPressed: false, upPressed: false, downPressed: false, lightPressed: false, strongPressed: false, specialPressed: false, throwPressed: false };
+  game.startAttack(fighter, { ...blank, right: true, light: true, lightPressed: true });
+  assert.equal(fighter.action, "forward_light");
+  assert.equal(fighter.currentMove.name, "フランスパン二塁打");
+  assert.equal(animationNameFor(fighter), fighter.currentMove.animation);
+});
+
+test("throw holds both fighters and deals damage exactly once on release", () => {
+  const game = new Game(null);
+  const attacker = createFighterState("toko", 100, 1);
+  const defender = createFighterState("guitar-boy", 112, -1);
+  game.player = attacker; game.cpu = defender;
+  game.startThrow(attacker);
+  attacker.actionFrame = attacker.currentMove.startupFrames;
+  game.handleCombat(attacker, defender);
+  const hp = defender.hp;
+  game.updateThrowSequence();
+  assert.equal(defender.state, "grabbed");
+  assert.equal(defender.hp, hp);
+  attacker.actionFrame = attacker.currentMove.startupFrames + attacker.currentMove.activeFrames + 6;
+  game.updateThrowSequence();
+  assert.equal(defender.state, "knockdown");
+  assert.ok(defender.hp < hp);
+  const releasedHp = defender.hp;
+  game.updateThrowSequence();
+  assert.equal(defender.hp, releasedHp);
+});
+
+test("KO presentation slows the result transition and freezes the timer", () => {
+  const game = new Game(null);
+  game.state.screen = SCREEN.battle;
+  game.player = createFighterState("guitar-boy", 100, 1);
+  game.cpu = createFighterState("toko", 130, -1);
+  game.cpu.hp = 0;
+  const timer = game.state.timerFrames;
+  game.startKoSequence();
+  assert.equal(game.state.screen, SCREEN.battle);
+  assert.equal(game.cpu.state, "defeat");
+  assert.equal(game.player.state, "victory");
+  for (let i = 0; i < 20; i += 1) game.tickBattle({});
+  assert.equal(game.state.screen, SCREEN.battle);
+  assert.equal(game.state.timerFrames, timer);
+  while (game.state.screen === SCREEN.battle) game.tickBattle({});
+  assert.equal(game.state.screen, SCREEN.roundResult);
+});
+
+test("stage dialogues are exact and the virtual pad is sixty percent opaque", () => {
+  assert.deepEqual(STAGES.map((stage) => stage.dialogue), [
+    "メンバーサイン付き写真２万８千円になりまーす！",
+    "始めます。",
+    "どうも,かずしげです",
+    "今日も一日　フランスパンで二塁打",
+    "…。",
+  ]);
+  const css = fs.readFileSync(new URL("../style.css", import.meta.url), "utf8");
+  assert.match(css, /\.virtual-pad\s*\{[\s\S]*?opacity:\s*\.6;/);
+});
+
+test("sprite normalization report covers every safe upright action group", () => {
+  const report = JSON.parse(fs.readFileSync(new URL("../assets/sprites/action-scale-normalization.json", import.meta.url), "utf8"));
+  const groups = ["movement", "guard", "light_attacks", "heavy_attacks", "throw", "special"];
+  for (const id of CHARACTER_IDS) {
+    assert.ok(report.fighters[id]);
+    for (const group of groups) {
+      const entry = report.fighters[id].groups[group];
+      assert.ok(entry);
+      assert.ok(["applied", "excluded_edge_contact"].includes(entry.status));
+      assert.ok(entry.factor >= 0.88 && entry.factor <= 1.12);
+    }
+  }
+  assert.equal(report.fighters["green-slime"].groups.light_attacks.status, "excluded_edge_contact");
+  assert.equal(report.fighters.kazushige.groups.light_attacks.status, "excluded_edge_contact");
 });
 
 test("generated JSON metadata stays consistent with the runtime manifest", () => {

@@ -25,13 +25,9 @@ export const SCREEN = Object.freeze({
 const FRAME = 1000 / FIXED_HZ;
 export const DEFAULT_SPRITE_SCALE = 0.82;
 
-// Toko's authored idle pose has a tighter crop than the action sheets. Give
-// that one clip the extra runtime scale needed to keep its in-game silhouette
-// consistent with the action poses; every other fighter/clip keeps the shared
-// 0.82 scale contract.
-export function spriteScaleFor(fighter, animationName = "") {
-  return fighter?.id === "toko" && animationName === "idle" ? 0.92 : DEFAULT_SPRITE_SCALE;
-}
+// Action PNGs are normalized around their authored 128,233 anchor, so runtime
+// rendering uses one scale contract for every fighter and every action.
+export function spriteScaleFor(_fighter, _animationName = "") { return DEFAULT_SPRITE_SCALE; }
 
 export function spriteDrawPlacement(fighter, sprite, scale = DEFAULT_SPRITE_SCALE) {
   const anchor = sprite?.anchor || { x: 128, y: 233 };
@@ -54,6 +50,7 @@ export function animationSelectionFor(fighter) {
   const action = fighter?.action || "idle";
   const move = fighter?.currentMove;
   const frame = Math.max(0, fighter?.actionFrame || 0);
+  if (move?.animation && action === move.id) return { name: move.animation, frame };
   if (action === "special_start" && move) {
     if (frame < move.startupFrames) return { name: "special_start", frame };
     if (frame < move.startupFrames + move.activeFrames) return { name: "special_active", frame: frame - move.startupFrames };
@@ -188,6 +185,7 @@ export class Game {
       timerFrames: ROUND_TIME_SECONDS * FIXED_HZ,
       result: "",
       stageResult: "",
+      koFrames: 0,
       screenFrames: 0,
       debug: this.save.debug === true,
       sound: this.save.sound !== false,
@@ -567,6 +565,7 @@ export class Game {
     this.player.boxProfile = "standing";
     this.cpu.boxProfile = "standing";
     this.state.timerFrames = ROUND_TIME_SECONDS * FIXED_HZ;
+    this.state.koFrames = 0;
     this.projectiles = [];
     this.setScreen(SCREEN.roundIntro);
   }
@@ -589,23 +588,67 @@ export class Game {
 
   tickBattle(input) {
     const training = this.state.mode === "training";
+    if (!training && this.state.koFrames > 0) {
+      this.state.koFrames += 1;
+      if (this.state.koFrames % 3 === 0) {
+        advanceVisualSequence(this.player);
+        advanceVisualSequence(this.cpu);
+      }
+      if (this.state.koFrames >= 72) this.finishRound();
+      return;
+    }
     if (!training) this.state.timerFrames = Math.max(0, this.state.timerFrames - 1);
     this.state.stageFrame += 1;
     this.state.comboTimer = Math.max(0, this.state.comboTimer - 1);
     if (this.state.comboTimer === 0) this.state.combo = 0;
     if (this.state.combatNotice?.frames > 0) this.state.combatNotice.frames -= 1;
+    this.updateThrowSequence();
     this.updateFighter(this.player, input, true);
     const plan = training ? null : aiPlan({ self: this.cpu, opponent: this.player, difficulty: this.state.difficulty, nowFrame: this.frame });
     const aiInput = training ? this.trainingInput() : this.inputForPlan(plan);
     this.updateFighter(this.cpu, aiInput, false);
-    resolvePushboxes(this.player, this.cpu);
+    if (!this.player.thrownBy && !this.cpu.thrownBy) resolvePushboxes(this.player, this.cpu);
     this.player.facing = this.player.x <= this.cpu.x ? 1 : -1;
     this.cpu.facing = -this.player.facing;
     this.handleCombat(this.player, this.cpu);
     this.handleCombat(this.cpu, this.player);
     this.updateProjectiles();
     if (training) this.resetTrainingDamageDummy();
-    else if (this.player.hp <= 0 || this.cpu.hp <= 0 || this.state.timerFrames <= 0) this.finishRound();
+    else if (this.player.hp <= 0 || this.cpu.hp <= 0) this.startKoSequence();
+    else if (this.state.timerFrames <= 0) this.finishRound();
+  }
+
+  startKoSequence() {
+    if (this.state.koFrames > 0 || this.state.screen !== SCREEN.battle) return;
+    this.state.koFrames = 1;
+    this.projectiles = [];
+    const loser = this.player.hp <= 0 ? this.player : this.cpu;
+    const winner = loser === this.player ? this.cpu : this.player;
+    loser.state = "defeat"; loser.action = "defeat"; loser.actionFrame = 0;
+    winner.state = "victory"; winner.action = "victory"; winner.actionFrame = 0;
+    setVisualSequence(loser, [{ name: "knockdown", duration: 12 }, { name: "defeat", duration: 36 }]);
+    setVisualSequence(winner, [{ name: "victory", duration: 48 }]);
+    this.showCombatNotice("K.O.", "ko", 0, loser);
+  }
+
+  updateThrowSequence() {
+    for (const attacker of [this.player, this.cpu]) {
+      const defender = attacker?.throwTarget;
+      const move = attacker?.currentMove;
+      if (!defender || !move || move.kind !== "throw") continue;
+      defender.x = clamp(attacker.x + attacker.facing * 22, STAGE_BOUNDS.left, STAGE_BOUNDS.right);
+      defender.y = 0; defender.vx = 0; defender.vy = 0; defender.grounded = true;
+      defender.facing = -attacker.facing; defender.state = "grabbed"; defender.action = "thrown";
+      if (!attacker.throwReleased && attacker.actionFrame >= move.startupFrames + move.activeFrames + 6) {
+        attacker.throwReleased = true;
+        const damage = applyDamage(defender, move.damage, { knockbackX: 6, knockbackY: 3, hitstunFrames: move.hitstunFrames });
+        defender.state = "knockdown"; defender.action = "knockdown"; defender.actionFrame = 0; defender.thrownBy = null;
+        attacker.throwTarget = null;
+        setVisualSequence(defender, [{ name: "thrown", duration: 5 }, { name: "knockdown", duration: 10 }]);
+        setVisualSequence(attacker, [{ name: "throw_success", duration: 12 }]);
+        this.onHit(attacker, defender, move, false, true, damage);
+      }
+    }
   }
 
   trainingInput() {
@@ -635,7 +678,7 @@ export class Game {
       this.cpu.color = color;
     }
     if (this.player.hp <= 0) {
-      this.player.hp = MAX_HP;
+      this.player.hp = this.player.maxHp || MAX_HP;
       this.player.state = "idle";
       this.player.action = "idle";
       this.player.actionFrame = 0;
@@ -664,6 +707,7 @@ export class Game {
   updateFighter(fighter, input, isPlayer) {
     const character = CHARACTERS[fighter.id];
     advanceVisualSequence(fighter);
+    if (fighter.state === "grabbed") return;
     const moveLocked = ACTION_LOCK_STATES.has(fighter.state);
     fighter.invulnerableFrames = Math.max(0, fighter.invulnerableFrames - 1);
     if (fighter.stunFrames > 0) {
@@ -839,13 +883,16 @@ export class Game {
   applyMoveMotion(fighter, move) {
     if (!move) return;
     if (move.kind === "special" && move.movement) fighter.x += fighter.facing * move.movement;
+    if (move.id === "forward_light" && move.movement && fighter.actionFrame <= move.startupFrames + move.activeFrames) fighter.x += fighter.facing * move.movement;
     fighter.x = clamp(fighter.x, STAGE_BOUNDS.left, STAGE_BOUNDS.right);
   }
 
   startAttack(fighter, input) {
     const airborne = !fighter.grounded;
     const crouch = fighter.crouching;
-    const key = input.strongPressed ? (airborne ? "strong_attack_air" : crouch ? "strong_attack_crouch" : "strong_attack_neutral") : (airborne ? "light_attack_air" : crouch ? "light_attack_crouch" : "light_attack_neutral");
+    const direction = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+    const forwardLight = input.lightPressed && !airborne && !crouch && direction === fighter.facing;
+    const key = forwardLight ? "forward_light" : input.strongPressed ? (airborne ? "strong_attack_air" : crouch ? "strong_attack_crouch" : "strong_attack_neutral") : (airborne ? "light_attack_air" : crouch ? "light_attack_crouch" : "light_attack_neutral");
     fighter.currentMove = CHARACTERS[fighter.id].moves[key];
     fighter.action = key;
     fighter.state = "attacking";
@@ -881,6 +928,8 @@ export class Game {
     fighter.boxProfile = "standing";
     fighter.guardHeld = false;
     fighter.hitRegistry.clear();
+    fighter.throwTarget = null;
+    fighter.throwReleased = false;
     fighter.locomotionAction = "";
     fighter.locomotionFramesRemaining = 0;
     // Do not let a prior crouch/guard transition mask the authored throw
@@ -895,14 +944,15 @@ export class Game {
     if (move.kind === "throw" && activeFrame(move, attacker.actionFrame)) {
       if (!attacker.hitRegistry.has(`throw:${defender.id}`) && evaluateThrow(attacker, defender, attacker.actionFrame)) {
         attacker.hitRegistry.add(`throw:${defender.id}`);
-        const damage = applyDamage(defender, move.damage, { knockbackX: move.knockbackX || 5, knockbackY: 2, hitstunFrames: move.hitstunFrames });
-        defender.state = "knockdown";
-        defender.action = "knockdown";
+        attacker.throwTarget = defender;
+        attacker.throwReleased = false;
+        defender.thrownBy = attacker;
+        defender.state = "grabbed";
+        defender.action = "thrown";
         defender.actionFrame = 0;
-        setVisualSequence(defender, [{ name: "thrown", duration: 10 }]);
-        this.onHit(attacker, defender, move, false, true, damage);
         attacker.action = "throw_hit";
-        setVisualSequence(attacker, [{ name: "throw_success", duration: 10 }]);
+        setVisualSequence(attacker, [{ name: "throw_success", duration: 18 }]);
+        setVisualSequence(defender, [{ name: "thrown", duration: 18 }]);
       }
       return;
     }
@@ -1015,6 +1065,7 @@ export class Game {
     const remaining = Math.floor(this.state.timerFrames / FIXED_HZ);
     const outcome = resolveRound(this.player, this.cpu, remaining);
     this.state.result = outcome.result;
+    this.state.koFrames = 0;
     this.projectiles = [];
     this.player.hitRegistry.clear();
     this.cpu.hitRegistry.clear();
@@ -1030,7 +1081,7 @@ export class Game {
       this.state.score += scoreForEvent("round");
       this.state.score += scoreForEvent("hp", Math.round(this.player.hp));
       this.state.score += scoreForEvent("time", remaining);
-      if (this.player.hp >= 1000) this.state.score += scoreForEvent("perfect");
+      if (this.player.hp >= (this.player.maxHp || MAX_HP)) this.state.score += scoreForEvent("perfect");
     } else if (outcome.result === "loss") {
       this.player.state = "defeat";
       this.player.action = "defeat";
@@ -1228,8 +1279,8 @@ export class Game {
       ctx.fillStyle = color; ctx.fillRect(x + 1, y + 1, (width - 2) * clamp(value, 0, 1), 6);
       ctx.strokeStyle = "#eaf0ff"; ctx.strokeRect(x, y, width, 8);
     };
-    bar(16, 14, 170, this.player.hp / 1000, "#ef505c");
-    bar(294, 14, 170, this.cpu.hp / 1000, "#ef505c");
+    bar(16, 14, 170, this.player.hp / (this.player.maxHp || MAX_HP), "#ef505c");
+    bar(294, 14, 170, this.cpu.hp / (this.cpu.maxHp || MAX_HP), "#ef505c");
     bar(16, 25, 110, this.player.meter / 100, "#f6c84c");
     bar(354, 25, 110, this.cpu.meter / 100, "#f6c84c");
     ctx.fillStyle = "#f6f5de"; ctx.font = "bold 9px monospace";
@@ -1321,6 +1372,10 @@ export class Game {
       const grid = document.createElement("div"); grid.className = "character-grid";
       CHARACTER_IDS.forEach((id) => { const b = document.createElement("button"); b.type = "button"; b.className = this.state.selectedId === id ? "selected" : ""; b.setAttribute("aria-label", `${CHARACTERS[id].name}を選択`); if (this.state.selectedId === id) b.setAttribute("aria-current", "true"); b.innerHTML = `<img alt="" src="${CHARACTERS[id].sprite.frames[0]}"><strong>${CHARACTERS[id].name}</strong><small>${CHARACTERS[id].type}</small>`; b.addEventListener("click", () => { this.ensureAudio(); this.state.selectedId = id; this.beep(320); this.renderPanel(); }); grid.appendChild(b); });
       this.panel.appendChild(grid);
+      const selected = CHARACTERS[this.state.selectedId];
+      const stats = document.createElement("div"); stats.className = "fighter-stats";
+      stats.textContent = `HP ${selected.stats.hp}  SPD ${selected.stats.speed.toFixed(2)}  POW ${selected.stats.power.toFixed(2)}  REACH ${selected.stats.reach.toFixed(2)}  DEF ${selected.stats.defense.toFixed(2)}  THROW ${selected.stats.throwPower.toFixed(2)}  →+J ${selected.moves.forward_light.name}  SPECIAL ${selected.special.name}`;
+      this.panel.appendChild(stats);
       buttonRow([{ label: "CONFIRM", onClick: () => this.setScreen(SCREEN.colorSelect) }, { label: "BACK", onClick: () => this.setScreen(this.state.mode === "training" ? SCREEN.menu : SCREEN.difficultySelect) }]);
     } else if (screen === SCREEN.colorSelect) {
       heading("COLOR VARIATION", `${CHARACTERS[this.state.selectedId].name} / SELECT COLOR`);
@@ -1328,13 +1383,20 @@ export class Game {
       buttonRow([{ label: "FIGHT", onClick: () => this.state.mode === "training" ? this.setScreen(SCREEN.trainingSettings) : this.startMatch() }, { label: "BACK", onClick: () => this.setScreen(SCREEN.characterSelect) }]);
     } else if (screen === SCREEN.howToPlay) {
       heading("HOW TO PLAY", "基本操作・攻撃・防御");
-      const p = document.createElement("pre"); p.textContent = "A/D・←/→  移動　同方向を素早く2回：ダッシュ／バックステップ\nW・↑  ジャンプ　空中でもう1回：二段ジャンプ\nS・↓  しゃがむ／下段ガード\nJ  弱攻撃　　K  強攻撃　　L+J  投げ（ガード中に弱攻撃）\nL  上段ガード　攻撃直前のガード：ジャストガード\nI  ゲージ100で必殺技（ガード不能）\nESC  ポーズ／再開（トレーニング中はタイトルへ戻る）"; this.panel.appendChild(p); button("BACK", () => this.setScreen(SCREEN.menu));
+      const p = document.createElement("pre"); p.textContent = "A/D・←/→  移動　同方向を素早く2回：ダッシュ／バックステップ\nW・↑  ジャンプ　空中でもう1回：二段ジャンプ\nS・↓  しゃがむ／下段ガード\nJ  弱攻撃　　→+J  キャラ固有通常技　　K  強攻撃\nL+J  投げ（ガード中に弱攻撃）\nL  上段ガード　攻撃直前のガード：ジャストガード\nI  ゲージ100でキャラ固有必殺技（ガード不能）\nESC  ポーズ／再開（トレーニング中はタイトルへ戻る）"; this.panel.appendChild(p); button("BACK", () => this.setScreen(SCREEN.menu));
     } else if (screen === SCREEN.stageIntro) {
-      const stage = STAGES[this.state.stage - 1]; heading(`STAGE ${this.state.stage}`, stage.name); this.panel.appendChild(this.stagePreview(stage)); button("START ROUND", () => this.beginRound());
+      const stage = STAGES[this.state.stage - 1];
+      const opponentId = stageOpponent(this.state.stage, this.state.selectedId);
+      const opponent = CHARACTERS[opponentId];
+      heading(`STAGE ${this.state.stage}`, stage.name);
+      const encounter = document.createElement("div"); encounter.className = "stage-encounter"; encounter.style.backgroundImage = `linear-gradient(rgba(5,8,15,.28),rgba(5,8,15,.72)),url(${stage.background})`;
+      const portrait = document.createElement("img"); portrait.className = "stage-opponent"; portrait.alt = opponent.name; portrait.src = opponent.animation.idle?.frames?.[0] || opponent.sprite.frames[0]; encounter.appendChild(portrait);
+      const dialogue = document.createElement("p"); dialogue.className = "stage-dialogue"; dialogue.textContent = `${stage.id === "mirror" ? "ミラー" : opponent.name}「${stage.dialogue}」`; encounter.appendChild(dialogue);
+      this.panel.appendChild(encounter); button("START ROUND", () => this.beginRound());
     } else if (screen === SCREEN.roundIntro) {
       heading(this.state.mode === "training" ? "TRAINING" : `ROUND ${this.state.round}`, `${CHARACTERS[this.player.id].name}  VS  ${CHARACTERS[this.cpu.id].name}`); button("FIGHT", () => this.setScreen(SCREEN.battle));
     } else if (screen === SCREEN.battle) {
-      this.hintText("A/D MOVE  W JUMP  S CROUCH  J/K ATTACK  L GUARD  L+J THROW  I SPECIAL  ESC PAUSE");
+      this.hintText("A/D MOVE  W JUMP  S CROUCH  J/K ATTACK  →+J UNIQUE  L+J THROW  I SPECIAL  ESC PAUSE");
     } else if (screen === SCREEN.pause) { heading("PAUSE", this.state.mode === "training" ? "ENTER RESUME / ESC EXIT TRAINING" : "PRESS ESC OR ENTER TO RESUME"); button("RESUME", () => this.setScreen(SCREEN.battle)); button("QUIT TO TITLE", () => this.returnTitle()); }
     else if (screen === SCREEN.roundResult) { heading(this.state.result === "win" ? "ROUND WIN" : this.state.result === "loss" ? "ROUND LOSE" : "DRAW / REMATCH", `STAGE ${this.state.stage}  SCORE ${this.state.score}`); button("CONTINUE", () => this.resolveRoundResult()); }
     else if (screen === SCREEN.stageResult) { heading("STAGE CLEAR", `STAGE ${this.state.stage}  /  ${this.state.score} PTS`); button("NEXT STAGE", () => this.resolveStageResult()); }
