@@ -53,6 +53,7 @@ export function spriteDrawPlacement(fighter, sprite, scale = DEFAULT_SPRITE_SCAL
 }
 
 export function animationSelectionFor(fighter) {
+  if (fighter?.state === "guardDash") return { name: "dash", frame: Math.max(0, fighter?.guardDashFrames || fighter?.actionFrame || 0) };
   if (fighter?.visualAction) return { name: fighter.visualAction, frame: Math.max(0, fighter.visualFrame || 0) };
   if (fighter?.state === "wakeup") return { name: "wakeup", frame: Math.max(0, fighter?.actionFrame || 0) };
   const action = fighter?.action || "idle";
@@ -69,7 +70,8 @@ export function animationSelectionFor(fighter) {
   // Preserve the attack motion instead of falling through to an idle frame.
   if (fighter?.grounded !== false && /^(?:forward_)?light_(?:left|right)$/.test(action)) {
     const crouching = fighter?.crouching === true || fighter?.state === "crouching" || fighter?.boxProfile === "crouch";
-    return { name: crouching ? "light_crouch" : "light_stand", frame };
+    const continuation = Number(fighter?.currentMove?.comboIndex || 0) % 2 === 1;
+    return { name: crouching ? (continuation ? "heavy_crouch" : "light_crouch") : (continuation ? "heavy_stand" : "light_stand"), frame };
   }
   if (action === "special_start" && move) {
     if (frame < move.startupFrames) return { name: "special_start", frame };
@@ -993,7 +995,14 @@ export class Game {
     fighter.attackCooldownFrames = Math.max(0, Number(fighter.attackCooldownFrames || 0) - 1);
     if (fighter.buff?.frames > 0) {
       fighter.buff.frames -= 1;
-      if (fighter.buff.frames <= 0) fighter.buff = null;
+      if (fighter.id === "kazushige" && fighter.buff.durationFrames) {
+        fighter.skillGauge = clamp(Number(fighter.buff.chargeMax || 100) * fighter.buff.frames / fighter.buff.durationFrames, 0, Number(fighter.buff.chargeMax || 100));
+        fighter.skill.gauge = fighter.skillGauge; fighter.gauge.skill = fighter.skillGauge;
+      }
+      if (fighter.buff.frames <= 0) {
+        fighter.buff = null;
+        if (fighter.id === "kazushige") { fighter.skillGauge = 0; fighter.skill.gauge = 0; fighter.gauge.skill = 0; }
+      }
     }
     if (fighter.flashStunFrames > 0) {
       fighter.flashStunFrames -= 1;
@@ -1071,7 +1080,7 @@ export class Game {
         const style = move.kind === "normal" ? CHARACTERS[fighter.id]?.normalAttackVfx : null;
         const baseScale = strong ? 0.72 : 0.58;
         this.spawnVfx("attack-wind", point, {
-          x: 0, y: 0, scale: baseScale * Number(style?.scale || 1), tint: style?.color || null,
+          x: 0, y: Number(style?.offsetY || 0), scale: baseScale * Number(style?.scale || 1), tint: style?.color || null,
           facing: fighter.facing, tipAnchored: true, owner: fighter.id,
         });
         this.beep(strong ? 150 : 360, strong ? 0.055 : 0.035, strong ? "sawtooth" : "triangle");
@@ -1389,7 +1398,10 @@ export class Game {
       this.spawnSkillEntity({ owner, type: "dogMarker", x: opponent?.x || fighter.x + fighter.facing * 90, targetX: opponent?.x || fighter.x + fighter.facing * 90, y: 0, delay: 20, duration: 116, damage: 0, w: 0, h: 0, guardable: true, effectId: config.effectId });
       if (resourceMode === "native") { fighter.skillGauge = 0; fighter.skill.gauge = 0; fighter.gauge.skill = 0; }
     } else if (type === "ramenBuff") {
-      fighter.buff = { ...(fighter.buff || {}), ...config.buff, frames: config.buffDurationFrames || 600 }; if (resourceMode === "native") { fighter.skillGauge = 0; fighter.skill.gauge = 0; }
+      const durationFrames = Number(config.buffDurationFrames || 600);
+      const chargeMax = Number(config.chargeMax || 100);
+      fighter.buff = { ...(fighter.buff || {}), ...config.buff, frames: durationFrames, durationFrames, chargeMax };
+      if (resourceMode === "native") { fighter.skillGauge = chargeMax; fighter.skill.gauge = chargeMax; fighter.gauge.skill = chargeMax; }
     } else if (type === "drumBeat") {
       const random = typeof this.random === "function" ? this.random : Math.random;
       const activation = Number(fighter.norioActivationCount || 0) + 1;
@@ -1578,11 +1590,12 @@ export class Game {
       if (entity.delay > 0) { entity.delay -= 1; continue; }
       if (entity.type === "dogMarker") {
         if (entity.age < Number(entity.markerFrames || 20)) continue;
-        entity.type = "fallingDog"; entity.age = 0; entity.frameOffset = 96; entity.y = 180; entity.w = 72; entity.h = 72; entity.duration = 96; entity.vy = -10; entity.spawnedDrop = true; this.spawnVfx("skill-dog-summon", entity); continue;
+        entity.type = "fallingDog"; entity.age = 0; entity.frameOffset = 96; entity.y = 180; entity.w = 72; entity.h = 72; entity.duration = 114; entity.vy = -10; entity.graceFrames = 18; entity.spawnedDrop = true; this.spawnVfx("skill-dog-summon", entity); continue;
       }
       if (entity.type === "fallingDog") {
+        if (entity.age <= Number(entity.graceFrames || 0)) continue;
         entity.y += Number(entity.vy || -10);
-        if (entity.y <= 0) { entity.type = "dogImpact"; entity.age = 0; entity.frameOffset = 192; entity.y = 0; entity.w = 90; entity.h = 80; entity.damage = 220; entity.duration = 96; entity.guardable = true; entity.causesKnockdown = true; entity.hardKnockdown = true; }
+        if (entity.y <= 0) { entity.type = "dogImpact"; entity.age = 0; entity.frameOffset = 192; entity.y = 0; entity.w = 90; entity.h = 80; entity.damage = 220; entity.duration = 96; entity.guardable = true; entity.causesKnockdown = true; entity.hardKnockdown = true; entity.ownerHit = false; }
         else continue;
       }
       if (entity.type === "snareMarker") {
@@ -1599,6 +1612,15 @@ export class Game {
       const entityHitboxScale = Number(attacker.buff?.hitboxScale || 1);
       const hitbox = { x: entity.x - (entity.w || 0) * entityHitboxScale * 0.5, y: entity.y, w: (entity.w || 0) * entityHitboxScale, h: (entity.h || 0) * entityHitboxScale };
       const targetHit = getFighterBoxes(defender).hurtboxes.some((part) => part.x < hitbox.x + hitbox.w && part.x + part.w > hitbox.x && part.y < hitbox.y + hitbox.h && part.y + part.h > hitbox.y);
+      if (entity.type === "dogImpact" && attacker.id === "rusty" && !entity.ownerHit) {
+        const ownerHit = getFighterBoxes(attacker).hurtboxes.some((part) => part.x < hitbox.x + hitbox.w && part.x + part.w > hitbox.x && part.y < hitbox.y + hitbox.h && part.y + part.h > hitbox.y);
+        if (ownerHit) {
+          const selfDamage = Number(attacker.maxHp || CHARACTERS.rusty.stats.hp || 0) * 0.8;
+          applyDamage(attacker, selfDamage * Number(CHARACTERS.rusty.stats.defense || 1), { knockbackX: 0, knockbackY: 0, hitstunFrames: 0 });
+          entity.ownerHit = true;
+          this.spawnVfx("hit-burst", { x: attacker.x, y: attacker.y + 82 }, { x: 0, y: 0, scale: 0.38 });
+        }
+      }
       const targetKey = `${attacker.id}:${defender.id}`;
       if (!entity.hit && targetHit && !(entity.hitTargets?.has(defender.id))) {
         if (entity.type === "flash" && (defender.downed || defender.flashComboHit)) { entity.hit = true; entity.active = false; continue; }
@@ -2092,13 +2114,26 @@ export class Game {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = fighter.hp <= 0 ? 0.66 : 1;
-    if (fighter.color === 2) ctx.filter = "invert(1)";
+    if (fighter.color === 2) ctx.filter = "hue-rotate(180deg) saturate(0.95)";
     if (imageReady(image)) {
       ctx.translate(x, y);
       if (fighter.facing < 0) ctx.scale(-1, 1);
       ctx.drawImage(image, placement.drawX, placement.drawY, placement.width, placement.height);
     }
     ctx.restore();
+    if (fighter.id === "kazushige" && fighter.buff?.frames > 0) {
+      const aura = this.loadEffectFrame("attack-heavy", Math.max(0, Number(fighter.buff.durationFrames || 0) - Number(fighter.buff.frames || 0)));
+      if (imageReady(aura?.image)) {
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.globalAlpha = 0.28;
+        ctx.filter = "brightness(0)";
+        ctx.translate(x, y);
+        if (fighter.facing < 0) ctx.scale(-1, 1);
+        ctx.drawImage(aura.image, -82, -170, 164, 164);
+        ctx.restore();
+      }
+    }
     if (fighter.state === "attacking" && fighter.currentMove?.kind === "special" && fighter.actionFrame < fighter.currentMove.startupFrames) {
       ctx.fillStyle = "#ffe56e"; ctx.font = "bold 11px monospace"; ctx.fillText("!", x + fighter.facing * 24, y - 104);
     }

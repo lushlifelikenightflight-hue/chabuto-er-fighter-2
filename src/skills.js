@@ -313,6 +313,7 @@ export function canStartSkill(fighter = {}, configOrId = fighter.id) {
   if (fighter.state === "special" || String(fighter.action || "").startsWith("special")) return false;
   if (config.initialAmmo > 0 && Number(fighter.ammo ?? fighter.skillAmmo ?? config.initialAmmo) <= 0 && config.type !== "flash") return false;
   if (config.type === "mirror" && Number(fighter.skillGauge ?? fighter.gauge?.skill ?? config.initialGauge) <= 0) return false;
+  if (config.type === "ramenBuff" && Number(fighter.buff?.frames || 0) > 0) return false;
   return true;
 }
 

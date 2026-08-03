@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
-import { CHARACTERS, TRAINING_SETTINGS_ITEMS } from "../src/data.js";
+import { CHARACTERS, NORMAL_ATTACK_REACH_MULTIPLIER, TRAINING_SETTINGS_ITEMS } from "../src/data.js";
 import { createFighterState, evaluateStrike, evaluateThrow, getFighterBoxes } from "../src/engine.js";
-import { Game } from "../src/game.js";
+import { Game, animationNameFor } from "../src/game.js";
 import { getSkillConfig } from "../src/skills.js";
 import { getEffectAssetManifest } from "../src/sprite-manifest.js";
 
@@ -140,7 +140,7 @@ test("title panel uses the supplied logo asset", () => {
   assert.equal(fs.existsSync(new URL("../assets/ui/title-logo.png", import.meta.url)), true);
 });
 
-test("fighter normal VFX styles, inverse color 2, facing, and reach tip are data-driven", () => {
+test("fighter normal VFX styles, complementary color 2, facing, and reach tip are data-driven", () => {
   const expected = {
     "guitar-boy": ["#a855f7", 1], "green-slime": ["#22d3ee", 0.7], "bob-girl": ["#ff75b5", 1.2],
     uncle: ["#8b5a2b", 0.8], rusty: ["#dc2626", 0.9], kazushige: ["#111111", 1.1], norio: ["#facc15", 0.9], toko: ["#22c55e", 1.1],
@@ -150,8 +150,11 @@ test("fighter normal VFX styles, inverse color 2, facing, and reach tip are data
     assert.equal(CHARACTERS[id].normalAttackVfx.scale, scale);
     const c1 = CHARACTERS[id].palettes.color1[0].slice(1);
     const c2 = CHARACTERS[id].palettes.color2[0].slice(1);
-    assert.equal(Number.parseInt(c1, 16) ^ Number.parseInt(c2, 16), 0xffffff);
+    const primary = Number.parseInt(c1, 16); const complement = Number.parseInt(c2, 16);
+    assert.notEqual(primary ^ complement, 0xffffff);
   }
+  assert.equal(CHARACTERS["green-slime"].normalAttackVfx.offsetY, -22);
+  assert.equal(CHARACTERS["guitar-boy"].moves.light_attack_neutral.hitboxWidth, Math.round(34 * NORMAL_ATTACK_REACH_MULTIPLIER * 1.1));
   const game = new Game(null);
   for (const facing of [1, -1]) {
     const fighter = createFighterState("guitar-boy", 200, facing);
@@ -171,7 +174,43 @@ test("Kazushige ramen skill fully resets and can activate twice", () => {
     for (let i = 0; i < 220 && fighter.skillPhase !== "skillUnavailable"; i += 1) game.updateSkill(fighter, { skill: true }, true);
     assert.equal(fighter.skillPhase, "skillUnavailable"); assert.equal(fighter.skillConfig, null); assert.ok(fighter.buff?.frames > 0);
   };
-  run(); run();
+  run();
+  assert.equal(game.startSkill(fighter, { skillHoldRequired: false }), false);
+  for (let i = 0; i < 600; i += 1) game.updateFighter(fighter, {}, true);
+  assert.equal(fighter.buff, null); assert.equal(fighter.skillGauge, 0);
+  run();
+});
+
+test("guard dash uses the authored dash clip and combo continuation changes clips without changing hit logic", () => {
+  const game = new Game(null); const fighter = createFighterState("guitar-boy", 100, 1);
+  game.startGuardDash(fighter); assert.equal(animationNameFor(fighter), "dash");
+  fighter.state = "idle";
+  game.startAttack(fighter, { lightPressed: true }); assert.equal(animationNameFor(fighter), "light_stand");
+  fighter.state = "idle"; fighter.comboHits = 1; fighter.comboTimer = 20;
+  game.startAttack(fighter, { lightPressed: true }); assert.equal(animationNameFor(fighter), "heavy_stand");
+  assert.equal(fighter.currentMove.damage, CHARACTERS["guitar-boy"].moves.light_attack_neutral.damage);
+});
+
+test("Rusty dog pauses overhead and can damage its owner once on impact", () => {
+  const game = new Game(null); const rusty = createFighterState("rusty", 130, 1); const target = createFighterState("guitar-boy", 360, -1);
+  game.player = rusty; game.cpu = target; game.activateSkill(rusty, getSkillConfig("rusty"));
+  for (let i = 0; i < 21; i += 1) game.updateSkillEntities();
+  const dog = game.skillEntities[0]; assert.equal(dog.type, "fallingDog"); const overheadY = dog.y;
+  for (let i = 0; i < 18; i += 1) game.updateSkillEntities(); assert.equal(dog.y, overheadY);
+  dog.x = rusty.x; dog.y = 1; dog.graceFrames = 0;
+  const hp = rusty.hp; game.updateSkillEntities(); assert.equal(rusty.hp, hp - rusty.maxHp * 0.8);
+  game.updateSkillEntities(); assert.equal(rusty.hp, hp - rusty.maxHp * 0.8);
+});
+
+test("Kazushige ramen duration drains its full gauge and attached aura does not create entities", () => {
+  const game = new Game(null); const fighter = createFighterState("kazushige", 100, 1); game.player = fighter; game.cpu = createFighterState("uncle", 330, -1);
+  fighter.skillGauge = 100; game.activateSkill(fighter, getSkillConfig("kazushige"));
+  assert.equal(fighter.skillGauge, 100); assert.equal(game.startSkill(fighter, { skillHoldRequired: false }), false);
+  const entities = game.skillEntities.length; const vfx = game.state.vfx.length;
+  for (let i = 0; i < 300; i += 1) game.updateFighter(fighter, {}, true);
+  assert.equal(fighter.skillGauge, 50); assert.equal(game.skillEntities.length, entities); assert.equal(game.state.vfx.length, vfx);
+  for (let i = 0; i < 300; i += 1) game.updateFighter(fighter, {}, true);
+  assert.equal(fighter.buff, null); assert.equal(fighter.skillGauge, 0); assert.equal(game.startSkill(fighter, { skillHoldRequired: false }), true);
 });
 
 test("new rounds clear transient effects and keep CPU idle for the first second", () => {

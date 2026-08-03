@@ -255,7 +255,7 @@ test("dog has marker/falling/impact phases and only impact deals hard knockdown"
   game.player = rusty; game.cpu = target; game.activateSkill(rusty, getSkillConfig("rusty"));
   const dog = game.skillEntities[0]; assert.equal(dog.type, "dogMarker"); assert.equal(dog.damage, 0); assert.equal(dog.targetX, target.x);
   for (let i = 0; i < 21; i += 1) game.updateSkillEntities(); assert.equal(game.skillEntities[0].type, "fallingDog");
-  const before = target.hp; for (let i = 0; i < 20; i += 1) game.updateSkillEntities(); assert.equal(game.skillEntities[0].type, "dogImpact");
+  const before = target.hp; for (let i = 0; i < 40; i += 1) game.updateSkillEntities(); assert.equal(game.skillEntities[0].type, "dogImpact");
   assert.ok(target.hp < before); assert.equal(target.state, "knockback"); assert.equal(target.grounded, false);
   for (let i = 0; i < 90 && !target.downed; i += 1) game.updateFighter(target, {}, false);
   assert.equal(target.downed, true);

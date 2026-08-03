@@ -59,10 +59,23 @@ const SPECIAL_TEXT = Object.freeze({
 
 function box(x, y, w, h) { return { x, y, w, h }; }
 
-function invertHexColor(hex) {
+export const NORMAL_ATTACK_REACH_MULTIPLIER = 1.75;
+
+function complementaryHueHex(hex) {
   const value = String(hex || "").replace(/^#/, "");
   if (!/^[0-9a-f]{6}$/i.test(value)) return hex;
-  return `#${(0xffffff ^ Number.parseInt(value, 16)).toString(16).padStart(6, "0")}`;
+  const channels = [0, 2, 4].map((index) => Number.parseInt(value.slice(index, index + 2), 16) / 255);
+  const max = Math.max(...channels); const min = Math.min(...channels); const lightness = (max + min) / 2;
+  const delta = max - min;
+  if (delta === 0) return `#${value}`;
+  const saturation = delta / (1 - Math.abs(2 * lightness - 1));
+  let hue = max === channels[0] ? ((channels[1] - channels[2]) / delta) % 6 : max === channels[1] ? (channels[2] - channels[0]) / delta + 2 : (channels[0] - channels[1]) / delta + 4;
+  hue = (hue * 60 + 180) % 360;
+  const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
+  const secondary = chroma * (1 - Math.abs((hue / 60) % 2 - 1));
+  const match = lightness - chroma / 2;
+  const rgb = hue < 60 ? [chroma, secondary, 0] : hue < 120 ? [secondary, chroma, 0] : hue < 180 ? [0, chroma, secondary] : hue < 240 ? [0, secondary, chroma] : hue < 300 ? [secondary, 0, chroma] : [chroma, 0, secondary];
+  return `#${rgb.map((channel) => Math.round((channel + match) * 255).toString(16).padStart(2, "0")).join("")}`;
 }
 
 /**
@@ -80,12 +93,11 @@ function normalizeMove(move, archetype, index = 0) {
   const hit = move.hitbox || box(0, 0, 0, 0);
   const legacyWidth = Number.isFinite(hit.w) ? hit.w : 0;
   const legacyHeight = Number.isFinite(hit.h) ? hit.h : 0;
-  // Collision reach intentionally exceeds the authored pose slightly so the
-  // visible effect and gameplay contact agree at pixel scale: light normals
-  // use a 1.10 multiplier, heavy/forward normals 1.20, and specials retain a
-  // modest character-specific expansion.
-  const widthBias = isSpecial ? (id === "special" ? 1.08 + (index % 3) * 0.03 : 1.06) :
-    isStrong ? 1.2 : (isAir ? 1.1 : 1.1);
+  // Normals retain their previous light/heavy reach shaping, then receive the
+  // explicit 1.75 multiplier at authoring time. This makes the new hitbox
+  // genuinely 1.75x the former runtime width while the tip-anchored VFX stays
+  // aligned with the resulting collision edge.
+  const widthBias = isSpecial ? (id === "special" ? 1.08 + (index % 3) * 0.03 : 1.06) : isStrong ? 1.2 : 1.1;
   const hitboxWidth = Math.max(1, Math.round((move.hitboxWidth ?? legacyWidth) * widthBias));
   const heightBias = isSpecial ? 1.06 : isAir ? 1.04 : isStrong ? 1.03 : 1.02;
   const hitboxHeight = Math.max(1, Math.round((move.hitboxHeight ?? legacyHeight) * heightBias));
@@ -125,7 +137,7 @@ function normalMove(name, archetype, overrides = {}) {
   const isLight = name.includes("light");
   const isAir = name.includes("air");
   const isCrouch = name.includes("crouch");
-  const reach = (isLight ? 34 : 46) * archetype.reach;
+  const reach = (isLight ? 34 : 46) * archetype.reach * NORMAL_ATTACK_REACH_MULTIPLIER;
   return {
     id: name,
     kind: "normal",
@@ -218,7 +230,7 @@ function makeMoves(archetype, index) {
       movement: command.movement,
       animation: command.animation,
       hitboxFrames: Array.from({ length: command.activeFrames }, (_, frame) => command.startupFrames + frame),
-      hitbox: box(22, 82, command.reach * archetype.reach, 24),
+      hitbox: box(22, 82, command.reach * archetype.reach * NORMAL_ATTACK_REACH_MULTIPLIER, 24),
       scoreValue: 180,
     }),
     special: makeSpecial(archetype, "special", index),
@@ -257,7 +269,7 @@ function createCharacter([id, name, archetypeName], index) {
   const archetype = ARCHETYPES[archetypeName];
   const combat = COMBAT_STATS[id] || COMBAT_STATS["guitar-boy"];
   const palette1 = [archetype.tint, "#f5f1d6", "#1d2433", "#d94c54"];
-  const palette2 = palette1.map(invertHexColor);
+  const palette2 = palette1.map(complementaryHueHex);
   const fallbackAnimation = Object.fromEntries(ANIMATION_CLIPS.map((clip) => [clip, {
     ...ANIMATION_CONTRACT[clip],
     frames: [ANIMATION_CONTRACT[clip].frame],
@@ -282,7 +294,7 @@ function createCharacter([id, name, archetypeName], index) {
     palettes: Object.freeze({ color1: palette1, color2: palette2 }),
     normalAttackVfx: Object.freeze(({
       "guitar-boy": { color: "#a855f7", scale: 1.0 },
-      "green-slime": { color: "#22d3ee", scale: 0.7 },
+      "green-slime": { color: "#22d3ee", scale: 0.7, offsetY: -22 },
       "bob-girl": { color: "#ff75b5", scale: 1.2 },
       uncle: { color: "#8b5a2b", scale: 0.8 },
       rusty: { color: "#dc2626", scale: 0.9 },
