@@ -261,7 +261,7 @@ test("knockdown contact effect is raised slightly above the floor", () => {
   game.beginKnockdownLanding(fighter);
   const effect = game.state.vfx.find((entry) => entry.effectId === "down-impact");
   assert.ok(effect);
-  assert.equal(effect.y, 8);
+  assert.equal(effect.y, 24);
 });
 
 test("new rounds clear transient effects and keep CPU idle for the first second", () => {

@@ -120,6 +120,17 @@ export function skillHudStateFor(fighter) {
   return getSkillHudState(fighter, fighter?.id);
 }
 
+/** Copy for the small status line directly beneath a fighter's skill gauge. */
+export function skillStatusTextFor(fighter = {}) {
+  const phase = String(fighter.skillPhase || fighter.skillState || fighter.state || "");
+  const charging = phase === "skillCharging";
+  if (fighter.id === "guitar-boy" && charging) return "猛烈に耳コピ中";
+  if (fighter.id === "rusty" && charging) return "犬、呼んでます";
+  if (fighter.id === "kazushige" && charging) return "バトル中らーめん。";
+  if (fighter.id === "toko" && Number(fighter.skillAmmo ?? fighter.ammo ?? 0) === 0 && fighter.flashReloading) return "フィルム交換しなくちゃ";
+  return "";
+}
+
 /** Resolve the phase-facing action id exposed by a fighter's skill config. */
 export function skillSpriteActionFor(fighter = {}) {
   const actions = getSkillConfig(fighter?.id)?.spriteActions || [];
@@ -218,6 +229,7 @@ export class Game {
     if (this.touchInput) this.touchInput.onInput = () => this.ensureAudio();
     this.save = loadSave();
     this.images = new Map();
+    this.platformImages = new Map();
     this.effectImages = new Map();
     this.effectTintCache = new Map();
     // Keep the last decoded frame for each fighter.  Animation frames load
@@ -357,9 +369,10 @@ export class Game {
 
   ensureAudio() {
     if (this.state.bgmEnabled) this.syncBgm();
-    if (!this.state.seEnabled || typeof AudioContext === "undefined") return;
+    const Context = globalThis.AudioContext || globalThis.webkitAudioContext;
+    if (!this.state.seEnabled || !Context) return;
     try {
-      if (!this.soundContext) this.soundContext = new AudioContext();
+      if (!this.soundContext) this.soundContext = new Context();
       // Browsers commonly return a Promise here.  Attach the continuation but
       // never await it from the input handler, preserving the original edge.
       if (this.soundContext?.state === "suspended" && typeof this.soundContext.resume === "function") {
@@ -391,13 +404,15 @@ export class Game {
   }
 
   beep(frequency = 220, duration = 0.05, type = "square") {
-    if (!this.state.seEnabled || !this.soundContext) return;
+    if (!this.state.seEnabled) return;
+    this.ensureAudio();
+    if (!this.soundContext || this.soundContext.state === "suspended") return;
     try {
       const oscillator = this.soundContext.createOscillator();
       const gain = this.soundContext.createGain();
       oscillator.type = type;
       oscillator.frequency.value = frequency;
-      gain.gain.setValueAtTime(0.045, this.soundContext.currentTime);
+      gain.gain.setValueAtTime(0.12, this.soundContext.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.0001, this.soundContext.currentTime + duration);
       oscillator.connect(gain).connect(this.soundContext.destination);
       oscillator.start();
@@ -597,6 +612,7 @@ export class Game {
       special, specialPressed: espec.just, specialReleased: espec.up,
       confirmPressed: confirm && !this.padHeld.has("confirm"),
     };
+    if (ea.just || eb.just || ex.just || ey.just || ejump.just || espec.just || result.leftPressed || result.rightPressed || result.upPressed || result.downPressed) this.ensureAudio();
     if (confirm) this.padHeld.add("confirm"); else this.padHeld.delete("confirm");
     return result;
   }
@@ -916,7 +932,7 @@ export class Game {
       defender.facing = -attacker.facing; defender.state = "grabbed"; defender.action = "thrown";
       if (!attacker.throwReleased && attacker.actionFrame >= move.startupFrames + move.activeFrames + 6) {
         attacker.throwReleased = true;
-        const damage = applyDamage(defender, move.damage, { knockbackX: 6, knockbackY: 3, hitstunFrames: move.hitstunFrames });
+        const damage = applyDamage(defender, Number(move.damage || 0) * Number(attacker.buff?.attackScale || 1), { knockbackX: 6, knockbackY: 3, hitstunFrames: move.hitstunFrames });
         defender.thrownBy = null;
         this.launchKnockdown(defender, move);
         attacker.throwTarget = null;
@@ -1091,7 +1107,7 @@ export class Game {
     if (fighter.state === "attacking" || fighter.state === "throwing") {
       fighter.actionFrame += 1;
       const move = fighter.currentMove;
-      if (move && !fighter.attackVfxSpawned && move.kind !== "throw" && move.specialType !== "projectile" && fighter.actionFrame >= Number(move.startupFrames || 0)) {
+      if (move && !fighter.attackVfxSpawned && move.kind === "normal" && fighter.actionFrame >= Number(move.startupFrames || 0)) {
         const point = this.attackReachPoint(fighter, move);
         const strong = Boolean(move.id?.includes("strong") || move.id?.includes("forward_light"));
         const style = move.kind === "normal" ? CHARACTERS[fighter.id]?.normalAttackVfx : null;
@@ -1176,7 +1192,8 @@ export class Game {
           const nextAction = isBackstep ? "backstep" : direction === fighter.facing ? "dash" : "walk_backward";
           fighter.actionFrame = fighter.action === nextAction ? fighter.actionFrame + 1 : 0;
           fighter.action = nextAction;
-          fighter.vx = isBackstep ? -fighter.facing * (stats.backstepDistance || 36) / BACKSTEP_LOCK_FRAMES : direction * (direction === fighter.facing ? (stats.dashSpeed || stats.speed) : (stats.walkSpeed || stats.speed));
+          const backwardSpeed = (stats.walkSpeed || stats.speed) * 1.45;
+          fighter.vx = isBackstep ? -fighter.facing * (stats.backstepDistance || 36) / BACKSTEP_LOCK_FRAMES : direction * (direction === fighter.facing ? (stats.dashSpeed || stats.speed) : backwardSpeed);
           if (isBackstep) { fighter.invulnerableFrames = 5; fighter.locomotionAction = "backstep"; fighter.locomotionFramesRemaining = BACKSTEP_LOCK_FRAMES - 1; }
           if (directionPressed) { fighter.lastDirection = direction; fighter.lastDirectionFrame = this.frame; }
           fighter.state = "moving";
@@ -1230,7 +1247,7 @@ export class Game {
 
   beginKnockdownLanding(fighter, hard = fighter.hardKnockdown) {
     fighter.state = "knockdownLanding"; fighter.action = "knockdown"; fighter.actionFrame = 0; fighter.downed = true; fighter.downedFrames = 0; fighter.downTimer = 0; fighter.downStartedFrame = this.frame; fighter.hardKnockdown = Boolean(hard); fighter.followupAvailable = true; fighter.followupReserved = false; fighter.downFollowupUsed = false; fighter.followupUsed = false; fighter.followupCount = 0; fighter.boxProfile = "down"; fighter.grounded = true; fighter.y = 0;
-    this.spawnVfx("down-impact", fighter, { x: 0, y: 8 });
+    this.spawnVfx("down-impact", fighter, { x: 0, y: 24 });
   }
 
   launchKnockdown(fighter, move = {}) {
@@ -1326,9 +1343,21 @@ export class Game {
     fighter.skillCopiedUse = config.type === "copy" && Number(fighter.copiedSkillUses || 0) > 0;
     // A copied skill is a stocked use, not another charge attempt.  B starts
     // its normal startup immediately even when the button is only tapped.
-    const holdRequired = !fighter.skillCopiedUse && input.skillHoldRequired !== false && (input.skillHoldRequired === true || input.skillPressed === true);
+    const holdRequired = config.type !== "ramenBuff" && !fighter.skillCopiedUse && input.skillHoldRequired !== false && (input.skillHoldRequired === true || input.skillPressed === true);
     fighter.skillCharging = false; fighter.skillActive = false; fighter.skillActivated = false; fighter.skillInterrupted = false; fighter.skillInterruptionReason = null; fighter.skillRecoveryFrames = 0; fighter.skillActionFrame = 0; fighter.skillHoldFrames = 0; fighter.skillHoldThresholdFrames = SKILL_HOLD_THRESHOLD_FRAMES; fighter.skillHoldActive = !holdRequired; fighter.skillHoldRequired = holdRequired; fighter.skillCancelled = false; fighter.skillHeld = true; fighter.skillStartFrame = this.frame; fighter.action = "skill_start"; fighter.state = "skillStartup"; fighter.actionFrame = 0; fighter.hitRegistry.clear();
     fighter.skillConfig = config;
+    // Stocked copy uses are already paid for by the original full charge.
+    // Fire the copied action immediately so the first of the two uses cannot
+    // become an empty copy startup (notably when the copied skill is Flash).
+    if (fighter.skillCopiedUse) {
+      fighter.skillHoldActive = true;
+      fighter.skillHoldRequired = false;
+      fighter.skillActivated = true;
+      this.activateSkill(fighter, config);
+      fighter.skillPhase = "skillRecovery"; fighter.skillState = "skillRecovery"; fighter.skill.phase = "skillRecovery";
+      fighter.skillRecoveryFrames = config.phase?.recoveryFrames || 1; fighter.state = "skillRecovery"; fighter.action = "skill_recovery"; fighter.skillActionFrame = 0;
+      return true;
+    }
     // Flash's authored body/shot is rendered by its moving skill entity. Do
     // not seed a second static VFX record during the hold phase.
     if (config.type !== "flash") {
@@ -1435,6 +1464,8 @@ export class Game {
           fighter.copiedSkillUses = Math.max(0, Number(fighter.copiedSkillUses || 0) - 1);
           fighter.copyCharges = fighter.copiedSkillUses;
           fighter.copy.charges = fighter.copyCharges; fighter.copy.uses = fighter.copiedSkillUses;
+          // A copied flash must use Guitar's stocked use only. It must not
+          // inherit Toko's empty film resource or reload state.
           this.activateSkill(fighter, copiedConfig, "copied");
         }
         this.showCombatNotice("COPY USE", "skill", 0, fighter);
@@ -1536,7 +1567,8 @@ export class Game {
     fighter.hitConfirmed = false;
     fighter.attackVfxSpawned = false;
     fighter.invulnerableFrames = move.startupFrames + move.activeFrames + move.recoveryFrames + 2;
-    this.spawnVfx(move.effectId, fighter, { x: fighter.facing * 34, y: 84, scale: 2.8, facing: fighter.facing });
+    this.spawnVfx("super-explosion", fighter, { x: fighter.facing * 62, y: 84, scale: 3.8, facing: fighter.facing, frames: 24 });
+    this.beep(115, 0.14, "sawtooth");
     if (move.specialType === "projectile") {
       fighter.pendingProjectile = { move, owner: fighter === this.player ? "player" : "cpu" };
       fighter.projectileSpawned = false;
@@ -1545,14 +1577,16 @@ export class Game {
   }
 
   specialBeep() {
-    if (!this.state.seEnabled || !this.soundContext) return;
+    if (!this.state.seEnabled) return;
+    this.ensureAudio();
+    if (!this.soundContext || this.soundContext.state === "suspended") return;
     try {
       const now = this.soundContext.currentTime;
       for (const [frequency, offset] of [[110, 0], [220, 0.055], [440, 0.11]]) {
         const oscillator = this.soundContext.createOscillator();
         const gain = this.soundContext.createGain();
         oscillator.type = "sawtooth"; oscillator.frequency.value = frequency;
-        gain.gain.setValueAtTime(0.11, now + offset);
+        gain.gain.setValueAtTime(0.14, now + offset);
         gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.16);
         oscillator.connect(gain).connect(this.soundContext.destination);
         oscillator.start(now + offset); oscillator.stop(now + offset + 0.17);
@@ -1876,7 +1910,7 @@ export class Game {
     const contactPoint = this.combatContactPoint(attacker, defender, move);
     if (blocked) this.spawnVfx("guard-spark", contactPoint, { x: 0, y: 0, scale: move.kind === "special" ? 1.8 : 0.55 });
     else this.spawnVfx("hit-burst", contactPoint, { x: 0, y: 0, scale: move.kind === "special" ? 1.8 : 0.38 });
-    if (move.kind === "special") this.spawnVfx(move.effectId || "attack-special", contactPoint, { x: 0, y: 0, scale: 3.2, facing: attacker.facing, frames: 36 });
+    if (move.kind === "special") this.spawnVfx("super-explosion", contactPoint, { x: 0, y: 0, scale: 3.8, facing: attacker.facing, frames: 24 });
     if (!result.blocked && defender.hp > 0) {
       const firstHit = wasAirborne ? "air_hit" : wasCrouching ? "hit_crouch" : move.id.includes("strong") || move.kind === "special" ? "hit_heavy" : "hit_light";
       const sequence = [{ name: firstHit, duration: firstHit === "hit_heavy" ? 12 : 10 }];
@@ -1949,7 +1983,8 @@ export class Game {
         projectile.hit = true;
         const attacker = projectile.owner === "player" ? this.player : this.cpu;
         attacker.hitRegistry.add(`projectile:${target.id}`);
-        const damage = applyDamage(target, projectile.damage, { hitstunFrames: 32, knockbackX: 4, knockbackY: 2 });
+        const buffScale = Number(attacker.buff?.attackScale || 1);
+        const damage = applyDamage(target, Number(projectile.damage || 0) * buffScale, { hitstunFrames: 32, knockbackX: 4, knockbackY: 2 });
         this.showCombatNotice(`HIT ${Math.round(Number(damage) || 0)}`, "hit", damage, target);
         if (this.state.mode === "training") this.state.trainingDamage = Math.round(Number(damage) || 0);
         if (target.hp > 0) setVisualSequence(target, [{ name: "hit_heavy", duration: 12 }, { name: "knockback", duration: 10 }]);
@@ -1957,7 +1992,7 @@ export class Game {
         const part = targetBoxes.find((box) => box && box.x < hitbox.x + hitbox.w && box.x + box.w > hitbox.x && box.y < hitbox.y + hitbox.h && box.y + box.h > hitbox.y);
         const contactPoint = part ? { x: (Math.max(part.x, hitbox.x) + Math.min(part.x + part.w, hitbox.x + hitbox.w)) * 0.5, y: (Math.max(part.y, hitbox.y) + Math.min(part.y + part.h, hitbox.y + hitbox.h)) * 0.5 } : { x: target.x, y: target.y + 82 };
         this.spawnVfx("hit-burst", contactPoint, { x: 0, y: 0, scale: 1.8 });
-        this.spawnVfx(projectile.effectId || "attack-special", contactPoint, { x: 0, y: 0, scale: 3.2, facing: projectile.facing, frames: 36 });
+        this.spawnVfx("super-explosion", contactPoint, { x: 0, y: 0, scale: 3.8, facing: projectile.facing, frames: 24 });
         if (target.skillPhase && target.skillPhase !== "skillUnavailable") this.interruptSkillFor(target, "hit");
         if (projectile.owner === "player") this.state.score += scoreForEvent("special");
         else this.state.perfect = false;
@@ -2104,6 +2139,13 @@ export class Game {
     return this.backgrounds.get(source);
   }
 
+  loadPlatform(assetId) {
+    if (!assetId) return null;
+    const source = `assets/platforms/${assetId}.png`;
+    if (!this.platformImages.has(source)) this.platformImages.set(source, makeImage(source));
+    return this.platformImages.get(source);
+  }
+
   loadSprite(id, animationName, actionFrame = 0) {
     const character = CHARACTERS[id];
     const resolvedName = RUNTIME_ANIMATION_ALIASES[animationName] || animationName;
@@ -2150,9 +2192,16 @@ export class Game {
 
   drawBattle(ctx) {
     for (const platform of this.stagePlatforms()) {
-      ctx.save(); ctx.fillStyle = "rgba(14,20,33,.86)"; ctx.fillRect(platform.x, STAGE_BOUNDS.floor - platform.y, platform.w, 5);
-      ctx.strokeStyle = "#d7b35e"; ctx.strokeRect(platform.x, STAGE_BOUNDS.floor - platform.y, platform.w, 5);
-      ctx.fillStyle = "#f4d887"; ctx.font = "6px monospace"; ctx.fillText(platform.label, platform.x + 3, STAGE_BOUNDS.floor - platform.y - 3); ctx.restore();
+      const image = this.loadPlatform(platform.asset);
+      const top = STAGE_BOUNDS.floor - platform.y;
+      ctx.save();
+      if (imageReady(image)) ctx.drawImage(image, platform.x, top - Math.max(20, platform.y * 0.42), platform.w, Math.max(24, platform.y * 0.42 + 5));
+      else {
+        ctx.fillStyle = "rgba(14,20,33,.86)"; ctx.fillRect(platform.x, top, platform.w, 5);
+        ctx.strokeStyle = "#d7b35e"; ctx.strokeRect(platform.x, top, platform.w, 5);
+        ctx.fillStyle = "#f4d887"; ctx.font = "6px monospace"; ctx.fillText(platform.label, platform.x + 3, top - 3);
+      }
+      ctx.restore();
     }
     this.drawFighter(ctx, this.player);
     this.drawFighter(ctx, this.cpu);
@@ -2211,10 +2260,17 @@ export class Game {
     if (cinematic?.fighter) {
       const fighter = cinematic.fighter;
       const image = this.loadSprite(fighter.id, "special", 0);
-      ctx.save(); ctx.fillStyle = "rgba(8,5,19,.84)"; ctx.fillRect(0, 0, INTERNAL_WIDTH, INTERNAL_HEIGHT);
-      ctx.fillStyle = CHARACTERS[fighter.id]?.stats?.tint || "#ffe56e"; ctx.fillRect(0, 0, INTERNAL_WIDTH, 12);
-      if (imageReady(image)) ctx.drawImage(image, 80, -12, 320, 320);
-      ctx.fillStyle = "#fff7c7"; ctx.font = "900 20px monospace"; ctx.textAlign = "center"; ctx.fillText(CHARACTERS[fighter.id]?.special?.name || "SPECIAL", 240, 232); ctx.restore();
+      const isPlayer = fighter === this.player;
+      const x = isPlayer ? 16 : 348;
+      const textX = isPlayer ? x + 48 : x + 62;
+      ctx.save();
+      ctx.fillStyle = "rgba(8,5,19,.86)"; ctx.fillRect(x, 54, 116, 54);
+      ctx.strokeStyle = CHARACTERS[fighter.id]?.stats?.tint || "#ffe56e"; ctx.strokeRect(x, 54, 116, 54);
+      if (imageReady(image)) ctx.drawImage(image, x + (isPlayer ? 2 : 70), 58, 44, 44);
+      ctx.fillStyle = "#fff7c7"; ctx.font = "bold 7px monospace"; ctx.textAlign = isPlayer ? "left" : "right";
+      ctx.fillText(CHARACTERS[fighter.id]?.name || "FIGHTER", textX, 69, 64);
+      ctx.fillText(CHARACTERS[fighter.id]?.special?.name || "SPECIAL", textX, 82, 64);
+      ctx.restore();
     }
   }
 
@@ -2240,7 +2296,7 @@ export class Game {
       if (imageReady(aura?.image)) {
         ctx.save();
         ctx.imageSmoothingEnabled = false;
-        ctx.globalAlpha = 0.28;
+        ctx.globalAlpha = 1;
         ctx.filter = "brightness(0)";
         ctx.translate(x, y);
         if (fighter.facing < 0) ctx.scale(-1, 1);
@@ -2270,11 +2326,19 @@ export class Game {
       bar(x, 36, 110, ratio, skill.ready && pulse ? "#f4d4ff" : skill.ready ? "#b875ff" : "#5c6474");
       ctx.save();
       ctx.textAlign = align;
-      ctx.font = "bold 8px monospace";
+      ctx.font = "bold 10px monospace";
       ctx.fillStyle = skill.ready ? "#e4c5ff" : "#aab2c3";
       const valueLabel = skill.mode === "duration" ? `${Math.ceil(skill.value / FIXED_HZ)}s` : `${Math.round(skill.value)}/${Math.round(skill.max)}`;
       const cooldownLabel = skill.cooldownRemaining > 0 ? ` CD ${Math.ceil(skill.cooldownRemaining / FIXED_HZ)}s` : "";
       ctx.fillText(`${skill.label} ${valueLabel}${cooldownLabel}${skill.ready ? " READY" : ""}`, align === "right" ? x + 110 : x, 51);
+      const status = skillStatusTextFor(fighter);
+      // The special cut-in uses this same side lane, so leave the status line
+      // empty until it has cleared instead of drawing the two on top of one another.
+      if (status && !this.state.specialCinematic) {
+        ctx.font = "bold 7px monospace";
+        ctx.fillStyle = "#fff1a3";
+        ctx.fillText(status, align === "right" ? x + 110 : x, 62);
+      }
       ctx.restore();
     };
     drawSkill(this.player, 16, "left");
@@ -2286,13 +2350,15 @@ export class Game {
     const timerLabel = this.state.mode === "training" ? "--" : String(Math.ceil(this.state.timerFrames / FIXED_HZ)).padStart(2, "0");
     ctx.fillText(timerLabel, 240, 21);
     ctx.font = "bold 9px monospace"; ctx.fillText(`R${this.state.playerRounds}-${this.state.cpuRounds}  STAGE ${this.state.stage}`, 240, 34);
-    ctx.textAlign = "left"; ctx.fillStyle = "#ffe795"; ctx.fillText(`${this.state.score.toString().padStart(6, "0")}  COMBO ${this.state.combo}`, 16, 64);
+    // Keep live information in the central lane. The left/right lanes below
+    // the skill gauges are reserved for each fighter's special cut-in.
+    ctx.textAlign = "center"; ctx.fillStyle = "#ffe795"; ctx.fillText(`${this.state.score.toString().padStart(6, "0")}  COMBO ${this.state.combo}`, 240, 51, 200);
     if (this.state.mode === "training") {
       ctx.fillStyle = "#9de8ff";
       ctx.font = "bold 9px monospace";
-      ctx.fillText(`TRAINING  DAMAGE ${Math.round(this.state.trainingDamage || 0)}`, 16, 76);
+      ctx.fillText(`TRAINING  DAMAGE ${Math.round(this.state.trainingDamage || 0)}`, 240, 64, 200);
       ctx.font = "bold 7px monospace";
-      ctx.fillText("COMMAND: →+A  DOWN+A/X  UP+A/X  B SKILL  SP SPECIAL", 16, 87);
+      ctx.fillText("COMMAND: →+A  DOWN+A/X  UP+A/X  B SKILL  SP SPECIAL", 240, 75, 200);
     }
     const notice = this.state.combatNotice;
     if (notice?.frames > 0 && notice.text) {

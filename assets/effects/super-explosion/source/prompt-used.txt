@@ -1,0 +1,1 @@
+Use the existing pixel hit burst as the style reference. Create a four-frame 2 by 2 super-move explosion: ignition, expanding shockwave, enormous white-hot peak explosion, and collapsing embers. Keep one stable center, generous padding, no text, and a solid #FF00FF background.

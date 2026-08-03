@@ -106,7 +106,8 @@ export const SKILL_CONFIGS = Object.freeze({
     initialGauge: 0,
     initialAmmo: 0,
     maxAmmo: 0,
-    cooldownFrames: 30,
+    // Five seconds at the fixed 60 Hz simulation rate.
+    cooldownFrames: 300,
     phase: phase(6, 0, 3, 22),
     interruption: Object.freeze(["hit", "throw", "down", "knockdown", "ko"]),
     effectId: "skill-slime-shot",
@@ -266,7 +267,11 @@ export function getSkillHudState(fighter = {}, configOrId = fighter.id) {
   const config = typeof configOrId === "string" ? getSkillConfig(configOrId) : (configOrId || getSkillConfig(fighter.id));
   if (!config) return Object.freeze({ value: 0, max: 0, mode: "charge", label: "SKILL", ready: false, disabled: true });
   const type = config.type;
-  const mode = config.hudMode || (type === "copy" ? (Number(fighter.copiedSkillUses || fighter.copyCharges || 0) > 0 ? "uses" : "charge") : type === "mirror" || type === "drumBeat" || type === "flash" ? "ammo" : type === "ramenBuff" ? "duration" : "charge");
+  // Ramen needs to show the held charge before activation, then its remaining
+  // enhancement time once active.  Treating it as duration at zero hid the
+  // actual charge and made a full first charge look like a failed attempt.
+  const ramenActive = type === "ramenBuff" && Number(fighter.buff?.frames || 0) > 0;
+  const mode = config.hudMode || (type === "copy" ? (Number(fighter.copiedSkillUses || fighter.copyCharges || 0) > 0 ? "uses" : "charge") : type === "mirror" || type === "drumBeat" || type === "flash" ? "ammo" : type === "ramenBuff" ? (ramenActive ? "duration" : "charge") : "charge");
   const max = Math.max(0, Number(mode === "duration" ? (config.buffDurationFrames || config.durationFrames || config.chargeMax) : mode === "ammo" || mode === "uses" ? (config.maxAmmo || config.copyCharges || config.copiedSkillUses || config.chargeMax) : config.chargeMax) || 0);
   const resourceValue = type === "copy" ? (fighter.copiedSkillUses ?? fighter.copyCharges ?? fighter.ammo ?? fighter.skillAmmo ?? 0) : (fighter.ammo ?? fighter.skillAmmo ?? 0);
   const value = Math.max(0, Number(mode === "duration" ? (fighter.buff?.frames || 0) : mode === "ammo" || mode === "uses" ? resourceValue : (fighter.skillGauge ?? fighter.skill?.gauge ?? 0)) || 0);

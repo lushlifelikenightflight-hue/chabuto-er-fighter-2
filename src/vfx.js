@@ -31,6 +31,7 @@ const CORE_EFFECTS = Object.freeze({
   "attack-weapon": descriptor("attack-weapon", "attack", { durationFrames: 10, scale: 1.22, offsetX: 54, offsetY: 78, palette: ["#fff4bd", "#c6e7ff", "#9e8cff"], tags: ["attack", "weapon", "afterimage"] }),
   "attack-slime": descriptor("attack-slime", "attack", { durationFrames: 8, scale: 1.08, offsetX: 52, offsetY: 82, palette: ["#f5ffb1", "#7ee787", "#53c6b0"], tags: ["attack", "slime", "splash"] }),
   "attack-special": descriptor("attack-special", "special", { durationFrames: 18, scale: 1.52, offsetX: 64, offsetY: 84, layer: "foreground", palette: ["#fff8dc", "#ffdc71", "#ff6f61"], tags: ["attack", "special", "telegraph"] }),
+  "super-explosion": descriptor("super-explosion", "special", { durationFrames: 24, scale: 2.8, offsetX: 0, offsetY: 0, layer: "foreground", palette: ["#ffffff", "#ffe14f", "#ff6a22"], tags: ["attack", "special", "explosion", "impact"] }),
   "hit-spark": descriptor("hit-spark", "hit", { durationFrames: 7, scale: 0.86, offsetX: 0, offsetY: -4, palette: ["#ffffff", "#ffe37b", "#ec6c51"], tags: ["hit", "spark"] }),
   "guard-spark": descriptor("guard-spark", "guard", { durationFrames: 6, scale: 0.82, offsetX: 0, offsetY: -2, palette: ["#d8efff", "#72b9ff", "#5782ce"], tags: ["guard", "spark"] }),
   "just-guard-ring": descriptor("just-guard-ring", "justGuard", { durationFrames: 10, scale: 1.12, offsetX: 0, offsetY: -6, palette: ["#ffffff", "#7be8ff", "#d6a2ff"], tags: ["guard", "justGuard", "ring"] }),

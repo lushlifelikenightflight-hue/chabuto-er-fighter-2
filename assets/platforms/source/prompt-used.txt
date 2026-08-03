@@ -1,0 +1,1 @@
+Use the existing stage background as the style and palette reference. Create six distinct side-view pixel-art one-way platform props in a 3 by 2 grid: amplifier, speaker stack, drum riser, ramen stand, step ladder, and concert light podium. Every prop has a flat standable top, consistent camera distance, generous padding, no text, and a solid #FF00FF background.

@@ -1,0 +1,15 @@
+{
+  "status": "runtime",
+  "generatedFrom": "source/raw-sheet.png",
+  "processorMetadata": "generated/pipeline-meta.json",
+  "canvasSize": [256, 256],
+  "anchor": "bottom",
+  "assets": {
+    "amp": "amp.png",
+    "speaker-stack": "speaker-stack.png",
+    "drum-riser": "drum-riser.png",
+    "ramen-stand": "ramen-stand.png",
+    "step-ladder": "step-ladder.png",
+    "light-podium": "light-podium.png"
+  }
+}

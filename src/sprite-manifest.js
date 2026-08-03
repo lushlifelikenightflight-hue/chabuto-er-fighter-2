@@ -84,6 +84,7 @@ const EFFECT_ASSET_DEFINITIONS = Object.freeze({
   "just-guard-ring": ["assets/effects/just-guard-ring", "guard", 10, false],
   "throw-impact": ["assets/effects/throw-impact", "throw", 14, false],
   "down-impact": ["assets/effects/down-impact", "down", 16, false],
+  "super-explosion": ["assets/effects/super-explosion", "special", 4, false],
   "skill-copy": ["assets/effects/skills/guitar-boy/skill-copy", "skill", 20, false],
   "skill-slime-shot": ["assets/effects/skills/green-slime/skill-slime-shot", "skill", 18, false],
   "skill-mirror": ["assets/effects/skills/bob-girl/skill-mirror", "skill", 12, false],
@@ -175,7 +176,7 @@ const GROUPS = Object.freeze({
   idle: ["idle", 1, 4, 10, true],
   walk_forward: ["movement", 1, 3, 5, true],
   walk_backward: ["movement", 4, 3, 6, true],
-  dash: ["movement", 7, 3, 3, false],
+  dash: ["movement", 7, 3, 3, true],
   backstep: ["movement", 10, 3, 4, false],
   crouch_start: ["crouch", 1, 2, 4, false],
   // The held crouch pose is a settled keyframe, not a looping animation.

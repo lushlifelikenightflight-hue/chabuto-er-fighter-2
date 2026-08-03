@@ -1,0 +1,16 @@
+{
+  "id": "super-explosion",
+  "status": "runtime",
+  "generatedFrom": "source/raw-sheet.png",
+  "processorMetadata": "generated/pipeline-meta.json",
+  "frames": [
+    "super-explosion-1.png",
+    "super-explosion-2.png",
+    "super-explosion-3.png",
+    "super-explosion-4.png"
+  ],
+  "frameDuration": 4,
+  "loop": false,
+  "canvasSize": [256, 256],
+  "anchor": "center"
+}

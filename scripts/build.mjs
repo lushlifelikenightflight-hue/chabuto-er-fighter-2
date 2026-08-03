@@ -14,6 +14,12 @@ await mkdir(server, { recursive: true });
 function deployableAsset(source) {
   if (NON_DEPLOYABLE_BASENAMES.has(basename(source))) return false;
   const normalized = relative(root, source).replaceAll("\\", "/");
+  if ([
+    "assets/platforms/source/",
+    "assets/platforms/generated/",
+    "assets/effects/super-explosion/source/",
+    "assets/effects/super-explosion/generated/",
+  ].some((prefix) => normalized.startsWith(prefix))) return false;
   if (normalized.includes("/sprites/") && /\/(source|archive)(\/|$)/.test(normalized)) return false;
   if (!normalized.includes("/actions/")) return true;
   if (!extname(source)) return true;
