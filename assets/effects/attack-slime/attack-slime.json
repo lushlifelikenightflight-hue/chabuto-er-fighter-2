@@ -1,0 +1,38 @@
+{
+  "id": "attack-slime",
+  "category": "attack",
+  "frames": [
+    "assets/effects/attack-slime/attack-slime-1.png",
+    "assets/effects/attack-slime/attack-slime-2.png",
+    "assets/effects/attack-slime/attack-slime-3.png",
+    "assets/effects/attack-slime/attack-slime-4.png"
+  ],
+  "frameDuration": 8,
+  "loop": false,
+  "cellWidth": 256,
+  "cellHeight": 256,
+  "origin": {
+    "x": 128,
+    "y": 128
+  },
+  "groundPoint": {
+    "x": 128,
+    "y": 128
+  },
+  "qc": {
+    "strict": true,
+    "frameCount": 4,
+    "cellSize": [
+      256,
+      256
+    ],
+    "edgeTouchFrames": [],
+    "sourceEdgeTouchFrames": [],
+    "pasteClampedFrames": [],
+    "emptyFrames": [],
+    "outputSubjectHeightMean": 128.75,
+    "bodyScaleCv": 0.3343389587896067,
+    "anchorXStd": 0.010553103901820612,
+    "anchorYStd": 0.028265635229277362
+  }
+}

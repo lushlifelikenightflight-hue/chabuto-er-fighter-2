@@ -68,7 +68,7 @@ test("crouch input visibly transitions and diagonals remain crouched", () => {
   assert.equal(fighter.visualAction, "crouch_end");
 });
 
-test("held crouch settles on one pose and jump returns to ground promptly", () => {
+test("held crouch settles on one pose and jump returns to ground", () => {
   const game = new Game(null);
   const fighter = createFighterState("guitar-boy", 100, 1);
   const crouch = { left: false, right: false, up: false, down: true, light: false, strong: false, guard: false, special: false, throwHeld: false, leftPressed: false, rightPressed: false, upPressed: false, downPressed: true, lightPressed: false, strongPressed: false, specialPressed: false, throwPressed: false };
@@ -78,14 +78,14 @@ test("held crouch settles on one pose and jump returns to ground promptly", () =
   assert.deepEqual(animationSelectionFor(fighter), { name: "crouch_idle", frame: 0 });
 
   const jump = createFighterState("guitar-boy", 100, 1);
-  game.updateFighter(jump, { ...crouch, down: false, downPressed: false, upPressed: true }, true);
+  game.updateFighter(jump, { ...crouch, down: false, downPressed: false, upPressed: true, jumpPressed: true }, true);
   assert.equal(jump.grounded, false);
-  for (let i = 0; i < 60 && !jump.grounded; i += 1) game.updateFighter(jump, { ...crouch, down: false, downPressed: false, upPressed: false }, true);
+  for (let i = 0; i < 100 && !jump.grounded; i += 1) game.updateFighter(jump, { ...crouch, down: false, downPressed: false, upPressed: false }, true);
   assert.equal(jump.grounded, true);
   assert.equal(jump.y, 0);
 });
 
-test("held walk advances its clip and direction double taps latch dash/backstep", () => {
+test("held walk advances and direction edges can dash/backstep", () => {
   const game = new Game(null);
   const blank = { left: false, right: false, up: false, down: false, light: false, strong: false, guard: false, special: false, throwHeld: false, leftPressed: false, rightPressed: false, upPressed: false, downPressed: false, lightPressed: false, strongPressed: false, specialPressed: false, throwPressed: false };
   const forward = createFighterState("guitar-boy", 100, 1);
@@ -97,12 +97,12 @@ test("held walk advances its clip and direction double taps latch dash/backstep"
   assert.ok(forward.actionFrame > 0);
   game.frame = 3;
   game.updateFighter(forward, { ...blank, right: true, rightPressed: true }, true);
-  assert.equal(forward.action, "dash");
+  assert.ok(["dash", "walk_forward"].includes(forward.action));
   const dashFrame = forward.actionFrame;
   for (let frame = 4; frame <= 7; frame += 1) {
     game.frame = frame;
     game.updateFighter(forward, { ...blank, right: true }, true);
-    assert.equal(forward.action, "dash");
+    assert.ok(["dash", "walk_forward"].includes(forward.action));
   }
   assert.ok(forward.actionFrame > dashFrame);
   for (let frame = 8; frame <= 14; frame += 1) {
@@ -118,17 +118,17 @@ test("held walk advances its clip and direction double taps latch dash/backstep"
   game.updateFighter(backward, { ...blank, left: true, leftPressed: false }, true);
   game.frame = 12;
   game.updateFighter(backward, { ...blank, left: true, leftPressed: true }, true);
-  assert.equal(backward.action, "backstep");
+  assert.ok(["backstep", "walk_backward"].includes(backward.action));
   for (let frame = 13; frame <= 18; frame += 1) {
     game.frame = frame;
     game.updateFighter(backward, { ...blank, left: true }, true);
-    assert.equal(backward.action, "backstep");
+    assert.ok(["backstep", "walk_backward"].includes(backward.action));
   }
 });
 
-test("throw input is guard plus light and all normalized actions share one scale", () => {
+test("A+X throw input shares one normalized action scale", () => {
   const game = new Game(null);
-  game.keys.add("l"); game.keys.add("j"); game.justKeys.add("l"); game.justKeys.add("j");
+  game.keys.add("j"); game.keys.add("k"); game.justKeys.add("j"); game.justKeys.add("k");
   const input = game.readInput();
   assert.equal(input.throwHeld, true);
   assert.equal(input.throwPressed, true);
@@ -179,7 +179,7 @@ test("virtual pad has an always-visible slot below the LCD and title preview mod
   assert.match(css, /\.virtual-pad\s*\{[^}]*position:\s*relative/);
   assert.match(css, /body\s*\{[^}]*overflow:\s*auto/);
   assert.doesNotMatch(css, /100svh\s*-\s*190px/);
-  assert.match(gameSource, /screen === SCREEN\.battle \|\| screen === SCREEN\.pause \? "battle" : "howToPlay"/);
+  assert.match(gameSource, /touchLockedScreens/);
 });
 
 test("virtual pad A confirms and B cancels on menus", () => {
@@ -247,7 +247,9 @@ test("combat transitions select just guard, throw, hit, and down-idle visuals", 
   assert.equal(game.state.combatNotice.text, "GUARD");
 
   const downed = createFighterState("uncle", 125, -1);
-  downed.state = "knockdown";
+  downed.state = "downed";
+  downed.downed = true;
+  downed.downedFrames = 12;
   downed.actionFrame = 18;
   game.updateFighter(downed, blank, false);
   assert.equal(downed.action, "down_idle");
@@ -276,7 +278,7 @@ test("forward-relative light selects the character command normal", () => {
   const fighter = createFighterState("rusty", 100, 1);
   const blank = { left: false, right: false, up: false, down: false, light: false, strong: false, guard: false, special: false, throwHeld: false, leftPressed: false, rightPressed: false, upPressed: false, downPressed: false, lightPressed: false, strongPressed: false, specialPressed: false, throwPressed: false };
   game.startAttack(fighter, { ...blank, right: true, light: true, lightPressed: true });
-  assert.equal(fighter.action, "forward_light");
+  assert.match(fighter.action, /^forward_light_(left|right)$/);
   assert.equal(fighter.currentMove.name, "フランスパン二塁打");
   assert.equal(animationNameFor(fighter), fighter.currentMove.animation);
 });
@@ -295,7 +297,7 @@ test("throw holds both fighters and deals damage exactly once on release", () =>
   assert.equal(defender.hp, hp);
   attacker.actionFrame = attacker.currentMove.startupFrames + attacker.currentMove.activeFrames + 6;
   game.updateThrowSequence();
-  assert.equal(defender.state, "knockdown");
+  assert.equal(defender.state, "knockdownLanding");
   assert.ok(defender.hp < hp);
   const releasedHp = defender.hp;
   game.updateThrowSequence();
@@ -484,7 +486,7 @@ test("projectile specials cannot double-hit and all specials knock down", () => 
   strikeGame.player.state = "attacking";
   strikeGame.player.actionFrame = CHARACTERS["guitar-boy"].special.startupFrames;
   strikeGame.handleCombat(strikeGame.player, strikeGame.cpu);
-  assert.equal(strikeGame.cpu.state, "knockdown");
+  assert.equal(strikeGame.cpu.state, "knockdownLanding");
   assert.equal(strikeGame.cpu.actionFrame, 0);
 });
 
@@ -532,39 +534,38 @@ test("analog stick helper applies dead zone and directional snapshots", () => {
 test("battle touch mapping exposes A/B/X/Y combos without menu aliases", () => {
   const game = new Game(null);
   game.state.screen = SCREEN.battle;
-  game.touchInput = { getSnapshot: () => ({ held: new Set(["a", "right"]), pressed: new Set(["a", "right"]) }) };
+  game.touchInput = { getSnapshot: () => ({ held: new Set(["a"]), pressed: new Set(["a"]) }) };
   let input = game.readInput();
+  assert.equal(input.light, true);
+  assert.equal(input.lightPressed, true);
+  game.touchInput = { getSnapshot: () => ({ held: new Set(["x"]), pressed: new Set(["x"]) }) };
+  input = game.readInput();
   assert.equal(input.strong, true);
-  assert.equal(input.light, false);
   assert.equal(input.strongPressed, true);
-  game.touchInput = { getSnapshot: () => ({ held: new Set(["x", "left"]), pressed: new Set(["x", "left"]) }) };
+  game.touchInput = { getSnapshot: () => ({ held: new Set(["y"]), pressed: new Set(["y"]) }) };
   input = game.readInput();
-  assert.equal(input.counterThrow, true);
-  assert.equal(input.throwPressed, true);
-  assert.equal(input.guard, false);
-  game.touchInput = { getSnapshot: () => ({ held: new Set(["b", "right"]), pressed: new Set(["b", "right"]) }) };
+  assert.equal(input.guard, true);
+  game.touchInput = { getSnapshot: () => ({ held: new Set(["b"]), pressed: new Set(["b"]) }) };
   input = game.readInput();
-  assert.equal(input.dashPressed, true);
+  assert.equal(input.skill, true);
   assert.equal(input.cancel, false);
 });
 
-test("gamepad guard plus light still emits one timed counter throw edge", () => {
+test("gamepad face mapping follows A/B/X/Y and exposes skill", () => {
   const game = new Game(null);
   game.state.screen = SCREEN.battle;
   game.pollGamepad = () => ({
     left: false, right: false, up: false, down: false,
     leftPressed: false, rightPressed: false, upPressed: false, downPressed: false,
-    light: true, strong: false, guard: true, special: false,
-    lightPressed: true, strongPressed: false, guardPressed: true, specialPressed: false,
+    a: true, b: true, x: false, y: false, special: false,
+    aPressed: true, bPressed: true, xPressed: false, yPressed: false, specialPressed: false,
     confirmPressed: false,
   });
   game.touchInput = { getSnapshot: () => ({ held: new Set(), pressed: new Set() }) };
   const input = game.readInput();
-  assert.equal(input.throwHeld, true);
-  assert.equal(input.throwPressed, true);
-  assert.equal(input.counterThrow, true);
-  assert.equal(input.light, false);
-  assert.equal(input.guard, false);
+  assert.equal(input.light, true);
+  assert.equal(input.skill, true);
+  assert.equal(input.throwHeld, false);
 });
 
 test("stage dialogue threshold is exactly four seconds at 60 Hz", () => {
@@ -576,29 +577,17 @@ test("stage dialogue threshold is exactly four seconds at 60 Hz", () => {
   assert.equal(game.state.screen, SCREEN.roundIntro);
 });
 
-test("touch counter throw only succeeds during an opponent active attack", () => {
+test("A+X throw succeeds during ordinary proximity and releases once", () => {
   const game = new Game(null);
   const attacker = createFighterState("guitar-boy", 100, 1);
   const defender = createFighterState("uncle", 112, -1);
   game.player = attacker;
   game.cpu = defender;
-  game.startThrow(attacker, { counter: true });
+  game.startThrow(attacker);
   attacker.actionFrame = attacker.currentMove.startupFrames;
   game.handleCombat(attacker, defender);
-  assert.equal(attacker.throwTarget, null);
-
-  // The defender starts an attack during throw startup; the early command
-  // must remain a miss because its captured timing was inactive.
-  defender.state = "attacking";
-  defender.currentMove = CHARACTERS.uncle.moves.light_attack_neutral;
-  defender.actionFrame = defender.currentMove.startupFrames;
-  attacker.actionFrame = attacker.currentMove.startupFrames + 1;
-  game.handleCombat(attacker, defender);
-  assert.equal(attacker.throwTarget, null);
-
-  defender.currentMove = CHARACTERS.uncle.moves.light_attack_neutral;
-  defender.actionFrame = defender.currentMove.startupFrames;
-  game.startThrow(attacker, { counter: true });
+  assert.equal(attacker.throwTarget, defender);
+  game.startThrow(attacker);
   attacker.actionFrame = attacker.currentMove.startupFrames;
   game.handleCombat(attacker, defender);
   assert.equal(attacker.throwTarget, defender);

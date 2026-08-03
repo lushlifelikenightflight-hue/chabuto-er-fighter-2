@@ -28,6 +28,103 @@ export const RUNTIME_ANIMATION_ALIASES = Object.freeze({
   throw_hit: "throw_success",
 });
 
+const EFFECT_ASSET_DEFINITIONS = Object.freeze({
+  "attack-light": ["assets/effects/attack-light", "attack", 5, false],
+  "attack-heavy": ["assets/effects/attack-heavy", "attack", 9, false],
+  "attack-weapon": ["assets/effects/attack-weapon", "attack", 10, false],
+  "attack-slime": ["assets/effects/attack-slime", "attack", 8, false],
+  "hit-spark": ["assets/effects/hit-spark", "hit", 7, false],
+  "guard-spark": ["assets/effects/guard-spark", "guard", 6, false],
+  "just-guard-ring": ["assets/effects/just-guard-ring", "guard", 10, false],
+  "throw-impact": ["assets/effects/throw-impact", "throw", 14, false],
+  "down-impact": ["assets/effects/down-impact", "down", 16, false],
+  "skill-copy": ["assets/effects/skills/guitar-boy/skill-copy", "skill", 20, false],
+  "skill-slime-shot": ["assets/effects/skills/green-slime/skill-slime-shot", "skill", 18, false],
+  "skill-mirror": ["assets/effects/skills/bob-girl/skill-mirror", "skill", 12, false],
+  "skill-tackle": ["assets/effects/skills/uncle/skill-tackle", "skill", 14, false],
+  "skill-ramen": ["assets/effects/skills/kazushige/skill-ramen", "skill", 20, false],
+  "skill-drum-beat": ["assets/effects/skills/norio/skill-drum-beat", "skill", 12, false],
+  "skill-flash": ["assets/effects/skills/toko/skill-flash", "skill", 9, false],
+});
+
+function effectFramePaths(basePath, id) {
+  return Array.from({ length: 4 }, (_, index) => `${basePath}/${id}-${index + 1}.png`);
+}
+
+function effectManifestEntry(id, [basePath, category, frameDuration, loop]) {
+  return Object.freeze({
+    id,
+    category,
+    metadata: `${basePath}/${id}.json`,
+    frames: Object.freeze(effectFramePaths(basePath, id)),
+    frameDuration,
+    loop,
+    cellWidth: 256,
+    cellHeight: 256,
+    origin: Object.freeze({ x: 128, y: 128 }),
+    groundPoint: Object.freeze({ x: 128, y: 128 }),
+  });
+}
+
+const DOG_SUMMON_MANIFEST = Object.freeze({
+  id: "skill-dog-summon",
+  category: "skill",
+  metadata: "assets/effects/skills/rusty/dog-drop/skill-dog-summon.json",
+  frames: Object.freeze([
+    "assets/effects/skills/rusty/dog-drop/dog-marker-1.png",
+    "assets/effects/skills/rusty/dog-drop/dog-marker-2.png",
+    "assets/effects/skills/rusty/dog-drop/dog-marker-3.png",
+    "assets/effects/skills/rusty/dog-drop/dog-marker-4.png",
+    "assets/effects/skills/rusty/dog-drop/dog-fall-1.png",
+    "assets/effects/skills/rusty/dog-drop/dog-fall-2.png",
+    "assets/effects/skills/rusty/dog-drop/dog-fall-3.png",
+    "assets/effects/skills/rusty/dog-drop/dog-fall-4.png",
+    "assets/effects/skills/rusty/dog-drop/dog-impact-1.png",
+    "assets/effects/skills/rusty/dog-drop/dog-impact-2.png",
+    "assets/effects/skills/rusty/dog-drop/dog-impact-3.png",
+    "assets/effects/skills/rusty/dog-drop/dog-impact-4.png",
+  ]),
+  frameDuration: 24,
+  loop: false,
+  cellWidth: 256,
+  cellHeight: 256,
+  origin: Object.freeze({ x: 128, y: 128 }),
+  groundPoint: Object.freeze({ x: 128, y: 128 }),
+});
+
+/** Runtime-ready, generated VFX assets. Paths are project-relative and stable. */
+export const EFFECT_ASSET_MANIFEST = Object.freeze({
+  ...Object.fromEntries(Object.entries(EFFECT_ASSET_DEFINITIONS).map(([id, definition]) => [id, effectManifestEntry(id, definition)])),
+  "skill-dog-summon": DOG_SUMMON_MANIFEST,
+});
+
+/** Semantic aliases reuse the numbered frames above without duplicating files. */
+export const EFFECT_ASSET_ALIASES = Object.freeze({
+  combo: "attack-light",
+  comboLight: "attack-light",
+  comboHeavy: "attack-heavy",
+  combo_light: "attack-light",
+  combo_heavy: "attack-heavy",
+  down: "down-impact",
+  wakeup: "down-impact",
+  guardDash: "attack-weapon",
+  guard_dash: "attack-weapon",
+  justGuardRecoil: "just-guard-ring",
+  just_guard_recoil: "just-guard-ring",
+  skillStartup: "skill-copy",
+  skillCharging: "skill-copy",
+  skillActive: "skill-slime-shot",
+  skillRecovery: "skill-flash",
+  skillUnavailable: "hit-spark",
+});
+
+export const REQUIRED_EFFECT_ASSET_IDS = Object.freeze(Object.keys(EFFECT_ASSET_MANIFEST));
+
+export function getEffectAssetManifest(effectId) {
+  const canonicalId = EFFECT_ASSET_ALIASES[effectId] || effectId;
+  return EFFECT_ASSET_MANIFEST[canonicalId] || null;
+}
+
 const GROUPS = Object.freeze({
   idle: ["idle", 1, 4, 10, true],
   walk_forward: ["movement", 1, 3, 5, true],

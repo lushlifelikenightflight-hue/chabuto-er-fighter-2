@@ -1,0 +1,38 @@
+{
+  "id": "skill-slime-shot",
+  "category": "skill",
+  "frames": [
+    "assets/effects/skills/green-slime/skill-slime-shot/skill-slime-shot-1.png",
+    "assets/effects/skills/green-slime/skill-slime-shot/skill-slime-shot-2.png",
+    "assets/effects/skills/green-slime/skill-slime-shot/skill-slime-shot-3.png",
+    "assets/effects/skills/green-slime/skill-slime-shot/skill-slime-shot-4.png"
+  ],
+  "frameDuration": 18,
+  "loop": false,
+  "cellWidth": 256,
+  "cellHeight": 256,
+  "origin": {
+    "x": 128,
+    "y": 128
+  },
+  "groundPoint": {
+    "x": 128,
+    "y": 128
+  },
+  "qc": {
+    "strict": true,
+    "frameCount": 4,
+    "cellSize": [
+      256,
+      256
+    ],
+    "edgeTouchFrames": [],
+    "sourceEdgeTouchFrames": [],
+    "pasteClampedFrames": [],
+    "emptyFrames": [],
+    "outputSubjectHeightMean": 102.25,
+    "bodyScaleCv": 0.10800336297755146,
+    "anchorXStd": 0.01575121163166396,
+    "anchorYStd": 0.020707325129955892
+  }
+}

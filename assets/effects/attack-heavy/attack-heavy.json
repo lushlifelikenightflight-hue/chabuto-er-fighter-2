@@ -1,0 +1,38 @@
+{
+  "id": "attack-heavy",
+  "category": "attack",
+  "frames": [
+    "assets/effects/attack-heavy/attack-heavy-1.png",
+    "assets/effects/attack-heavy/attack-heavy-2.png",
+    "assets/effects/attack-heavy/attack-heavy-3.png",
+    "assets/effects/attack-heavy/attack-heavy-4.png"
+  ],
+  "frameDuration": 9,
+  "loop": false,
+  "cellWidth": 256,
+  "cellHeight": 256,
+  "origin": {
+    "x": 128,
+    "y": 128
+  },
+  "groundPoint": {
+    "x": 128,
+    "y": 128
+  },
+  "qc": {
+    "strict": true,
+    "frameCount": 4,
+    "cellSize": [
+      256,
+      256
+    ],
+    "edgeTouchFrames": [],
+    "sourceEdgeTouchFrames": [],
+    "pasteClampedFrames": [],
+    "emptyFrames": [],
+    "outputSubjectHeightMean": 141.75,
+    "bodyScaleCv": 0.3365931170988563,
+    "anchorXStd": 0.03583827229641199,
+    "anchorYStd": 0.0751352758296745
+  }
+}

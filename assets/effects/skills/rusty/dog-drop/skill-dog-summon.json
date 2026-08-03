@@ -1,0 +1,33 @@
+{
+  "id": "skill-dog-summon",
+  "category": "skill",
+  "frames": [
+    "assets/effects/skills/rusty/dog-drop/dog-marker-1.png",
+    "assets/effects/skills/rusty/dog-drop/dog-marker-2.png",
+    "assets/effects/skills/rusty/dog-drop/dog-marker-3.png",
+    "assets/effects/skills/rusty/dog-drop/dog-marker-4.png",
+    "assets/effects/skills/rusty/dog-drop/dog-fall-1.png",
+    "assets/effects/skills/rusty/dog-drop/dog-fall-2.png",
+    "assets/effects/skills/rusty/dog-drop/dog-fall-3.png",
+    "assets/effects/skills/rusty/dog-drop/dog-fall-4.png",
+    "assets/effects/skills/rusty/dog-drop/dog-impact-1.png",
+    "assets/effects/skills/rusty/dog-drop/dog-impact-2.png",
+    "assets/effects/skills/rusty/dog-drop/dog-impact-3.png",
+    "assets/effects/skills/rusty/dog-drop/dog-impact-4.png"
+  ],
+  "frameDuration": 24,
+  "loop": false,
+  "cellWidth": 256,
+  "cellHeight": 256,
+  "origin": { "x": 128, "y": 128 },
+  "groundPoint": { "x": 128, "y": 128 },
+  "qc": {
+    "strict": true,
+    "frameCount": 12,
+    "cellSize": [256, 256],
+    "edgeTouchFrames": [],
+    "sourceEdgeTouchFrames": [],
+    "pasteClampedFrames": [],
+    "emptyFrames": []
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "id": "just-guard-ring",
+  "category": "guard",
+  "frames": [
+    "assets/effects/just-guard-ring/just-guard-ring-1.png",
+    "assets/effects/just-guard-ring/just-guard-ring-2.png",
+    "assets/effects/just-guard-ring/just-guard-ring-3.png",
+    "assets/effects/just-guard-ring/just-guard-ring-4.png"
+  ],
+  "frameDuration": 10,
+  "loop": false,
+  "cellWidth": 256,
+  "cellHeight": 256,
+  "origin": {
+    "x": 128,
+    "y": 128
+  },
+  "groundPoint": {
+    "x": 128,
+    "y": 128
+  },
+  "qc": {
+    "strict": true,
+    "frameCount": 4,
+    "cellSize": [
+      256,
+      256
+    ],
+    "edgeTouchFrames": [],
+    "sourceEdgeTouchFrames": [],
+    "pasteClampedFrames": [],
+    "emptyFrames": [],
+    "outputSubjectHeightMean": 173.75,
+    "bodyScaleCv": 0.3504400337529503,
+    "anchorXStd": 0.01768318197010472,
+    "anchorYStd": 0.010397387448995158
+  }
+}

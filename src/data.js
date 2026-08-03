@@ -59,6 +59,58 @@ const SPECIAL_TEXT = Object.freeze({
 
 function box(x, y, w, h) { return { x, y, w, h }; }
 
+/**
+ * Normalize authored combat data without coupling the visual effect to the
+ * collision geometry.  Older callers still receive `hitbox`, while the
+ * explicit fields are the canonical values for new systems.
+ */
+function normalizeMove(move, archetype, index = 0) {
+  const kind = move.kind || "normal";
+  const id = move.id || "move";
+  const isSpecial = kind === "special" || id === "special";
+  const isLight = id.includes("light") && !id.includes("strong");
+  const isStrong = id.includes("strong") || id.includes("forward_light") || isSpecial;
+  const isAir = id.includes("air");
+  const hit = move.hitbox || box(0, 0, 0, 0);
+  const legacyWidth = Number.isFinite(hit.w) ? hit.w : 0;
+  const legacyHeight = Number.isFinite(hit.h) ? hit.h : 0;
+  const widthBias = isSpecial ? (id === "special" ? 1.08 + (index % 3) * 0.03 : 1.06) :
+    isStrong ? (id.includes("forward") ? 1.1 : 1.08) : (isAir ? 1.1 : 1.06);
+  const hitboxWidth = Math.max(1, Math.round((move.hitboxWidth ?? legacyWidth) * widthBias));
+  const heightBias = isSpecial ? 1.06 : isAir ? 1.04 : isStrong ? 1.03 : 1.02;
+  const hitboxHeight = Math.max(1, Math.round((move.hitboxHeight ?? legacyHeight) * heightBias));
+  const hitboxOffsetX = Number.isFinite(move.hitboxOffsetX) ? move.hitboxOffsetX : (Number.isFinite(hit.x) ? hit.x : 0);
+  const hitboxOffsetY = Number.isFinite(move.hitboxOffsetY) ? move.hitboxOffsetY : (Number.isFinite(hit.y) ? hit.y : 0);
+  const knockdownValue = Number.isFinite(move.knockdownValue) ? move.knockdownValue :
+    (isSpecial ? 100 : id.includes("strong_attack_air") ? 34 : id.includes("strong_attack") ? 30 : id.includes("forward_light") ? 18 : isLight ? 8 : 14);
+  const causesKnockdown = move.causesKnockdown ?? (isSpecial || id.includes("strong_attack_neutral") || id.includes("strong_attack_air"));
+  const hardKnockdown = move.hardKnockdown ?? isSpecial;
+  const effectId = move.effectId || (isSpecial ? `special-${archetype.special}` : id.includes("forward_light") ? `attack-kick-${archetype.special}` : id.includes("strong") ? `attack-heavy-${archetype.special}` : id.includes("light") ? `attack-light-${archetype.special}` : `attack-${kind}-${archetype.special}`);
+  const effectScale = Number.isFinite(move.effectScale) ? move.effectScale :
+    (isSpecial ? 1.5 + (index % 3) * 0.08 : isStrong ? 1.15 + (index % 2) * 0.06 : isLight ? 0.9 + (index % 3) * 0.04 : 1);
+  const effectOffsetX = Number.isFinite(move.effectOffsetX) ? move.effectOffsetX :
+    Math.round(hitboxOffsetX + hitboxWidth * (isSpecial ? 0.34 : isStrong ? 0.28 : 0.18));
+  const effectOffsetY = Number.isFinite(move.effectOffsetY) ? move.effectOffsetY :
+    Math.round(hitboxOffsetY + hitboxHeight * (isAir ? 0.24 : 0.18));
+  return {
+    ...move,
+    knockdownValue,
+    causesKnockdown: Boolean(causesKnockdown),
+    hardKnockdown: Boolean(hardKnockdown),
+    effectId,
+    effectScale,
+    effectOffsetX,
+    effectOffsetY,
+    hitboxWidth,
+    hitboxHeight,
+    hitboxOffsetX,
+    hitboxOffsetY,
+    // Keep this legacy alias synchronized, but as a distinct object so
+    // changing VFX descriptors never mutates hit detection data.
+    hitbox: box(hitboxOffsetX, hitboxOffsetY, hitboxWidth, hitboxHeight),
+  };
+}
+
 function normalMove(name, archetype, overrides = {}) {
   const isLight = name.includes("light");
   const isAir = name.includes("air");
@@ -99,7 +151,7 @@ function makeSpecial(archetype, id, index) {
     commandThrow: { hitbox: box(14, 73, 42, 30), startupFrames: 22, activeFrames: 5, recoveryFrames: 36, damage: 390, movement: 2.4 },
     delayed: { hitbox: box(10, 102, 118, 24), startupFrames: 30, activeFrames: 12, recoveryFrames: 26, damage: 325, movement: 0 },
   }[archetype.special];
-  return {
+  return normalizeMove({
     id: "special",
     name: SPECIAL_TEXT[archetype.special],
     kind: "special",
@@ -122,7 +174,7 @@ function makeSpecial(archetype, id, index) {
     meterGainOnHit: 0,
     meterGainOnBlock: 0,
     scoreValue: 2000,
-  };
+  }, archetype, index);
 }
 
 function makeMoves(archetype, index) {
@@ -161,8 +213,9 @@ function makeMoves(archetype, index) {
     }),
     special: makeSpecial(archetype, "special", index),
   };
+  const normalized = Object.fromEntries(Object.entries(moves).map(([id, move]) => [id, move.kind === "special" ? move : normalizeMove(move, archetype, index)]));
   // Friendly aliases keep the data API ergonomic for tools and tests.
-  return { ...moves, light: moves.light_attack_neutral, strong: moves.strong_attack_neutral };
+  return { ...normalized, light: normalized.light_attack_neutral, strong: normalized.strong_attack_neutral };
 }
 
 const CHARACTER_ROWS = [
@@ -176,8 +229,23 @@ const CHARACTER_ROWS = [
   ["toko", "トコ", "throw"],
 ];
 
+// Explicit combat-facing stats.  The legacy aliases below remain the source
+// used by the existing renderer/AI, while these fields provide stable values
+// for the upgraded combat systems.
+const COMBAT_STATS = Object.freeze({
+  "guitar-boy": { maxHp: 1000, walkSpeed: 2.2, dashSpeed: 5.2, backstepDistance: 42, jumpPower: 7.9, airControl: 1, lightDamage: 48, heavyDamage: 106, attackStartupModifier: 1, attackRecoveryModifier: 1, comboLimit: 6, hitstunScaling: 1, guardStun: 10, throwDamage: 150, specialGainRate: 1, skillChargeRate: 1, weight: 1, knockdownResistance: 1 },
+  "green-slime": { maxHp: 940, walkSpeed: 2.42, dashSpeed: 5.8, backstepDistance: 40, jumpPower: 8.2, airControl: 1.16, lightDamage: 43, heavyDamage: 97, attackStartupModifier: 0.94, attackRecoveryModifier: 0.94, comboLimit: 7, hitstunScaling: 0.92, guardStun: 9, throwDamage: 168, specialGainRate: 1.12, skillChargeRate: 1.2, weight: 0.92, knockdownResistance: 0.9 },
+  "bob-girl": { maxHp: 880, walkSpeed: 2.8, dashSpeed: 6.5, backstepDistance: 38, jumpPower: 8.4, airControl: 1.24, lightDamage: 40, heavyDamage: 91, attackStartupModifier: 0.86, attackRecoveryModifier: 0.9, comboLimit: 8, hitstunScaling: 0.9, guardStun: 8, throwDamage: 132, specialGainRate: 1.18, skillChargeRate: 1.25, weight: 0.82, knockdownResistance: 0.84 },
+  uncle: { maxHp: 1180, walkSpeed: 1.9, dashSpeed: 4.5, backstepDistance: 34, jumpPower: 7.4, airControl: 0.88, lightDamage: 50, heavyDamage: 114, attackStartupModifier: 1.1, attackRecoveryModifier: 1.12, comboLimit: 4, hitstunScaling: 1.12, guardStun: 13, throwDamage: 153, specialGainRate: 0.84, skillChargeRate: 0.86, weight: 1.24, knockdownResistance: 1.2 },
+  rusty: { maxHp: 1120, walkSpeed: 1.7, dashSpeed: 4.1, backstepDistance: 32, jumpPower: 7.1, airControl: 0.78, lightDamage: 58, heavyDamage: 136, attackStartupModifier: 1.18, attackRecoveryModifier: 1.24, comboLimit: 3, hitstunScaling: 1.2, guardStun: 14, throwDamage: 162, specialGainRate: 0.8, skillChargeRate: 0.8, weight: 1.3, knockdownResistance: 1.26 },
+  kazushige: { maxHp: 960, walkSpeed: 2, dashSpeed: 4.8, backstepDistance: 36, jumpPower: 7.6, airControl: 0.94, lightDamage: 47, heavyDamage: 103, attackStartupModifier: 1.03, attackRecoveryModifier: 1.04, comboLimit: 5, hitstunScaling: 1.04, guardStun: 11, throwDamage: 138, specialGainRate: 1.04, skillChargeRate: 1, weight: 1.05, knockdownResistance: 1.06 },
+  norio: { maxHp: 900, walkSpeed: 2.35, dashSpeed: 5.7, backstepDistance: 40, jumpPower: 9.5, airControl: 1.42, lightDamage: 44, heavyDamage: 98, attackStartupModifier: 0.94, attackRecoveryModifier: 0.96, comboLimit: 6, hitstunScaling: 0.95, guardStun: 9, throwDamage: 135, specialGainRate: 1.1, skillChargeRate: 1.15, weight: 0.9, knockdownResistance: 0.9 },
+  toko: { maxHp: 1040, walkSpeed: 2.05, dashSpeed: 5, backstepDistance: 35, jumpPower: 7.6, airControl: 0.98, lightDamage: 46, heavyDamage: 100, attackStartupModifier: 1, attackRecoveryModifier: 1, comboLimit: 5, hitstunScaling: 1, guardStun: 10, throwDamage: 225, specialGainRate: 1, skillChargeRate: 1, weight: 1.1, knockdownResistance: 1.06 },
+});
+
 function createCharacter([id, name, archetypeName], index) {
   const archetype = ARCHETYPES[archetypeName];
+  const combat = COMBAT_STATS[id] || COMBAT_STATS["guitar-boy"];
   const palette1 = [archetype.tint, "#f5f1d6", "#1d2433", "#d94c54"];
   const palette2 = ["#f4f4f4", archetype.tint, "#16121d", "#47a6d4"];
   const fallbackAnimation = Object.fromEntries(ANIMATION_CLIPS.map((clip) => [clip, {
@@ -203,6 +271,8 @@ function createCharacter([id, name, archetypeName], index) {
     }),
     palettes: Object.freeze({ color1: palette1, color2: palette2 }),
     stats: Object.freeze({
+      // Legacy aliases (hp/speed/jumpVelocity/etc.) intentionally remain
+      // stable for the current renderer and AI.
       hp: archetype.hp,
       speed: archetype.speed,
       jumpVelocity: archetype.jump,
@@ -212,6 +282,7 @@ function createCharacter([id, name, archetypeName], index) {
       airControl: archetype.air,
       throwPower: archetype.throw,
       meterGain: archetype.meter,
+      ...combat,
     }),
     moves: Object.freeze(makeMoves(archetype, index)),
     special: Object.freeze(makeSpecial(archetype, id, index)),

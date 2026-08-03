@@ -1,6 +1,7 @@
 /** Pure simulation helpers. No DOM, timing, or browser globals live here. */
 
 import { CHARACTERS, DIFFICULTIES, MAX_HP, MAX_METER, STAGE_BOUNDS, getOpponentId } from "./data.js";
+import { getSkillConfig } from "./skills.js";
 
 export const FIXED_HZ = 60;
 export const FIXED_DT = 1 / FIXED_HZ;
@@ -20,7 +21,149 @@ export const FIXED_UPDATE_ORDER = Object.freeze([
 
 export const BOX_TYPES = Object.freeze(["pushbox", "hurtbox", "hitbox", "throwbox", "projectileHitbox", "stageBounds"]);
 
+export const DOWN_STATES = Object.freeze([
+  "knockback",
+  "knockdownLanding",
+  "downed",
+  "groundHit",
+  "knockdown",
+  "wakeup",
+  "wakeupInvulnerable",
+]);
+
+export const DOWN_CONFIG = Object.freeze({
+  threshold: 100,
+  landingFrames: 10,
+  followupWindowFrames: 45,
+  autoWakeupStartFrames: 60,
+  wakeupFrames: 20,
+  wakeupInvulnerableFrames: 12,
+  hardWakeupFrames: 30,
+});
+
+export const KNOCKDOWN_THRESHOLD = DOWN_CONFIG.threshold;
+export const DOWN_THRESHOLD = KNOCKDOWN_THRESHOLD;
+export const KNOCKDOWN_LANDING_FRAMES = DOWN_CONFIG.landingFrames;
+export const DOWN_FOLLOWUP_WINDOW_FRAMES = DOWN_CONFIG.followupWindowFrames;
+export const WAKEUP_FRAMES = DOWN_CONFIG.wakeupFrames;
+export const HARD_WAKEUP_FRAMES = DOWN_CONFIG.hardWakeupFrames;
+export const WAKEUP_INVULNERABLE_FRAMES = DOWN_CONFIG.wakeupInvulnerableFrames;
+
+export const JUST_GUARD_CONFIG = Object.freeze({
+  windowFrames: 4,
+  attackerRecoilFrames: 12,
+  attackerRecoilRange: Object.freeze([10, 14]),
+  defenderRecoveryFrames: 3,
+  defenderRecoveryRange: Object.freeze([2, 4]),
+  hitstopFrames: 4,
+  hitstopRange: Object.freeze([3, 5]),
+  damage: 0,
+  meterGain: 10,
+});
+
+export const JUST_GUARD_WINDOW_FRAMES = JUST_GUARD_CONFIG.windowFrames;
+export const JUST_GUARD_RECOIL_FRAMES = JUST_GUARD_CONFIG.attackerRecoilFrames;
+export const JUST_GUARD_HITSTOP_FRAMES = JUST_GUARD_CONFIG.hitstopFrames;
+
+export const COMBO_DEFAULT_LIMIT = 6;
+export const COMBO_PREINPUT_FRAMES = 8;
+export const COMBO_HIT_WINDOW_FRAMES = 70;
+export const COMBO_SCALING = Object.freeze({
+  minimum: 0.45,
+  perHit: 0.08,
+  hitstunPerHit: 0.045,
+  knockbackPerHit: 0.06,
+});
+
 export function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+
+export function isDownState(stateOrFighter) {
+  const state = typeof stateOrFighter === "string" ? stateOrFighter : stateOrFighter?.state;
+  return DOWN_STATES.includes(state) || stateOrFighter?.downed === true;
+}
+
+export function getKnockdownRecoveryFrames(hardKnockdown = false) {
+  return (hardKnockdown ? DOWN_CONFIG.hardWakeupFrames : DOWN_CONFIG.wakeupFrames) + DOWN_CONFIG.landingFrames;
+}
+
+export const getDownRecoveryFrames = getKnockdownRecoveryFrames;
+
+export function knockdownValueAfter(currentValue = 0, move = {}, resistance = 1) {
+  const current = Math.max(0, Number(currentValue) || 0);
+  const value = Math.max(0, Number(move.knockdownValue) || 0);
+  const multiplier = Math.max(0.1, Number(resistance) || 1);
+  return current + value / multiplier;
+}
+
+export function isKnockdownReached(value = 0, threshold = KNOCKDOWN_THRESHOLD) {
+  return (Number(value) || 0) >= (Number(threshold) || KNOCKDOWN_THRESHOLD);
+}
+
+export function shouldKnockdown(move = {}, accumulatedValue = 0, threshold = KNOCKDOWN_THRESHOLD) {
+  return Boolean(move.causesKnockdown || move.hardKnockdown || isKnockdownReached(accumulatedValue, threshold));
+}
+
+export const knockdownTriggered = shouldKnockdown;
+
+export function canDownFollowup(fighter = {}, frame = null) {
+  if (!fighter || !isDownState(fighter)) return false;
+  if (fighter.followupUsed || fighter.downFollowupUsed || fighter.followupCount >= 1) return false;
+  if (["wakeup", "wakeupInvulnerable"].includes(fighter.state) || fighter.wakeupTimer > 0) return false;
+  const timer = Number(fighter.downedFrames ?? fighter.downTimer ?? 0);
+  const window = Number(fighter.followupWindowFrames ?? DOWN_CONFIG.followupWindowFrames);
+  if (timer > window) return false;
+  if (frame != null && Number.isFinite(fighter.downStartedFrame) && frame - fighter.downStartedFrame > window) return false;
+  return true;
+}
+
+export const canFollowup = canDownFollowup;
+
+export function isJustGuardEligible(move = {}) {
+  if (!move || move.unblockable === true || move.justGuardable === false) return false;
+  if (["throw", "commandThrow"].includes(move.kind) || move.isThrow === true || move.counterOnly === true) return false;
+  return true;
+}
+
+export const justGuardEligible = isJustGuardEligible;
+
+export function justGuardRecoilFor(move = {}) {
+  if (!isJustGuardEligible(move)) return null;
+  return {
+    attackerFrames: JUST_GUARD_CONFIG.attackerRecoilFrames,
+    defenderFrames: JUST_GUARD_CONFIG.defenderRecoveryFrames,
+    hitstopFrames: JUST_GUARD_CONFIG.hitstopFrames,
+    damage: JUST_GUARD_CONFIG.damage,
+    meterGain: JUST_GUARD_CONFIG.meterGain,
+    effectId: "just-guard-ring",
+  };
+}
+
+export const getJustGuardRecoil = justGuardRecoilFor;
+
+export function justGuardWithinWindow(attackFrame = 0, guardPressFrame = 0, window = JUST_GUARD_WINDOW_FRAMES) {
+  return Math.abs((Number(attackFrame) || 0) - (Number(guardPressFrame) || 0)) <= Math.max(0, Number(window) || 0);
+}
+
+export function getComboLimit(characterOrStats, fallback = COMBO_DEFAULT_LIMIT) {
+  const stats = characterOrStats?.stats || characterOrStats || {};
+  const value = Number(stats.comboLimit);
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
+}
+
+export function comboDamageScale(comboIndex = 0, characterOrStats = {}) {
+  const stats = characterOrStats?.stats || characterOrStats || {};
+  const index = Math.max(0, Number(comboIndex) || 0);
+  const base = Number.isFinite(stats.hitstunScaling) ? stats.hitstunScaling : 1;
+  return clamp(base * (1 - index * COMBO_SCALING.perHit), COMBO_SCALING.minimum, 1.25);
+}
+
+export const getComboScaling = comboDamageScale;
+
+export function canAdvanceCombo(fighter = {}, nextIndex = (fighter.combo || 0) + 1) {
+  const limit = getComboLimit(fighter);
+  const timer = Number(fighter.comboTimer) || 0;
+  return fighter.hp > 0 && !isDownState(fighter) && nextIndex >= 1 && nextIndex <= limit && timer <= COMBO_HIT_WINDOW_FRAMES;
+}
 
 export function makeBox(x = 0, y = 0, w = 0, h = 0, type = "hurtbox", id = "") {
   return { x, y, w, h, type, id };
@@ -54,6 +197,15 @@ export function getHurtboxProfile(profile = "standing") {
   return (HURTBOX_PROFILES[profile] || HURTBOX_PROFILES.standing).map((box) => ({ ...box }));
 }
 
+export function getMoveHitbox(move) {
+  if (!move) return null;
+  if (move.hitbox) return { ...move.hitbox };
+  const width = Number(move.hitboxWidth) || 0;
+  const height = Number(move.hitboxHeight) || 0;
+  if (width <= 0 || height <= 0) return null;
+  return makeBox(Number(move.hitboxOffsetX) || 0, Number(move.hitboxOffsetY) || 0, width, height, "hitbox", move.id || "");
+}
+
 export function getFighterBoxes(fighter, move = null) {
   const originX = fighter.x;
   const originY = fighter.y;
@@ -61,7 +213,7 @@ export function getFighterBoxes(fighter, move = null) {
   const hurtboxes = getHurtboxProfile(profile).map((box) => transformBox(box, fighter.facing, originX, originY));
   const pushboxLocal = makeBox(-24, 46, 48, 116, "pushbox", fighter.id);
   const pushbox = transformBox(pushboxLocal, fighter.facing, originX, originY);
-  const hitbox = move?.hitbox ? transformBox(move.hitbox, fighter.facing, originX, originY) : null;
+  const hitbox = getMoveHitbox(move) ? transformBox(getMoveHitbox(move), fighter.facing, originX, originY) : null;
   const throwbox = transformBox(makeBox(0, 73, 43, 36, "throwbox", fighter.id), fighter.facing, originX, originY);
   return { pushbox, hurtboxes, hitbox, throwbox };
 }
@@ -138,6 +290,21 @@ export function facingFor(aX, bX, fallback = 1) { return aX === bX ? fallback : 
 
 export function createFighterState(id, x, facing = 1) {
   const character = CHARACTERS[id] || CHARACTERS["guitar-boy"];
+  const stats = character.stats || {};
+  const skillConfig = getSkillConfig(character.id);
+  const initialSkillGauge = clamp(Number(skillConfig?.initialGauge) || 0, 0, Number(skillConfig?.chargeMax) || 100);
+  const initialAmmo = Math.max(0, Number(skillConfig?.initialAmmo) || 0);
+  const copyChargesMax = Math.max(0, Number(skillConfig?.copyCharges || skillConfig?.copiedSkillUses) || 0);
+  const skillState = {
+    phase: "skillUnavailable",
+    gauge: initialSkillGauge,
+    gaugeMax: Number(skillConfig?.chargeMax) || 100,
+    ammo: initialAmmo,
+    charging: false,
+    interrupted: false,
+    interruptionReason: null,
+    recoveryFrames: 0,
+  };
   return {
     id: character.id,
     x,
@@ -145,8 +312,8 @@ export function createFighterState(id, x, facing = 1) {
     vx: 0,
     vy: 0,
     facing,
-    hp: character.stats.hp,
-    maxHp: character.stats.hp,
+    hp: stats.hp,
+    maxHp: stats.hp,
     meter: 0,
     state: "idle",
     action: "idle",
@@ -177,6 +344,85 @@ export function createFighterState(id, x, facing = 1) {
     throwTarget: null,
     thrownBy: null,
     throwReleased: false,
+    // Down/landing/follow-up contract.  Existing `knockdown` state names are
+    // intentionally accepted by helpers and the browser loop.
+    downValue: 0,
+    knockdownValue: 0,
+    downState: "standing",
+    downed: false,
+    downedFrames: 0,
+    downTimer: 0,
+    downStartedFrame: -1,
+    hardKnockdown: false,
+    downFollowupUsed: false,
+    followupUsed: false,
+    followupCount: 0,
+    followupMove: null,
+    followupAvailable: false,
+    followupWindowFrames: DOWN_CONFIG.followupWindowFrames,
+    down: { value: 0, state: "standing", active: false, hard: false, frames: 0 },
+    // Wakeup has a separate phase/timer so invulnerability can be consumed
+    // without overloading the generic `invulnerableFrames` field.
+    wakeupState: "idle",
+    wakeupTimer: 0,
+    wakeupStartedFrame: -1,
+    wakeupInvulnerableFrames: 0,
+    wakeupInvulnerable: false,
+    wakeup: { state: "idle", timer: 0, invulnerableFrames: 0 },
+    // Combo bookkeeping is kept alongside the legacy combo/comboTimer pair.
+    comboHits: 0,
+    comboLimit: getComboLimit(stats),
+    comboScale: 1,
+    comboWindowFrames: COMBO_HIT_WINDOW_FRAMES,
+    comboStarter: null,
+    comboLastMove: null,
+    comboPreInputFrames: COMBO_PREINPUT_FRAMES,
+    comboState: { hits: 0, limit: getComboLimit(stats), scale: 1, timer: 0, starter: null, lastMove: null },
+    // Guard dash is an authored locomotion action with its own cooldown and
+    // opening protection window.
+    guardDash: { active: false, frames: 0, cooldown: 0, invulnerableFrames: 0 },
+    guardDashState: "idle",
+    guardDashActive: false,
+    guardDashFrames: 0,
+    guardDashCooldown: 0,
+    guardDashInvulnerableFrames: 0,
+    // Hitstop aliases allow the renderer and combat resolver to use whichever
+    // naming convention their existing code expects.
+    hitstopFrames: 0,
+    hitstopRemaining: 0,
+    hitstop: { frames: 0, remaining: 0 },
+    // Character skill resource and phase state.
+    skill: skillState,
+    skillPhase: skillState.phase,
+    skillState: skillState.phase,
+    skillGauge: initialSkillGauge,
+    skillGaugeMax: skillState.gaugeMax,
+    skillCharging: false,
+    skillActive: false,
+    skillInterrupted: false,
+    skillInterruptionReason: null,
+    skillRecoveryFrames: 0,
+    skillAmmo: initialAmmo,
+    ammo: initialAmmo,
+    skillCharges: 0,
+    // Guitar-boy's copied skill starts empty and can hold two uses after a
+    // full charge; other fighters expose the same fields for a stable schema.
+    copyGauge: 0,
+    copyCharges: 0,
+    copyChargesMax,
+    copiedSkillId: null,
+    copiedSkillUses: 0,
+    copy: { gauge: 0, charges: 0, maxCharges: copyChargesMax, skillId: null, uses: 0 },
+    // `meter` remains the existing special-gauge alias.  The object form and
+    // roundCarry snapshot are independent mutable records for integrations.
+    specialGauge: 0,
+    gauge: { special: 0, skill: initialSkillGauge },
+    roundCarry: { meter: 0, specialGauge: 0, skillGauge: initialSkillGauge, ammo: initialAmmo, copyCharges: 0 },
+    roundCarryState: { meter: 0, specialGauge: 0, skillGauge: initialSkillGauge, ammo: initialAmmo, copyCharges: 0 },
+    carryMeter: 0,
+    carrySkillGauge: initialSkillGauge,
+    carryAmmo: initialAmmo,
+    carryCopyCharges: 0,
   };
 }
 
@@ -298,6 +544,10 @@ export function fixedStep(accumulator, elapsedSeconds, step = FIXED_DT, maxSteps
 export function aiPlan({ self, opponent, difficulty = "normal", nowFrame = 0, random = Math.random }) {
   const level = DIFFICULTIES[difficulty] || DIFFICULTIES.normal;
   const memory = self.aiMemory || (self.aiMemory = { thinkAt: 0, planned: null, previousState: "idle" });
+  if (memory.planned?.action === "skill" && !memory.planned.released) {
+    if (nowFrame < memory.planned.releaseAt) return memory.planned;
+    if (nowFrame === memory.planned.releaseAt) { memory.planned = { ...memory.planned, released: true }; return memory.planned; }
+  }
   if (nowFrame < memory.thinkAt) return memory.planned;
   memory.thinkAt = nowFrame + level.reactionFrames;
   const distance = Math.abs(self.x - opponent.x);
@@ -308,8 +558,17 @@ export function aiPlan({ self, opponent, difficulty = "normal", nowFrame = 0, ra
   else if (opponent.state === "crouching" && random() < level.guardRate) memory.planned = { action: "guard_low", justGuard: random() < level.justGuardRate, issuedAt: nowFrame };
   else if (random() < level.guardRate && ["attacking", "special"].includes(opponent.state)) memory.planned = { action: random() < 0.55 ? "guard" : "guard_low", justGuard: random() < level.justGuardRate, issuedAt: nowFrame };
   else if (random() < 0.11 && self.grounded && opponent.state === "attacking") memory.planned = { action: "jump", issuedAt: nowFrame };
-  else if (random() < 0.12 && self.meter >= MAX_METER) memory.planned = { action: "special", issuedAt: nowFrame };
-  else if (random() < 0.18 && CHARACTERS[self.id]?.cpu.throwBias) memory.planned = { action: "throw", issuedAt: nowFrame };
-  else memory.planned = { action: random() < (level.comboMax <= 2 ? 0.75 : 0.58) ? "light" : "strong", issuedAt: nowFrame };
+  else {
+    const skill = getSkillConfig(self.id);
+    const phase = self.skillPhase || self.skillState || "skillUnavailable";
+    const ammo = Number(self.ammo ?? self.skillAmmo ?? skill?.initialAmmo ?? 0);
+    const legalSkill = Boolean(skill && !self.downed && !self.flashStunned && ["skillUnavailable", "skillRecovery"].includes(phase) && (skill.initialAmmo <= 0 || ammo > 0 || skill.type === "flash"));
+    if (legalSkill && random() < 0.18) {
+      const holdFrames = skill.type === "flash" && ammo <= 0 ? Number(skill.filmReloadFrames || 36) : skill.trigger === "hold-release" ? Math.max(1, Number(skill.chargeMax || 1)) : Math.max(1, Number(skill.phase?.activeFrames || 1));
+      memory.planned = { action: "skill", issuedAt: nowFrame, releaseAt: nowFrame + holdFrames, released: false };
+    } else if (random() < 0.12 && self.meter >= MAX_METER) memory.planned = { action: "special", issuedAt: nowFrame };
+    else if (random() < 0.18 && CHARACTERS[self.id]?.cpu.throwBias) memory.planned = { action: "throw", issuedAt: nowFrame };
+    else memory.planned = { action: random() < (level.comboMax <= 2 ? 0.75 : 0.58) ? "light" : "strong", issuedAt: nowFrame };
+  }
   return memory.planned;
 }

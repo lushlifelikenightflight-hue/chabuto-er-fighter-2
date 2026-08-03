@@ -1,0 +1,38 @@
+{
+  "id": "guard-spark",
+  "category": "guard",
+  "frames": [
+    "assets/effects/guard-spark/guard-spark-1.png",
+    "assets/effects/guard-spark/guard-spark-2.png",
+    "assets/effects/guard-spark/guard-spark-3.png",
+    "assets/effects/guard-spark/guard-spark-4.png"
+  ],
+  "frameDuration": 6,
+  "loop": false,
+  "cellWidth": 256,
+  "cellHeight": 256,
+  "origin": {
+    "x": 128,
+    "y": 128
+  },
+  "groundPoint": {
+    "x": 128,
+    "y": 128
+  },
+  "qc": {
+    "strict": true,
+    "frameCount": 4,
+    "cellSize": [
+      256,
+      256
+    ],
+    "edgeTouchFrames": [],
+    "sourceEdgeTouchFrames": [],
+    "pasteClampedFrames": [],
+    "emptyFrames": [],
+    "outputSubjectHeightMean": 162,
+    "bodyScaleCv": 0.6039307109318987,
+    "anchorXStd": 0.059544159915935736,
+    "anchorYStd": 0.050081996832258176
+  }
+}

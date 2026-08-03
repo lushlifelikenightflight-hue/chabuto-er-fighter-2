@@ -1,0 +1,38 @@
+{
+  "id": "skill-copy",
+  "category": "skill",
+  "frames": [
+    "assets/effects/skills/guitar-boy/skill-copy/skill-copy-1.png",
+    "assets/effects/skills/guitar-boy/skill-copy/skill-copy-2.png",
+    "assets/effects/skills/guitar-boy/skill-copy/skill-copy-3.png",
+    "assets/effects/skills/guitar-boy/skill-copy/skill-copy-4.png"
+  ],
+  "frameDuration": 20,
+  "loop": false,
+  "cellWidth": 256,
+  "cellHeight": 256,
+  "origin": {
+    "x": 128,
+    "y": 128
+  },
+  "groundPoint": {
+    "x": 128,
+    "y": 128
+  },
+  "qc": {
+    "strict": true,
+    "frameCount": 4,
+    "cellSize": [
+      256,
+      256
+    ],
+    "edgeTouchFrames": [],
+    "sourceEdgeTouchFrames": [],
+    "pasteClampedFrames": [],
+    "emptyFrames": [],
+    "outputSubjectHeightMean": 190,
+    "bodyScaleCv": 0.47960608091922663,
+    "anchorXStd": 0.004235900032997384,
+    "anchorYStd": 0.028486230885723957
+  }
+}
