@@ -184,6 +184,13 @@ function makeSpecial(archetype, id, index) {
     meterCost: 100,
     telegraphFrames: 16 + index,
     ...profile,
+    // Supers are deliberately cinematic commitments: their authored move
+    // windows last three times as long and their collision reach is dramatic
+    // without changing the source sprites.
+    startupFrames: profile.startupFrames * 3,
+    activeFrames: profile.activeFrames * 3,
+    recoveryFrames: profile.recoveryFrames * 3,
+    hitbox: box(profile.hitbox.x, profile.hitbox.y, profile.hitbox.w * 5, profile.hitbox.h),
     chipDamage: 0,
     hitstunFrames: 40,
     blockstunFrames: 0,
@@ -191,7 +198,7 @@ function makeSpecial(archetype, id, index) {
     knockbackY: 5,
     hitLevel: "unblockable",
     cancelRoutes: [],
-    hitboxFrames: [profile.startupFrames, profile.startupFrames + 1],
+    hitboxFrames: [profile.startupFrames * 3, profile.startupFrames * 3 + 1],
     hurtboxProfile: "special",
     meterGainOnHit: 0,
     meterGainOnBlock: 0,
@@ -339,11 +346,11 @@ export const FIGHTER_STATS_DAMAGE = Object.freeze(Object.fromEntries(CHARACTER_I
 })));
 
 export const STAGES = Object.freeze([
-  Object.freeze({ number: 1, id: "toko", name: "トコ戦", opponent: "toko", dialogue: "メンバーサイン付き写真２万８千円になりまーす！", background: "assets/stages/stage-toko.png" }),
-  Object.freeze({ number: 2, id: "norio", name: "のりお戦", opponent: "norio", dialogue: "始めます。", background: "assets/stages/stage-norio.png" }),
-  Object.freeze({ number: 3, id: "kazushige", name: "かずしげ戦", opponent: "kazushige", dialogue: "どうも,かずしげです", background: "assets/stages/stage-kazushige.png" }),
-  Object.freeze({ number: 4, id: "rusty", name: "らすてぃー戦", opponent: "rusty", dialogue: "今日も一日　フランスパンで二塁打", background: "assets/stages/stage-rusty.png" }),
-  Object.freeze({ number: 5, id: "mirror", name: "ミラーマッチ", opponent: "mirror", dialogue: "…。", background: "assets/stages/stage-mirror.png" }),
+  Object.freeze({ number: 1, id: "toko", name: "トコ戦", opponent: "toko", dialogue: "メンバーサイン付き写真２万８千円になりまーす！", background: "assets/stages/stage-toko.png", platforms: Object.freeze([{ x: 76, w: 96, y: 54, label: "AMP" }, { x: 304, w: 100, y: 72, label: "SPEAKER" }]) }),
+  Object.freeze({ number: 2, id: "norio", name: "のりお戦", opponent: "norio", dialogue: "始めます。", background: "assets/stages/stage-norio.png", platforms: Object.freeze([{ x: 64, w: 112, y: 68, label: "DRUM STAND" }, { x: 312, w: 88, y: 48, label: "AMP" }]) }),
+  Object.freeze({ number: 3, id: "kazushige", name: "かずしげ戦", opponent: "kazushige", dialogue: "どうも,かずしげです", background: "assets/stages/stage-kazushige.png", platforms: Object.freeze([{ x: 92, w: 86, y: 50, label: "RAMEN STAND" }, { x: 286, w: 112, y: 76, label: "LADDER" }]) }),
+  Object.freeze({ number: 4, id: "rusty", name: "らすてぃー戦", opponent: "rusty", dialogue: "今日も一日　フランスパンで二塁打", background: "assets/stages/stage-rusty.png", platforms: Object.freeze([{ x: 58, w: 120, y: 74, label: "SPEAKER" }, { x: 310, w: 104, y: 54, label: "AMP" }]) }),
+  Object.freeze({ number: 5, id: "mirror", name: "ミラーマッチ", opponent: "mirror", dialogue: "…。", background: "assets/stages/stage-mirror.png", platforms: Object.freeze([{ x: 108, w: 94, y: 62, label: "STAND" }, { x: 278, w: 94, y: 62, label: "STAND" }]) }),
 ]);
 
 export const MENU_ITEMS = Object.freeze(["GAME START", "TRAINING MODE", "HOW TO PLAY", "SCORE", "SETTINGS"]);

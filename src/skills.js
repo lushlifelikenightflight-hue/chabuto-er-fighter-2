@@ -318,6 +318,7 @@ export function canStartSkill(fighter = {}, configOrId = fighter.id) {
   if (config.type === "mirror" && Number(fighter.skillGauge ?? fighter.gauge?.skill ?? config.initialGauge) <= 0) return false;
   if (config.type === "slimeShot" && Number(fighter.slimeCooldown || 0) > 0) return false;
   if (config.type === "ramenBuff" && Number(fighter.buff?.frames || 0) > 0) return false;
+  if (config.type === "drumBeat" && Array.isArray(fighter.skillEntities) && fighter.skillEntities.some((entry) => entry.active && ["snareMarker", "snareImpact"].includes(entry.type))) return false;
   return true;
 }
 

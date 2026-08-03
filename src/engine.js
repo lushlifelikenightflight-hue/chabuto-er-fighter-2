@@ -548,14 +548,19 @@ export function guardCanBlock(defender, move) {
 }
 
 export function createProjectile(owner, fighter, move, currentFrame = 0) {
+  const width = Math.max(24, Number(move?.hitbox?.w || move?.hitboxWidth || 24));
+  const height = Math.max(16, Number(move?.hitbox?.h || move?.hitboxHeight || 16));
   return {
     owner,
-    x: fighter.x + fighter.facing * 28,
+    x: fighter.facing > 0 ? fighter.x + 28 : fighter.x - 28 - width,
     y: 88,
     vx: fighter.facing * 5.6,
-    w: 24,
-    h: 16,
+    facing: fighter.facing,
+    w: width,
+    h: height,
     damage: move.damage,
+    effectId: move.effectId || "attack-special",
+    moveKind: move.kind || "special",
     hit: false,
     // Projectiles are created when the owning move reaches its first active
     // frame. Do not charge startup twice after the projectile exists.

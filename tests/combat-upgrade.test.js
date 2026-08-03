@@ -240,6 +240,45 @@ test("ramen buff scales runtime hitbox/damage, expires, and retains half charge 
   attacker.skillGauge = 80; game.interruptSkillFor(attacker, "hit"); assert.equal(attacker.skillGauge, 40);
 });
 
+test("kazushige buff stays safe while idle and can start a normal attack", () => {
+  const game = new Game(null);
+  const kazushige = createFighterState("kazushige", 100, 1);
+  const defender = createFighterState("guitar-boy", 124, -1);
+  game.player = kazushige; game.cpu = defender;
+  kazushige.buff = { attackScale: 1.35, hitboxScale: 1.25, effectScale: 1.3, chipScale: 1.2, frames: 600 };
+  assert.doesNotThrow(() => game.handleCombat(kazushige, defender));
+  assert.equal(game.startAttack(kazushige, { ...blank(), lightPressed: true }), true);
+  assert.doesNotThrow(() => game.handleCombat(kazushige, defender));
+});
+
+test("live specials freeze into a cinematic then commit a long invulnerable move", () => {
+  const game = new Game(null);
+  const fighter = createFighterState("toko", 100, 1);
+  game.player = fighter; game.cpu = createFighterState("guitar-boy", 140, -1);
+  game.state.screen = SCREEN.battle; fighter.meter = 100;
+  assert.equal(game.startSpecial(fighter), true);
+  assert.ok(game.state.specialCinematic);
+  assert.notEqual(fighter.state, "attacking");
+  for (let i = 0; i < 32; i += 1) game.tickBattle(blank());
+  assert.equal(game.state.specialCinematic, null);
+  assert.equal(fighter.state, "attacking");
+  assert.ok(fighter.invulnerableFrames >= fighter.currentMove.startupFrames + fighter.currentMove.activeFrames + fighter.currentMove.recoveryFrames);
+});
+
+test("projectile supers inherit their authored five-times reach and facing", () => {
+  const game = new Game(null);
+  const fighter = createFighterState("kazushige", 320, -1);
+  game.player = fighter; game.cpu = createFighterState("guitar-boy", 120, 1);
+  fighter.meter = 100;
+  assert.equal(game.startSpecial(fighter), true);
+  fighter.actionFrame = fighter.currentMove.startupFrames;
+  game.updateFighter(fighter, blank(), true);
+  assert.equal(game.projectiles.length, 1);
+  assert.equal(game.projectiles[0].w, fighter.currentMove.hitbox.w);
+  assert.equal(game.projectiles[0].facing, -1);
+  assert.ok(game.projectiles[0].x < fighter.x);
+});
+
 test("flash reloads on held B and stuns once without damage", () => {
   const game = new Game(null); const toko = createFighterState("toko", 100, 1); const target = createFighterState("guitar-boy", 120, -1);
   game.player = toko; game.cpu = target; toko.skillAmmo = 0; toko.ammo = 0;
