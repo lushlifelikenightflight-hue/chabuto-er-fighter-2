@@ -85,7 +85,7 @@ test("held crouch settles on one pose and jump returns to ground", () => {
   assert.equal(jump.y, 0);
 });
 
-test("held walk advances and direction edges can dash/backstep", () => {
+test("held forward dashes and a backward double tap latches a backstep", () => {
   const game = new Game(null);
   const blank = { left: false, right: false, up: false, down: false, light: false, strong: false, guard: false, special: false, throwHeld: false, leftPressed: false, rightPressed: false, upPressed: false, downPressed: false, lightPressed: false, strongPressed: false, specialPressed: false, throwPressed: false };
   const forward = createFighterState("guitar-boy", 100, 1);
@@ -93,23 +93,24 @@ test("held walk advances and direction edges can dash/backstep", () => {
   game.updateFighter(forward, { ...blank, right: true, rightPressed: true }, true);
   game.frame = 2;
   game.updateFighter(forward, { ...blank, right: true }, true);
-  assert.equal(forward.action, "walk_forward");
+  assert.equal(forward.action, "dash");
+  assert.equal(forward.vx, CHARACTERS["guitar-boy"].stats.dashSpeed);
   assert.ok(forward.actionFrame > 0);
   game.frame = 3;
   game.updateFighter(forward, { ...blank, right: true, rightPressed: true }, true);
-  assert.ok(["dash", "walk_forward"].includes(forward.action));
+  assert.equal(forward.action, "dash");
   const dashFrame = forward.actionFrame;
   for (let frame = 4; frame <= 7; frame += 1) {
     game.frame = frame;
     game.updateFighter(forward, { ...blank, right: true }, true);
-    assert.ok(["dash", "walk_forward"].includes(forward.action));
+    assert.equal(forward.action, "dash");
   }
   assert.ok(forward.actionFrame > dashFrame);
   for (let frame = 8; frame <= 14; frame += 1) {
     game.frame = frame;
     game.updateFighter(forward, { ...blank, right: true }, true);
   }
-  assert.equal(forward.action, "walk_forward");
+  assert.equal(forward.action, "dash");
 
   const backward = createFighterState("guitar-boy", 160, 1);
   game.frame = 10;
@@ -118,12 +119,42 @@ test("held walk advances and direction edges can dash/backstep", () => {
   game.updateFighter(backward, { ...blank, left: true, leftPressed: false }, true);
   game.frame = 12;
   game.updateFighter(backward, { ...blank, left: true, leftPressed: true }, true);
-  assert.ok(["backstep", "walk_backward"].includes(backward.action));
-  for (let frame = 13; frame <= 18; frame += 1) {
+  assert.equal(backward.action, "backstep");
+  const backstepStart = backward.x;
+  for (let frame = 13; frame <= 23; frame += 1) {
     game.frame = frame;
-    game.updateFighter(backward, { ...blank, left: true }, true);
-    assert.ok(["backstep", "walk_backward"].includes(backward.action));
+    game.updateFighter(backward, blank, true);
+    assert.equal(backward.action, "backstep");
   }
+  assert.ok(backward.x < backstepStart - 20);
+  game.frame = 24;
+  game.updateFighter(backward, blank, true);
+  assert.equal(backward.action, "idle");
+
+  const rightSide = createFighterState("guitar-boy", 360, -1);
+  game.frame = 30;
+  game.updateFighter(rightSide, { ...blank, right: true, rightPressed: true }, true);
+  game.frame = 31;
+  game.updateFighter(rightSide, { ...blank, right: true }, true);
+  game.frame = 32;
+  game.updateFighter(rightSide, { ...blank, right: true, rightPressed: true }, true);
+  assert.equal(rightSide.action, "backstep");
+  assert.ok(rightSide.vx > 0);
+});
+
+test("the faster jump arc preserves approximately the authored height", () => {
+  const game = new Game(null);
+  const fighter = createFighterState("guitar-boy", 100, 1);
+  game.tryJump(fighter, CHARACTERS["guitar-boy"].stats);
+  let frames = 0;
+  let apex = 0;
+  while (!fighter.grounded && frames < 100) {
+    game.advanceAir(fighter, {}, CHARACTERS["guitar-boy"].stats);
+    apex = Math.max(apex, fighter.y);
+    frames += 1;
+  }
+  assert.ok(frames < 49, `expected a faster arc, got ${frames} frames`);
+  assert.ok(apex >= 88 && apex <= 102, `unexpected apex ${apex}`);
 });
 
 test("A+X throw input shares one normalized action scale", () => {

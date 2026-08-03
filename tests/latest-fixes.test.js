@@ -4,7 +4,7 @@ import test from "node:test";
 import { CHARACTERS, NORMAL_ATTACK_REACH_MULTIPLIER, TRAINING_SETTINGS_ITEMS } from "../src/data.js";
 import { createFighterState, evaluateStrike, evaluateThrow, getFighterBoxes } from "../src/engine.js";
 import { Game, animationNameFor } from "../src/game.js";
-import { getSkillConfig } from "../src/skills.js";
+import { canStartSkill, getSkillConfig, getSkillHudState } from "../src/skills.js";
 import { getEffectAssetManifest } from "../src/sprite-manifest.js";
 
 test("every screen keeps menu controls available outside battle and pause is header-owned", () => {
@@ -211,6 +211,57 @@ test("Kazushige ramen duration drains its full gauge and attached aura does not 
   assert.equal(fighter.skillGauge, 50); assert.equal(game.skillEntities.length, entities); assert.equal(game.state.vfx.length, vfx);
   for (let i = 0; i < 300; i += 1) game.updateFighter(fighter, {}, true);
   assert.equal(fighter.buff, null); assert.equal(fighter.skillGauge, 0); assert.equal(game.startSkill(fighter, { skillHoldRequired: false }), true);
+});
+
+test("Kazushige regains control immediately when the ramen buff activates", () => {
+  const game = new Game(null);
+  const fighter = createFighterState("kazushige", 100, 1);
+  game.player = fighter; game.cpu = createFighterState("uncle", 330, -1);
+  assert.equal(game.startSkill(fighter, { skillHoldRequired: false }), true);
+  for (let frame = 0; frame < 180 && !fighter.buff; frame += 1) {
+    game.frame = frame;
+    game.updateFighter(fighter, { skill: true }, true);
+  }
+  assert.ok(fighter.buff?.frames > 0);
+  assert.equal(fighter.skillPhase, "skillUnavailable");
+  assert.equal(fighter.state, "idle");
+  const startX = fighter.x;
+  game.frame += 1;
+  game.updateFighter(fighter, { right: true }, true);
+  assert.equal(fighter.action, "dash");
+  assert.ok(fighter.x > startX);
+  assert.equal(game.startSkill(fighter, { skillHoldRequired: false }), false);
+  for (let frame = 0; frame < 600; frame += 1) game.updateFighter(fighter, {}, true);
+  assert.equal(fighter.buff, null);
+  assert.equal(game.startSkill(fighter, { skillHoldRequired: false }), true);
+});
+
+test("slime projectile faces its travel direction and enforces a short cooldown", () => {
+  const game = new Game(null);
+  const fighter = createFighterState("green-slime", 360, -1);
+  game.player = fighter; game.cpu = createFighterState("toko", 100, 1);
+  const config = getSkillConfig("green-slime");
+  fighter.skillGauge = 70;
+  game.activateSkill(fighter, config);
+  const projectile = game.skillEntities.find((entry) => entry.type === "slimeProjectile");
+  assert.ok(projectile);
+  assert.equal(projectile.facing, -1);
+  assert.ok(projectile.vx < 0);
+  assert.equal(fighter.slimeCooldown, config.cooldownFrames);
+  assert.equal(canStartSkill(fighter, config), false);
+  assert.equal(getSkillHudState(fighter, config).disabled, true);
+  for (let frame = 0; frame < config.cooldownFrames; frame += 1) game.updateFighter(fighter, {}, true);
+  assert.equal(fighter.slimeCooldown, 0);
+  assert.equal(canStartSkill(fighter, config), true);
+});
+
+test("knockdown contact effect is raised slightly above the floor", () => {
+  const game = new Game(null);
+  const fighter = createFighterState("toko", 160, -1);
+  game.beginKnockdownLanding(fighter);
+  const effect = game.state.vfx.find((entry) => entry.effectId === "down-impact");
+  assert.ok(effect);
+  assert.equal(effect.y, 8);
 });
 
 test("new rounds clear transient effects and keep CPU idle for the first second", () => {

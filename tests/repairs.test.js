@@ -80,6 +80,9 @@ test("Toko flash is a moving zero-damage projectile with one guarded stun hit", 
   assert.equal(target.hp, target.maxHp);
   assert.equal(target.flashStunned, true);
   assert.equal(target.flashStunFrames, 180);
+  const contactFlash = game.state.vfx.find((entry) => entry.effectId === "skill-flash");
+  assert.ok(contactFlash);
+  assert.ok(Math.abs(contactFlash.x - target.x) < 50);
   assert.equal(game.skillEntities.some((entry) => entry.type === "flash"), false);
 });
 

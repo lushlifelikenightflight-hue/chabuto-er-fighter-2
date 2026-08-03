@@ -106,6 +106,7 @@ export const SKILL_CONFIGS = Object.freeze({
     initialGauge: 0,
     initialAmmo: 0,
     maxAmmo: 0,
+    cooldownFrames: 30,
     phase: phase(6, 0, 3, 22),
     interruption: Object.freeze(["hit", "throw", "down", "knockdown", "ko"]),
     effectId: "skill-slime-shot",
@@ -273,9 +274,10 @@ export function getSkillHudState(fighter = {}, configOrId = fighter.id) {
   // the action/state lock, so a rusty player can start charging at zero while
   // the HUD still exposes a not-ready meter and a full meter can light up
   // while the release is still pending.
-  const ready = fighter.hp > 0 && (mode === "charge" ? max > 0 && value >= max : value > 0);
   const phaseAvailable = fighter.skillPhase === "skillUnavailable" || !fighter.skillPhase;
-  const disabled = !phaseAvailable || !canStartSkill(fighter, config);
+  const cooldownRemaining = config.type === "slimeShot" ? Math.max(0, Number(fighter.slimeCooldown || 0)) : 0;
+  const ready = cooldownRemaining <= 0 && fighter.hp > 0 && (mode === "charge" ? max > 0 && value >= max : value > 0);
+  const disabled = !phaseAvailable || cooldownRemaining > 0 || !canStartSkill(fighter, config);
   return Object.freeze({
     value: Math.min(value, max || value),
     max,
@@ -283,6 +285,7 @@ export function getSkillHudState(fighter = {}, configOrId = fighter.id) {
     label: config.hudLabel || config.name || config.skillId || "SKILL",
     ready,
     disabled,
+    cooldownRemaining,
   });
 }
 
@@ -313,6 +316,7 @@ export function canStartSkill(fighter = {}, configOrId = fighter.id) {
   if (fighter.state === "special" || String(fighter.action || "").startsWith("special")) return false;
   if (config.initialAmmo > 0 && Number(fighter.ammo ?? fighter.skillAmmo ?? config.initialAmmo) <= 0 && config.type !== "flash") return false;
   if (config.type === "mirror" && Number(fighter.skillGauge ?? fighter.gauge?.skill ?? config.initialGauge) <= 0) return false;
+  if (config.type === "slimeShot" && Number(fighter.slimeCooldown || 0) > 0) return false;
   if (config.type === "ramenBuff" && Number(fighter.buff?.frames || 0) > 0) return false;
   return true;
 }

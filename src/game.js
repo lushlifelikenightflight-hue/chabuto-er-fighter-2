@@ -143,7 +143,10 @@ export function skillSpriteActionFor(fighter = {}) {
 // A held jump key must not reduce gravity indefinitely.  Constant gravity
 // keeps jumps short and deterministic, while the air-frame guard below is a
 // last-resort safety net for malformed/custom fighter data.
-const GRAVITY = 0.32;
+// Raising both takeoff velocity and gravity keeps the familiar apex while
+// shortening the time spent in the air.
+const GRAVITY = 0.43;
+const JUMP_TAKEOFF_MULTIPLIER = 1.16;
 const MAX_AIR_FRAMES = 90;
 const MAX_JUMP_HEIGHT = STAGE_BOUNDS.floor * 0.9;
 const DASH_LOCK_FRAMES = 9;
@@ -992,6 +995,7 @@ export class Game {
     fighter.invulnerableFrames = Math.max(0, fighter.invulnerableFrames - 1);
     fighter.guardDashCooldown = Math.max(0, Number(fighter.guardDashCooldown) - 1);
     fighter.tackleCooldown = Math.max(0, Number(fighter.tackleCooldown || 0) - 1);
+    fighter.slimeCooldown = Math.max(0, Number(fighter.slimeCooldown || 0) - 1);
     fighter.attackCooldownFrames = Math.max(0, Number(fighter.attackCooldownFrames || 0) - 1);
     if (fighter.buff?.frames > 0) {
       fighter.buff.frames -= 1;
@@ -1112,6 +1116,17 @@ export class Game {
       if (!fighter.grounded) this.advanceAir(fighter, input, stats);
       return;
     }
+    if (fighter.grounded && fighter.locomotionAction === "backstep" && fighter.locomotionFramesRemaining > 0) {
+      fighter.action = "backstep";
+      fighter.actionFrame += 1;
+      fighter.state = "moving";
+      fighter.vx = -fighter.facing * (stats.backstepDistance || 36) / BACKSTEP_LOCK_FRAMES;
+      fighter.locomotionFramesRemaining -= 1;
+      if (fighter.locomotionFramesRemaining <= 0) fighter.locomotionAction = "";
+      fighter.x += fighter.vx;
+      fighter.x = clamp(fighter.x, STAGE_BOUNDS.left, STAGE_BOUNDS.right);
+      return;
+    }
     const direction = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     if (input.jumpPressed || (input.upPressed && fighter.grounded && fighter.jumpsUsed === 0)) this.tryJump(fighter, stats);
     const moveLocked = ACTION_LOCK_STATES.has(fighter.state);
@@ -1138,10 +1153,11 @@ export class Game {
           // trigger dash/backstep; held input alone never qualifies.
           const doubleTap = directionPressed && this.frame - fighter.lastDirectionFrame <= 15 && direction === fighter.lastDirection;
           const isBackstep = doubleTap && direction === -fighter.facing;
-          const nextAction = isBackstep ? "backstep" : doubleTap ? "dash" : direction === fighter.facing ? "walk_forward" : "walk_backward";
-          fighter.action = nextAction; fighter.actionFrame = fighter.action === nextAction ? fighter.actionFrame + 1 : 0;
-          fighter.vx = isBackstep ? -fighter.facing * (stats.speed || 2) * 2.4 : direction * (doubleTap ? (stats.dashSpeed || stats.speed) : (stats.walkSpeed || stats.speed));
-          if (isBackstep) fighter.invulnerableFrames = 5;
+          const nextAction = isBackstep ? "backstep" : direction === fighter.facing ? "dash" : "walk_backward";
+          fighter.actionFrame = fighter.action === nextAction ? fighter.actionFrame + 1 : 0;
+          fighter.action = nextAction;
+          fighter.vx = isBackstep ? -fighter.facing * (stats.backstepDistance || 36) / BACKSTEP_LOCK_FRAMES : direction * (direction === fighter.facing ? (stats.dashSpeed || stats.speed) : (stats.walkSpeed || stats.speed));
+          if (isBackstep) { fighter.invulnerableFrames = 5; fighter.locomotionAction = "backstep"; fighter.locomotionFramesRemaining = BACKSTEP_LOCK_FRAMES - 1; }
           if (directionPressed) { fighter.lastDirection = direction; fighter.lastDirectionFrame = this.frame; }
           fighter.state = "moving";
         } else {
@@ -1168,15 +1184,15 @@ export class Game {
 
   tryJump(fighter, stats = {}) {
     if (fighter.grounded && fighter.jumpsUsed === 0) {
-      fighter.vy = Number(stats.jumpPower || stats.jumpVelocity || 8); fighter.grounded = false; fighter.airFrames = 0; fighter.jumpsUsed = 1; fighter.state = "jumping"; fighter.action = "jump_start"; fighter.boxProfile = "air";
+      fighter.vy = Number(stats.jumpPower || stats.jumpVelocity || 8) * JUMP_TAKEOFF_MULTIPLIER; fighter.grounded = false; fighter.airFrames = 0; fighter.jumpsUsed = 1; fighter.state = "jumping"; fighter.action = "jump_start"; fighter.boxProfile = "air";
     } else if (!fighter.grounded && fighter.doubleJumpAvailable) {
-      fighter.vy = Number(stats.jumpPower || stats.jumpVelocity || 8) * 1.2; fighter.doubleJumpAvailable = false; fighter.jumpsUsed = 2; fighter.airFrames = 0; fighter.state = "jumping"; fighter.action = "double_jump"; fighter.boxProfile = "air";
+      fighter.vy = Number(stats.jumpPower || stats.jumpVelocity || 8) * 1.2 * JUMP_TAKEOFF_MULTIPLIER; fighter.doubleJumpAvailable = false; fighter.jumpsUsed = 2; fighter.airFrames = 0; fighter.state = "jumping"; fighter.action = "double_jump"; fighter.boxProfile = "air";
     }
   }
 
   beginKnockdownLanding(fighter, hard = fighter.hardKnockdown) {
     fighter.state = "knockdownLanding"; fighter.action = "knockdown"; fighter.actionFrame = 0; fighter.downed = true; fighter.downedFrames = 0; fighter.downTimer = 0; fighter.downStartedFrame = this.frame; fighter.hardKnockdown = Boolean(hard); fighter.followupAvailable = true; fighter.followupReserved = false; fighter.downFollowupUsed = false; fighter.followupUsed = false; fighter.followupCount = 0; fighter.boxProfile = "down"; fighter.grounded = true; fighter.y = 0;
-    this.spawnVfx("down-impact", fighter, { x: 0, y: 0 });
+    this.spawnVfx("down-impact", fighter, { x: 0, y: 8 });
   }
 
   launchKnockdown(fighter, move = {}) {
@@ -1338,6 +1354,16 @@ export class Game {
     }
     if (fighter.skillPhase === "skillActive") {
       if (!fighter.skillActivated) { fighter.skillActivated = true; this.activateSkill(fighter, config); }
+      // Ramen's 600-frame buff owns its lifetime.  Do not leave the fighter in
+      // the generic active/recovery state machine after its automatic full
+      // charge activation, or every later fighter update is locked out.
+      if (config.type === "ramenBuff" && fighter.skillActivated) {
+        fighter.skillPhase = "skillUnavailable"; fighter.skillState = "skillUnavailable"; fighter.skill.phase = "skillUnavailable";
+        fighter.skillActive = false; fighter.skillCharging = false; fighter.skillActivated = false; fighter.skillConfig = null;
+        fighter.skillHeld = false; fighter.skillHoldRequired = false; fighter.skillHoldActive = false; fighter.skillHoldFrames = 0; fighter.skillActionFrame = 0;
+        fighter.state = fighter.grounded ? "idle" : "jumping"; fighter.action = fighter.state === "idle" ? "idle" : "jump_fall"; fighter.actionFrame = 0;
+        return;
+      }
       if (config.type === "mirror" && input.skill && fighter.mirrorActiveFrames > 0) return;
       if (config.type === "flash" && fighter.flashReloading) return;
       if (fighter.skillActionFrame >= (config.phase?.activeFrames || 1)) { fighter.skillPhase = "skillRecovery"; fighter.skillState = "skillRecovery"; fighter.skill.phase = "skillRecovery"; fighter.skillRecoveryFrames = config.phase?.recoveryFrames || 1; fighter.state = "skillRecovery"; fighter.action = "skill_recovery"; fighter.skillActionFrame = 0; }
@@ -1383,7 +1409,7 @@ export class Game {
       }
     } else if (type === "slimeShot") {
       const charge = Number(fighter.skillGauge || 0); const stage = [...(config.chargeStages || [])].reverse().find((entry) => charge >= entry.minCharge) || config.chargeStages?.[0] || { damageScale: 1, sizeScale: 1, speedScale: 1, knockdownValue: 14 };
-      this.spawnSkillEntity({ owner, type: "slimeProjectile", x: fighter.x + fighter.facing * 36, y: fighter.y + 72, vx: fighter.facing * 4 * stage.speedScale, damage: 80 * stage.damageScale, w: 24 * stage.sizeScale, h: 18 * stage.sizeScale, duration: 120, knockdownValue: stage.knockdownValue, causesKnockdown: stage.causesKnockdown, hardKnockdown: stage.hardKnockdown, effectId: config.effectId }); if (resourceMode === "native") { fighter.skillGauge = 0; fighter.skill.gauge = 0; }
+      this.spawnSkillEntity({ owner, type: "slimeProjectile", facing: fighter.facing, x: fighter.x + fighter.facing * 36, y: fighter.y + 72, vx: fighter.facing * 4 * stage.speedScale, damage: 80 * stage.damageScale, w: 24 * stage.sizeScale, h: 18 * stage.sizeScale, duration: 120, knockdownValue: stage.knockdownValue, causesKnockdown: stage.causesKnockdown, hardKnockdown: stage.hardKnockdown, effectId: config.effectId }); if (resourceMode === "native") { fighter.slimeCooldown = Number(config.cooldownFrames || 0); fighter.skillGauge = 0; fighter.skill.gauge = 0; }
     } else if (type === "mirror") {
       fighter.mirrorActiveFrames = config.phase?.activeFrames || 2; fighter.mirrorReflectable = new Set(config.reflectable || []); fighter.mirrorNonReflectable = new Set(config.nonReflectable || []); fighter.mirrorHolding = true; fighter.mirrorResourceMode = resourceMode;
     } else if (type === "tackle") {
@@ -1430,7 +1456,7 @@ export class Game {
       // hit applies the existing guardable flash stun for up to three seconds.
       const speed = Number(config.projectileSpeed || 6);
       const duration = Number(config.projectileDurationFrames || config.maxHitstopFrames || 180);
-      this.spawnSkillEntity({ owner, type: "flash", x: fighter.x + fighter.facing * 35, y: fighter.y + 76, vx: fighter.facing * speed, duration, damage: 0, maxHitstopFrames: Number(config.maxHitstopFrames || 180), w: 95, h: 85, guardable: true, justGuardable: true, oneHit: true, effectId: config.effectId, spawnVfx: false });
+      this.spawnSkillEntity({ owner, type: "flash", facing: fighter.facing, x: fighter.x + fighter.facing * 35, y: fighter.y + 76, vx: fighter.facing * speed, duration, damage: 0, maxHitstopFrames: Number(config.maxHitstopFrames || 180), w: 95, h: 85, guardable: true, justGuardable: true, oneHit: true, effectId: config.effectId, spawnVfx: false });
     }
   }
 
@@ -1634,8 +1660,10 @@ export class Game {
         const guardStart = defender.guardStartedFrame;
         const justGuard = defender.guardHeld && move.justGuardable && !move.unblockable && Number.isFinite(guardStart) && this.frame - guardStart <= JUST_GUARD_WINDOW;
         const blocked = defender.guardHeld && move.guardable && !move.unblockable;
+        const contactPoint = { x: Math.max(hitbox.x, Math.min(defender.x, hitbox.x + hitbox.w)), y: Math.max(hitbox.y, Math.min(defender.y + 82, hitbox.y + hitbox.h)) };
         if (entity.type === "flash") {
           entity.hit = true; entity.active = false;
+          this.spawnVfx("skill-flash", contactPoint, { x: 0, y: 0, scale: 1, facing: entity.facing || attacker.facing });
           if (justGuard) { defender.meter = clamp(defender.meter + 10, 0, MAX_METER); attacker.stunFrames = 12; defender.stunFrames = 3; this.state.hitstopFrames = JUST_GUARD_HITSTOP; this.spawnVfx("just-guard-ring", defender); continue; }
           if (blocked) { this.onHit(attacker, defender, move, true, false, 0); this.spawnVfx("guard-spark", defender); continue; }
           defender.flashComboHit = true; defender.flashStunned = true; defender.flashStunFrames = Math.min(180, Number(entity.maxHitstopFrames || 180)); defender.state = "hitstun"; defender.action = "hit_light"; defender.stunFrames = defender.flashStunFrames; this.onHit(attacker, defender, move, false, false, 0); continue;
@@ -1646,7 +1674,6 @@ export class Game {
         const damage = blocked ? (move.chipDamage * chipScale) : move.damage * damageScale;
         const dealt = blocked ? 0 : applyDamage(defender, damage, { blocked, knockbackX: move.knockbackX, knockbackY: move.knockbackY, hitstunFrames: blocked ? move.blockstunFrames : move.hitstunFrames });
         if (!blocked && (move.causesKnockdown || move.hardKnockdown) && defender.hp > 0) this.launchKnockdown(defender, move);
-        const contactPoint = { x: Math.max(hitbox.x, Math.min(defender.x, hitbox.x + hitbox.w)), y: Math.max(hitbox.y, Math.min(defender.y + 82, hitbox.y + hitbox.h)) };
         this.onHit(attacker, defender, move, blocked, false, dealt); this.spawnVfx(blocked ? "guard-spark" : "hit-burst", contactPoint, { x: 0, y: 0, scale: blocked ? 0.55 : 0.38 }); entity.hit = true; if (entity.oneHit || !["snareImpact", "dogImpact"].includes(entity.type)) entity.active = false;
       }
       if (entity.age >= (entity.duration || 60)) entity.active = false;
@@ -2067,9 +2094,9 @@ export class Game {
         const width = Number(entity.renderWidth || manifest.cellWidth || entity.w || 16);
         const height = Number(entity.renderHeight || manifest.cellHeight || entity.h || 16);
         const origin = manifest.origin || { x: width * 0.5, y: height * 0.5 };
-        const drawX = Number(entity.x || 0) - Number(origin.x || 0);
-        const drawY = INTERNAL_HEIGHT - Number(entity.y || 0) - Number(origin.y || 0);
-        ctx.drawImage(asset.image, drawX, drawY, width, height);
+        ctx.translate(Number(entity.x || 0), 0);
+        if (Number(entity.facing || 1) < 0) ctx.scale(-1, 1);
+        ctx.drawImage(asset.image, -Number(origin.x || 0), INTERNAL_HEIGHT - Number(entity.y || 0) - Number(origin.y || 0), width, height);
       } else {
         ctx.fillStyle = entity.type === "flash" ? "#ffffff" : entity.type === "snare" || entity.type === "snareImpact" ? "#cf87ff" : entity.type === "dogMarker" ? "#b9e7ff" : "#7ee787";
         ctx.fillRect((entity.x || 0) - (entity.w || 16) * 0.5, INTERNAL_HEIGHT - (entity.y || 0) - (entity.h || 16), entity.w || 16, entity.h || 16);
@@ -2158,7 +2185,8 @@ export class Game {
       ctx.font = "bold 7px monospace";
       ctx.fillStyle = skill.ready ? "#e4c5ff" : "#aab2c3";
       const valueLabel = skill.mode === "duration" ? `${Math.ceil(skill.value / FIXED_HZ)}s` : `${Math.round(skill.value)}/${Math.round(skill.max)}`;
-      ctx.fillText(`${skill.label} ${valueLabel}${skill.ready ? " READY" : ""}`, align === "right" ? x + 110 : x, 51);
+      const cooldownLabel = skill.cooldownRemaining > 0 ? ` CD ${Math.ceil(skill.cooldownRemaining / FIXED_HZ)}s` : "";
+      ctx.fillText(`${skill.label} ${valueLabel}${cooldownLabel}${skill.ready ? " READY" : ""}`, align === "right" ? x + 110 : x, 51);
       ctx.restore();
     };
     drawSkill(this.player, 16, "left");

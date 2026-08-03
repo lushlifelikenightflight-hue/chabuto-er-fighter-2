@@ -129,7 +129,7 @@ test("forward light has two hit-confirm stages and expires its pre-input buffer"
   assert.equal(fighter.comboBuffer, null);
 });
 
-test("direction dash uses a 250 ms edge window and never triggers from held input", () => {
+test("held forward input continuously uses the dash action", () => {
   const game = new Game(null);
   const fighter = createFighterState("guitar-boy", 100, 1);
   game.frame = 1; game.updateFighter(fighter, { ...blank(), right: true, rightPressed: true }, true);
@@ -138,7 +138,8 @@ test("direction dash uses a 250 ms edge window and never triggers from held inpu
   const held = createFighterState("guitar-boy", 100, 1);
   game.frame = 1; game.updateFighter(held, { ...blank(), right: true, rightPressed: true }, true);
   game.frame = 30; game.updateFighter(held, { ...blank(), right: true }, true);
-  assert.notEqual(held.action, "dash");
+  assert.equal(held.action, "dash");
+  assert.equal(held.vx, CHARACTERS["guitar-boy"].stats.dashSpeed);
 });
 
 test("guard dash is forward-only, guarded at startup, and attack-cancellable", () => {
