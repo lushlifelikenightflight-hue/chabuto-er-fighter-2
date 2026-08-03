@@ -216,7 +216,9 @@ test("combat transitions select just guard, throw, hit, and down-idle visuals", 
 
   const thrower = createFighterState("guitar-boy", 100, 1);
   const thrown = createFighterState("uncle", 112, -1);
-  thrown.actionFrame = 46;
+  thrown.state = "attacking";
+  thrown.currentMove = CHARACTERS.uncle.moves.light_attack_neutral;
+  thrown.actionFrame = thrown.currentMove.startupFrames;
   game.startThrow(thrower);
   thrower.actionFrame = thrower.currentMove.startupFrames;
   const hpBeforeThrow = thrown.hp;
@@ -290,6 +292,9 @@ test("throw holds both fighters and deals damage exactly once on release", () =>
   const attacker = createFighterState("toko", 100, 1);
   const defender = createFighterState("guitar-boy", 112, -1);
   game.player = attacker; game.cpu = defender;
+  defender.state = "attacking";
+  defender.currentMove = CHARACTERS["guitar-boy"].moves.light_attack_neutral;
+  defender.actionFrame = defender.currentMove.startupFrames;
   game.startThrow(attacker);
   attacker.actionFrame = attacker.currentMove.startupFrames;
   game.handleCombat(attacker, defender);
@@ -452,6 +457,8 @@ test("guard level, invulnerability, and throws remain separate collision rules",
   defender.invulnerableFrames = 3;
   assert.equal(evaluateStrike(attacker, defender, low, 0, new Set()).reason, "invulnerable");
   defender.invulnerableFrames = 0; defender.state = "idle"; defender.grounded = true; attacker.grounded = true;
+  assert.equal(evaluateThrow(attacker, defender, 0), false);
+  defender.state = "attacking"; defender.currentMove = CHARACTERS.toko.moves.light_attack_neutral; defender.actionFrame = defender.currentMove.startupFrames;
   assert.equal(evaluateThrow(attacker, defender, 0), true);
 });
 
@@ -581,16 +588,15 @@ test("stage dialogue threshold is exactly four seconds at 60 Hz", () => {
   assert.equal(game.state.screen, SCREEN.roundIntro);
 });
 
-test("A+X throw succeeds during ordinary proximity and releases once", () => {
+test("A+X counter succeeds against an active reaching normal and releases once", () => {
   const game = new Game(null);
   const attacker = createFighterState("guitar-boy", 100, 1);
   const defender = createFighterState("uncle", 112, -1);
   game.player = attacker;
   game.cpu = defender;
-  game.startThrow(attacker);
-  attacker.actionFrame = attacker.currentMove.startupFrames;
-  game.handleCombat(attacker, defender);
-  assert.equal(attacker.throwTarget, defender);
+  defender.state = "attacking";
+  defender.currentMove = CHARACTERS.uncle.moves.strong_attack_neutral;
+  defender.actionFrame = defender.currentMove.startupFrames;
   game.startThrow(attacker);
   attacker.actionFrame = attacker.currentMove.startupFrames;
   game.handleCombat(attacker, defender);

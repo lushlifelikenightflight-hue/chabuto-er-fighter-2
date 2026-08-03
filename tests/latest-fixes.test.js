@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 import { CHARACTERS, TRAINING_SETTINGS_ITEMS } from "../src/data.js";
-import { createFighterState, evaluateStrike, evaluateThrow } from "../src/engine.js";
+import { createFighterState, evaluateStrike, evaluateThrow, getFighterBoxes } from "../src/engine.js";
 import { Game } from "../src/game.js";
 import { getSkillConfig } from "../src/skills.js";
 import { getEffectAssetManifest } from "../src/sprite-manifest.js";
@@ -76,8 +76,10 @@ test("combo cap starts cooldown and attack/guard/throw priority is deterministic
   const strike = CHARACTERS.rusty.moves.light_attack_neutral;
   attacker.state = "attacking"; attacker.currentMove = strike; attacker.actionFrame = strike.startupFrames;
   assert.equal(evaluateStrike(attacker, guard, strike, strike.startupFrames, new Set()).blocked, true);
+  assert.equal(evaluateThrow(attacker, guard, 0), false);
+  guard.state = "attacking"; guard.currentMove = CHARACTERS.uncle.moves.light_attack_neutral; guard.actionFrame = guard.currentMove.startupFrames;
   assert.equal(evaluateThrow(attacker, guard, 0), true);
-  guard.state = "attacking"; guard.currentMove = CHARACTERS.uncle.moves.light_attack_neutral;
+  guard.x = 420;
   assert.equal(evaluateThrow(attacker, guard, 0), false);
 });
 
@@ -136,4 +138,54 @@ test("title panel uses the supplied logo asset", () => {
   const gameSource = fs.readFileSync(new URL("../src/game.js", import.meta.url), "utf8");
   assert.match(gameSource, /assets\/ui\/title-logo\.png/);
   assert.equal(fs.existsSync(new URL("../assets/ui/title-logo.png", import.meta.url)), true);
+});
+
+test("fighter normal VFX styles, inverse color 2, facing, and reach tip are data-driven", () => {
+  const expected = {
+    "guitar-boy": ["#a855f7", 1], "green-slime": ["#22d3ee", 0.7], "bob-girl": ["#ff75b5", 1.2],
+    uncle: ["#8b5a2b", 0.8], rusty: ["#dc2626", 0.9], kazushige: ["#111111", 1.1], norio: ["#facc15", 0.9], toko: ["#22c55e", 1.1],
+  };
+  for (const [id, [color, scale]] of Object.entries(expected)) {
+    assert.equal(CHARACTERS[id].normalAttackVfx.color, color);
+    assert.equal(CHARACTERS[id].normalAttackVfx.scale, scale);
+    const c1 = CHARACTERS[id].palettes.color1[0].slice(1);
+    const c2 = CHARACTERS[id].palettes.color2[0].slice(1);
+    assert.equal(Number.parseInt(c1, 16) ^ Number.parseInt(c2, 16), 0xffffff);
+  }
+  const game = new Game(null);
+  for (const facing of [1, -1]) {
+    const fighter = createFighterState("guitar-boy", 200, facing);
+    const move = CHARACTERS["guitar-boy"].moves.strong_attack_neutral;
+    const tip = game.attackReachPoint(fighter, move);
+    const box = getFighterBoxes(fighter, move).hitbox;
+    assert.equal(tip.x, facing > 0 ? box.x + box.w : box.x);
+    const record = game.spawnVfx("attack-wind", tip, { facing, tipAnchored: true, tint: CHARACTERS["guitar-boy"].normalAttackVfx.color });
+    assert.equal(record.facing, facing); assert.equal(record.tipAnchored, true); assert.equal(record.tint, "#a855f7");
+  }
+});
+
+test("Kazushige ramen skill fully resets and can activate twice", () => {
+  const game = new Game(null); const fighter = createFighterState("kazushige", 100, 1); game.player = fighter; game.cpu = createFighterState("uncle", 330, -1);
+  const run = () => {
+    assert.equal(game.startSkill(fighter, { skillHoldRequired: false }), true);
+    for (let i = 0; i < 220 && fighter.skillPhase !== "skillUnavailable"; i += 1) game.updateSkill(fighter, { skill: true }, true);
+    assert.equal(fighter.skillPhase, "skillUnavailable"); assert.equal(fighter.skillConfig, null); assert.ok(fighter.buff?.frames > 0);
+  };
+  run(); run();
+});
+
+test("new rounds clear transient effects and keep CPU idle for the first second", () => {
+  const game = new Game(null); game.state.vfx = [{ frames: 99 }]; game.state.effects = game.state.vfx; game.skillEntities = [{ active: true }]; game.projectiles = [{ hit: false }];
+  game.beginRound(); assert.equal(game.state.vfx.length, 0); assert.equal(game.skillEntities.length, 0); assert.equal(game.projectiles.length, 0);
+  game.state.screen = "battle"; const startX = game.cpu.x; const blank = game.inputForPlan(null);
+  for (let i = 0; i < 60; i += 1) game.tickBattle(blank);
+  assert.equal(game.cpu.x, startX);
+});
+
+test("mobile fighter select remains four columns and attack/hit SE hooks are present", () => {
+  const css = fs.readFileSync(new URL("../style.css", import.meta.url), "utf8");
+  const source = fs.readFileSync(new URL("../src/game.js", import.meta.url), "utf8");
+  assert.match(css, /@media \(max-width: 620px\)[\s\S]*?\.character-grid\s*\{[^}]*repeat\(4,/);
+  assert.match(source, /this\.beep\(strong \? 150 : 360/);
+  assert.match(source, /move\.id\?\.includes\("strong"\) \? 125 : 240/);
 });

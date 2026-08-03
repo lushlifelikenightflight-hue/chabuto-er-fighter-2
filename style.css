@@ -67,7 +67,11 @@ body { display: grid; place-items: center; min-height: 100svh; overflow: auto; }
   body { overflow: auto; }
   .cabinet { width: 100vw; min-height: 100svh; border-width: 2px; border-radius: 0; }
   .lcd { border-width: 4px; }
-  .character-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .character-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; }
+  .character-grid button { min-height: 54px !important; padding: 2px !important; }
+  .character-grid img { height: clamp(34px, 11vw, 48px); }
+  .character-grid strong { font-size: clamp(7px, 2.2vw, 9px); }
+  .character-grid small { font-size: clamp(6px, 1.8vw, 8px); }
   #hint { display: none; }
 }
 

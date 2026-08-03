@@ -59,6 +59,12 @@ const SPECIAL_TEXT = Object.freeze({
 
 function box(x, y, w, h) { return { x, y, w, h }; }
 
+function invertHexColor(hex) {
+  const value = String(hex || "").replace(/^#/, "");
+  if (!/^[0-9a-f]{6}$/i.test(value)) return hex;
+  return `#${(0xffffff ^ Number.parseInt(value, 16)).toString(16).padStart(6, "0")}`;
+}
+
 /**
  * Normalize authored combat data without coupling the visual effect to the
  * collision geometry.  Older callers still receive `hitbox`, while the
@@ -236,7 +242,7 @@ const CHARACTER_ROWS = [
 // Explicit combat-facing stats.  The legacy aliases below remain the source
 // used by the existing renderer/AI, while these fields provide stable values
 // for the upgraded combat systems.
-const COMBAT_STATS = Object.freeze({
+export const COMBAT_STATS = Object.freeze({
   "guitar-boy": { maxHp: 1000, walkSpeed: 2.2, dashSpeed: 5.2, backstepDistance: 42, jumpPower: 7.9, airControl: 1, lightDamage: 48, heavyDamage: 106, attackStartupModifier: 1, attackRecoveryModifier: 1, comboLimit: 6, hitstunScaling: 1, guardStun: 10, throwDamage: 150, specialGainRate: 1, skillChargeRate: 1, weight: 1, knockdownResistance: 1 },
   "green-slime": { maxHp: 940, walkSpeed: 2.42, dashSpeed: 5.8, backstepDistance: 40, jumpPower: 8.2, airControl: 1.16, lightDamage: 43, heavyDamage: 97, attackStartupModifier: 0.94, attackRecoveryModifier: 0.94, comboLimit: 7, hitstunScaling: 0.92, guardStun: 9, throwDamage: 168, specialGainRate: 1.12, skillChargeRate: 1.2, weight: 0.92, knockdownResistance: 0.9 },
   "bob-girl": { maxHp: 880, walkSpeed: 2.8, dashSpeed: 6.5, backstepDistance: 38, jumpPower: 8.4, airControl: 1.24, lightDamage: 40, heavyDamage: 91, attackStartupModifier: 0.86, attackRecoveryModifier: 0.9, comboLimit: 8, hitstunScaling: 0.9, guardStun: 8, throwDamage: 132, specialGainRate: 1.18, skillChargeRate: 1.25, weight: 0.82, knockdownResistance: 0.84 },
@@ -251,7 +257,7 @@ function createCharacter([id, name, archetypeName], index) {
   const archetype = ARCHETYPES[archetypeName];
   const combat = COMBAT_STATS[id] || COMBAT_STATS["guitar-boy"];
   const palette1 = [archetype.tint, "#f5f1d6", "#1d2433", "#d94c54"];
-  const palette2 = ["#f4f4f4", archetype.tint, "#16121d", "#47a6d4"];
+  const palette2 = palette1.map(invertHexColor);
   const fallbackAnimation = Object.fromEntries(ANIMATION_CLIPS.map((clip) => [clip, {
     ...ANIMATION_CONTRACT[clip],
     frames: [ANIMATION_CONTRACT[clip].frame],
@@ -274,6 +280,16 @@ function createCharacter([id, name, archetypeName], index) {
       nearestNeighbor: true,
     }),
     palettes: Object.freeze({ color1: palette1, color2: palette2 }),
+    normalAttackVfx: Object.freeze(({
+      "guitar-boy": { color: "#a855f7", scale: 1.0 },
+      "green-slime": { color: "#22d3ee", scale: 0.7 },
+      "bob-girl": { color: "#ff75b5", scale: 1.2 },
+      uncle: { color: "#8b5a2b", scale: 0.8 },
+      rusty: { color: "#dc2626", scale: 0.9 },
+      kazushige: { color: "#111111", scale: 1.1 },
+      norio: { color: "#facc15", scale: 0.9 },
+      toko: { color: "#22c55e", scale: 1.1 },
+    })[id]),
     stats: Object.freeze({
       // Legacy aliases (hp/speed/jumpVelocity/etc.) intentionally remain
       // stable for the current renderer and AI.
@@ -304,6 +320,11 @@ function createCharacter([id, name, archetypeName], index) {
 export const CHARACTERS = Object.freeze(Object.fromEntries(CHARACTER_ROWS.map((row, index) => [row[0], createCharacter(row, index)])));
 export const CHARACTER_IDS = Object.freeze(CHARACTER_ROWS.map(([id]) => id));
 export const CHARACTER_NAMES = Object.freeze(CHARACTER_ROWS.map(([, name]) => name));
+// Stable data extraction surface for result/stat screens and tooling.
+export const FIGHTER_STATS_DAMAGE = Object.freeze(Object.fromEntries(CHARACTER_IDS.map((id) => {
+  const fighter = CHARACTERS[id];
+  return [id, Object.freeze({ stats: fighter.stats, damage: Object.freeze({ light: fighter.moves.light.damage, heavy: fighter.moves.strong.damage, throw: fighter.stats.throwDamage, special: fighter.special.damage }) })];
+})));
 
 export const STAGES = Object.freeze([
   Object.freeze({ number: 1, id: "toko", name: "トコ戦", opponent: "toko", dialogue: "メンバーサイン付き写真２万８千円になりまーす！", background: "assets/stages/stage-toko.png" }),

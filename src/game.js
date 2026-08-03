@@ -214,6 +214,7 @@ export class Game {
     this.save = loadSave();
     this.images = new Map();
     this.effectImages = new Map();
+    this.effectTintCache = new Map();
     // Keep the last decoded frame for each fighter.  Animation frames load
     // asynchronously; retaining a ready frame prevents a one-frame blank
     // whenever a newly requested action image has not decoded yet.
@@ -270,6 +271,7 @@ export class Game {
       skillEntities: [],
       hitstopFrames: 0,
       stageFrame: 0,
+      battleFrames: 0,
       timerFrames: ROUND_TIME_SECONDS * FIXED_HZ,
       result: "",
       stageResult: "",
@@ -779,8 +781,13 @@ export class Game {
     this.restoreRoundCarry(this.player);
     this.restoreRoundCarry(this.cpu, this.state.cpuRoundCarry);
     this.state.timerFrames = ROUND_TIME_SECONDS * FIXED_HZ;
+    this.state.battleFrames = 0;
     this.state.koFrames = 0;
     this.projectiles = [];
+    this.skillEntities = [];
+    this.state.skillEntities = [];
+    this.state.vfx = [];
+    this.state.effects = this.state.vfx;
     this.setScreen(SCREEN.roundIntro);
   }
 
@@ -798,7 +805,12 @@ export class Game {
     this.restoreRoundCarry(this.cpu, this.state.cpuRoundCarry);
     this.state.timerFrames = Number.POSITIVE_INFINITY;
     this.state.stageFrame = 0;
+    this.state.battleFrames = 0;
     this.projectiles = [];
+    this.skillEntities = [];
+    this.state.skillEntities = [];
+    this.state.vfx = [];
+    this.state.effects = this.state.vfx;
     this.setScreen(SCREEN.roundIntro);
   }
 
@@ -830,6 +842,7 @@ export class Game {
     }
     if (!training) this.state.timerFrames = Math.max(0, this.state.timerFrames - 1);
     this.state.stageFrame += 1;
+    this.state.battleFrames = Number(this.state.battleFrames || 0) + 1;
     this.state.comboTimer = Math.max(0, this.state.comboTimer - 1);
     if (this.state.comboTimer === 0) {
       this.state.combo = 0;
@@ -843,8 +856,9 @@ export class Game {
     }
     this.updateThrowSequence();
     this.updateFighter(this.player, input, true);
-    const plan = training ? null : aiPlan({ self: this.cpu, opponent: this.player, difficulty: this.state.difficulty, nowFrame: this.frame });
-    const aiInput = training ? this.trainingInput() : this.inputForPlan(plan);
+    const cpuIntroLocked = !training && this.state.battleFrames <= FIXED_HZ;
+    const plan = training || cpuIntroLocked ? null : aiPlan({ self: this.cpu, opponent: this.player, difficulty: this.state.difficulty, nowFrame: this.frame });
+    const aiInput = training ? this.trainingInput() : this.inputForPlan(cpuIntroLocked ? null : plan);
     this.updateFighter(this.cpu, aiInput, false);
     if (!this.player.thrownBy && !this.cpu.thrownBy) resolvePushboxes(this.player, this.cpu);
     this.player.facing = this.player.x <= this.cpu.x ? 1 : -1;
@@ -1053,7 +1067,14 @@ export class Game {
       const move = fighter.currentMove;
       if (move && !fighter.attackVfxSpawned && move.kind !== "throw" && move.specialType !== "projectile" && fighter.actionFrame >= Number(move.startupFrames || 0)) {
         const point = this.attackReachPoint(fighter, move);
-        this.spawnVfx("attack-wind", point, { x: 0, y: 0, scale: move.id?.includes("strong") ? 0.72 : 0.58 });
+        const strong = Boolean(move.id?.includes("strong") || move.id?.includes("forward_light"));
+        const style = move.kind === "normal" ? CHARACTERS[fighter.id]?.normalAttackVfx : null;
+        const baseScale = strong ? 0.72 : 0.58;
+        this.spawnVfx("attack-wind", point, {
+          x: 0, y: 0, scale: baseScale * Number(style?.scale || 1), tint: style?.color || null,
+          facing: fighter.facing, tipAnchored: true, owner: fighter.id,
+        });
+        this.beep(strong ? 150 : 360, strong ? 0.055 : 0.035, strong ? "sawtooth" : "triangle");
         fighter.attackVfxSpawned = true;
       }
       if (move?.specialType === "projectile" && fighter.pendingProjectile && !fighter.projectileSpawned && fighter.actionFrame >= move.startupFrames) {
@@ -1315,7 +1336,13 @@ export class Game {
     }
     if (fighter.skillPhase === "skillRecovery") {
       fighter.skillRecoveryFrames = Math.max(0, (fighter.skillRecoveryFrames || 1) - 1);
-      if (fighter.skillRecoveryFrames <= 0) { fighter.skillPhase = "skillUnavailable"; fighter.skillState = "skillUnavailable"; fighter.skill.phase = "skillUnavailable"; fighter.skillActive = false; fighter.skillCharging = false; fighter.skillActivated = false; fighter.state = fighter.grounded ? "idle" : "jumping"; fighter.action = fighter.state === "idle" ? "idle" : "jump_fall"; fighter.actionFrame = 0; }
+      if (fighter.skillRecoveryFrames <= 0) {
+        fighter.skillPhase = "skillUnavailable"; fighter.skillState = "skillUnavailable"; fighter.skill.phase = "skillUnavailable";
+        fighter.skillActive = false; fighter.skillCharging = false; fighter.skillActivated = false; fighter.skillConfig = null;
+        fighter.skillHeld = false; fighter.skillHoldRequired = false; fighter.skillHoldActive = false; fighter.skillHoldFrames = 0; fighter.skillActionFrame = 0;
+        fighter.skillCopiedUse = false; fighter.skillCancelled = false; fighter.skillInterrupted = false;
+        fighter.state = fighter.grounded ? "idle" : "jumping"; fighter.action = fighter.state === "idle" ? "idle" : "jump_fall"; fighter.actionFrame = 0;
+      }
     }
   }
 
@@ -1478,11 +1505,14 @@ export class Game {
     const record = {
       effectId, x: Number(point.x || 0) + Number(overrides.x ?? descriptor.offsetX ?? 0), y: Number(point.y || 0) + Number(overrides.y ?? descriptor.offsetY ?? 0),
       scale: Number(overrides.scale ?? descriptor.scale ?? 1),
+      facing: Number(overrides.facing || fighterOrPoint?.facing || 1) < 0 ? -1 : 1,
+      tint: overrides.tint || null,
+      tipAnchored: overrides.tipAnchored === true,
       // Keep the authored descriptor as a lower bound, but let every generic
       // effect advance through its complete numbered-frame manifest unless a
       // caller deliberately supplies a shorter/longer duration.
       frames: Number(hasExplicitDuration ? overrides.frames : Math.max(Number(descriptor.durationFrames || 1), allFramesDuration)),
-      age: 0, owner: fighterOrPoint?.id || null, hitbox: null,
+      age: 0, owner: overrides.owner || fighterOrPoint?.id || null, hitbox: null,
     };
     this.state.vfx = Array.isArray(this.state.vfx) ? this.state.vfx : [];
     this.state.vfx.push(record); this.state.effects = this.state.vfx;
@@ -1507,6 +1537,27 @@ export class Game {
       if (image) this.effectImages.set(resolved.src, image);
     }
     return { ...resolved, image };
+  }
+
+  tintedEffectFrame(asset, tint) {
+    if (!tint || !imageReady(asset?.image) || typeof document === "undefined") return asset?.image || null;
+    const key = `${asset.src}:${tint}`;
+    if (this.effectTintCache.has(key)) return this.effectTintCache.get(key);
+    const canvas = document.createElement("canvas");
+    canvas.width = asset.image.naturalWidth || asset.image.width || 1;
+    canvas.height = asset.image.naturalHeight || asset.image.height || 1;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return asset.image;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(asset.image, 0, 0);
+    ctx.globalCompositeOperation = "source-atop";
+    ctx.globalAlpha = 0.82;
+    ctx.fillStyle = tint;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+    this.effectTintCache.set(key, canvas);
+    return canvas;
   }
 
   spawnSkillEntity(entity = {}) {
@@ -1617,11 +1668,18 @@ export class Game {
         attacker.throwTarget = defender;
         attacker.throwReleased = false;
         defender.thrownBy = attacker;
+        defender.currentMove = null;
+        defender.vx = 0;
+        defender.hitRegistry?.clear?.();
+        this.state.vfx = (this.state.vfx || []).filter((effect) => !(effect.effectId === "attack-wind" && effect.owner === defender.id));
+        this.state.effects = this.state.vfx;
         defender.state = "grabbed";
         defender.action = "thrown";
         defender.actionFrame = 0;
         attacker.action = "throw_hit";
         this.spawnVfx("throw-impact", defender);
+        this.showCombatNotice("COUNTER", "counter", 0, defender);
+        this.beep(520, 0.075, "square");
         setVisualSequence(attacker, [{ name: "throw_success", duration: 18 }]);
         setVisualSequence(defender, [{ name: "thrown", duration: 18 }]);
       }
@@ -1742,6 +1800,7 @@ export class Game {
       attacker.comboFinished = true;
       attacker.attackCooldownFrames = Math.max(Number(attacker.attackCooldownFrames || 0), Number(attacker.attackCooldownMax || 36));
     }
+    this.beep(move.kind === "special" ? 90 : move.id?.includes("strong") ? 125 : 240, move.kind === "special" ? 0.13 : move.id?.includes("strong") ? 0.075 : 0.045, "sawtooth");
     if (!playerAttacker) {
       // CPU damage never awards player points/combo and ends a perfect run.
       this.state.perfect = false;
@@ -1754,7 +1813,6 @@ export class Game {
     const key = thrown ? "throw" : move.kind === "special" ? "special" : move.id.includes("strong") ? "strong" : "light";
     this.state.score += scoreForEvent(key) + this.state.combo * 25;
     if (move.kind === "special") this.state.specialHits += 1;
-    this.beep(move.kind === "special" ? 90 : 240, move.kind === "special" ? 0.13 : 0.045, "sawtooth");
   }
 
   updateProjectiles() {
@@ -2005,7 +2063,16 @@ export class Game {
         const width = Number(manifest.cellWidth || 256) * Number(effect.scale || 1);
         const height = Number(manifest.cellHeight || 256) * Number(effect.scale || 1);
         const origin = manifest.origin || { x: width * 0.5, y: height * 0.5 };
-        ctx.drawImage(asset.image, Number(effect.x || 0) - Number(origin.x || 0) * Number(effect.scale || 1), INTERNAL_HEIGHT - Number(effect.y || 0) - Number(origin.y || 0) * Number(effect.scale || 1), width, height);
+        const source = this.tintedEffectFrame(asset, effect.tint);
+        if (effect.tipAnchored) {
+          ctx.translate(Number(effect.x || 0), INTERNAL_HEIGHT - Number(effect.y || 0));
+          if (Number(effect.facing || 1) < 0) ctx.scale(-1, 1);
+          ctx.drawImage(source, -width, -Number(origin.y || 0) * Number(effect.scale || 1), width, height);
+        } else {
+          ctx.translate(Number(effect.x || 0), 0);
+          if (Number(effect.facing || 1) < 0) ctx.scale(-1, 1);
+          ctx.drawImage(source, -Number(origin.x || 0) * Number(effect.scale || 1), INTERNAL_HEIGHT - Number(effect.y || 0) - Number(origin.y || 0) * Number(effect.scale || 1), width, height);
+        }
       } else {
         ctx.strokeStyle = effect.effectId?.includes("guard") ? "#7de7ff" : "#ffe37b"; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(effect.x || 0, INTERNAL_HEIGHT - (effect.y || 0), Math.max(4, 10 * (effect.scale || 1)), 0, Math.PI * 2); ctx.stroke();
@@ -2025,7 +2092,7 @@ export class Game {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = fighter.hp <= 0 ? 0.66 : 1;
-    if (fighter.color === 2) ctx.filter = "hue-rotate(70deg) saturate(1.2)";
+    if (fighter.color === 2) ctx.filter = "invert(1)";
     if (imageReady(image)) {
       ctx.translate(x, y);
       if (fighter.facing < 0) ctx.scale(-1, 1);

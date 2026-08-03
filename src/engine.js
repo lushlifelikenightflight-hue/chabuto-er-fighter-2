@@ -303,12 +303,14 @@ export function evaluateStrike(attacker, defender, move, actionFrame, registry =
 export function evaluateThrow(attacker, defender, frame = 0) {
   if (!attacker || !defender || frame < 0) return false;
   if (!attacker.grounded || !defender.grounded) return false;
-  // Normal strikes counter a throw attempt. Because both fighters enter
-  // their authored states before collision resolution, this also makes
-  // simultaneous attack/throw input deterministic.
-  if (defender.state === "attacking") return false;
+  if (defender.state !== "attacking") return false;
+  const strike = defender.currentMove;
+  if (!strike || strike.kind !== "normal" || !activeFrame(strike, defender.actionFrame)) return false;
+  const strikeHitbox = getFighterBoxes(defender, strike).hitbox;
+  const reachesAttacker = Boolean(strikeHitbox && getFighterBoxes(attacker).hurtboxes.some((part) => rectsOverlap(strikeHitbox, part)));
+  if (!reachesAttacker) return false;
   if (defender.hp <= 0 || ["hitstun", "knockdown", "jumping"].includes(defender.state)) return false;
-  return rectsOverlap(getFighterBoxes(attacker).throwbox, getFighterBoxes(defender).pushbox);
+  return true;
 }
 
 export function facingFor(aX, bX, fallback = 1) { return aX === bX ? fallback : (bX > aX ? 1 : -1); }
@@ -591,6 +593,7 @@ export function aiPlan({ self, opponent, difficulty = "normal", nowFrame = 0, ra
   const noise = (random() - 0.5) * level.error * 2;
   const threshold = self.id === opponent.id ? 38 : (CHARACTERS[self.id]?.cpu.preferredDistance || 48);
   if (distance > threshold + noise * 20) memory.planned = { action: "walk", direction: facingFor(self.x, opponent.x), issuedAt: nowFrame };
+  else if (distance < threshold * 0.55 && random() > 0.66) memory.planned = { action: "walk", direction: -facingFor(self.x, opponent.x), issuedAt: nowFrame };
   else if (opponent.state === "jumping" && CHARACTERS[self.id]?.cpu.antiAir) memory.planned = { action: "guard", low: false, justGuard: random() < level.justGuardRate, issuedAt: nowFrame };
   else if (opponent.state === "crouching" && random() < level.guardRate) memory.planned = { action: "guard_low", justGuard: random() < level.justGuardRate, issuedAt: nowFrame };
   else if (random() < level.guardRate && ["attacking", "special"].includes(opponent.state)) memory.planned = { action: random() < 0.55 ? "guard" : "guard_low", justGuard: random() < level.justGuardRate, issuedAt: nowFrame };
@@ -604,8 +607,11 @@ export function aiPlan({ self, opponent, difficulty = "normal", nowFrame = 0, ra
       const holdFrames = skill.type === "flash" && ammo <= 0 ? Number(skill.filmReloadFrames || 36) : skill.trigger === "hold-release" ? Math.max(1, Number(skill.chargeMax || 1)) : Math.max(1, Number(skill.phase?.activeFrames || 1));
       memory.planned = { action: "skill", issuedAt: nowFrame, releaseAt: nowFrame + holdFrames, released: false };
     } else if (random() < 0.12 && self.meter >= MAX_METER) memory.planned = { action: "special", issuedAt: nowFrame };
-    else if (random() < 0.18 && CHARACTERS[self.id]?.cpu.throwBias) memory.planned = { action: "throw", issuedAt: nowFrame };
-    else memory.planned = { action: random() < (level.comboMax <= 2 ? 0.75 : 0.58) ? "light" : "strong", issuedAt: nowFrame };
+    else if (random() < (CHARACTERS[self.id]?.cpu.throwBias ? 0.24 : 0.11)) memory.planned = { action: "throw", issuedAt: nowFrame };
+    else {
+      const roll = random();
+      memory.planned = { action: roll < 0.42 ? "light" : roll < 0.76 ? "strong" : roll < 0.9 ? "jump" : "guard", issuedAt: nowFrame };
+    }
   }
   return memory.planned;
 }
