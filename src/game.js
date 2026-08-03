@@ -14,7 +14,10 @@ import {
 import { appendHighScore, loadSave, resetSave, saveData } from "./storage.js";
 import { EFFECT_ASSET_MANIFEST, RUNTIME_ANIMATION_ALIASES, getEffectAssetManifest } from "./sprite-manifest.js";
 import { TouchInput } from "./touch-input.js";
-import { canContinueSkill, canStartSkill, getSkillConfig, interruptSkill } from "./skills.js";
+import {
+  canContinueSkill, canStartSkill, getSkillConfig, getSkillHudState, interruptSkill,
+  SKILL_HOLD_THRESHOLD_FRAMES,
+} from "./skills.js";
 import { effectForMove, getEffectDescriptor } from "./vfx.js";
 
 export const SCREEN = Object.freeze({
@@ -98,6 +101,10 @@ export function formatDuration(durationMs = 0) {
   const seconds = totalSeconds % 60;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
+
+export function skillHudStateFor(fighter) {
+  return getSkillHudState(fighter, fighter?.id);
+}
 // A held jump key must not reduce gravity indefinitely.  Constant gravity
 // keeps jumps short and deterministic, while the air-frame guard below is a
 // last-resort safety net for malformed/custom fighter data.
@@ -119,12 +126,27 @@ const JUST_GUARD_WINDOW = 3;
 const JUST_GUARD_HITSTOP = 4;
 const COMBO_BUFFER_FRAMES = 8;
 const SKILL_ENTITY_LIMIT = 96;
+const HITSTOP_ON_HIT_FRAMES = 2;
 const ACTION_LOCK_STATES = new Set(["attacking", "hitstun", "blockstun", "knockback", "knockdown", "knockdownLanding", "downed", "groundHit", "throwing", "skillStartup", "skillCharging", "skillActive", "skillRecovery"]);
 const DIFFICULTY_IDS = Object.keys(DIFFICULTIES);
 const MOVE_KEYS = Object.freeze({ light: "light_attack_neutral", strong: "strong_attack_neutral" });
 
 function byId(id) { return typeof document === "undefined" ? null : document.getElementById(id); }
 function text(value) { return String(value ?? ""); }
+
+// Debug geometry is a development aid only.  A saved preference or a URL
+// query must not expose it to production users; an explicit dev build flag is
+// required before either source is honored.
+export function debugBuildEnabled() {
+  if (typeof globalThis !== "undefined" && (globalThis.__GAME_DEBUG_BUILD__ === true || globalThis.__DEV__ === true)) return true;
+  return typeof process !== "undefined" && process?.env?.NODE_ENV === "development";
+}
+
+export function resolveDebugFlag(save = {}) {
+  if (!debugBuildEnabled()) return false;
+  const query = typeof location !== "undefined" ? new URLSearchParams(location.search || "").get("debug") : null;
+  return query === "1" || query === "true" || save.debug === true;
+}
 
 function makeImage(src) {
   if (typeof Image === "undefined") return null;
@@ -152,6 +174,9 @@ export class Game {
     this.hud = this.root?.querySelector?.("[data-hud]") || byId("hud");
     this.hint = this.root?.querySelector?.("[data-hint]") || byId("hint");
     this.touchInput = new TouchInput(this.root?.querySelector?.("[data-virtual-pad]") || this.root);
+    // TouchInput emits its first pointer edge synchronously.  Starting audio
+    // here (without awaiting it) keeps that edge in the same simulation tick.
+    if (this.touchInput) this.touchInput.onInput = () => this.ensureAudio();
     this.save = loadSave();
     this.images = new Map();
     this.effectImages = new Map();
@@ -216,7 +241,7 @@ export class Game {
       stageResult: "",
       koFrames: 0,
       screenFrames: 0,
-      debug: this.save.debug === true,
+      debug: resolveDebugFlag(this.save),
       sound: this.save.sound !== false,
       bgmEnabled: this.save.bgmEnabled !== false,
       seEnabled: this.save.seEnabled !== false,
@@ -236,7 +261,9 @@ export class Game {
       if (["arrowleft", "arrowright", "arrowup", "arrowdown", " ", "escape"].includes(key)) event.preventDefault();
       if (!this.keys.has(key)) this.justKeys.add(key);
       this.keys.add(key);
-      if (this.state.screen !== SCREEN.battle && this.state.screen !== SCREEN.pause) this.ensureAudio();
+      // Audio initialization is deliberately independent from gameplay
+      // routing so the first face-button edge is never dropped in battle.
+      this.ensureAudio();
     };
     this.onKeyUp = (event) => {
       const key = event.key.toLowerCase();
@@ -244,7 +271,9 @@ export class Game {
       this.releasedKeys.add(key);
     };
     this.onBlur = () => this.resetInput();
-    this.onFocus = () => this.resetInput();
+    // Focus can be restored in the same turn as a pointer/key edge.  Do not
+    // clear that edge here; blur/visibility handlers already clear stale holds.
+    this.onFocus = () => {};
     window.addEventListener("keydown", this.onKeyDown, { passive: false });
     window.addEventListener("keyup", this.onKeyUp);
     window.addEventListener("blur", this.onBlur);
@@ -275,8 +304,16 @@ export class Game {
 
   ensureAudio() {
     if (this.state.bgmEnabled) this.syncBgm();
-    if (!this.state.seEnabled || this.soundContext || typeof AudioContext === "undefined") return;
-    try { this.soundContext = new AudioContext(); } catch { this.soundContext = null; }
+    if (!this.state.seEnabled || typeof AudioContext === "undefined") return;
+    try {
+      if (!this.soundContext) this.soundContext = new AudioContext();
+      // Browsers commonly return a Promise here.  Attach the continuation but
+      // never await it from the input handler, preserving the original edge.
+      if (this.soundContext?.state === "suspended" && typeof this.soundContext.resume === "function") {
+        const resumed = this.soundContext.resume();
+        this.audioResumePromise = Promise.resolve(resumed).catch(() => undefined);
+      }
+    } catch { this.soundContext = null; }
   }
 
   syncBgm() {
@@ -429,15 +466,18 @@ export class Game {
     const xReleased = released("k", "x") || gamepad.xReleased || touchReleased("x");
     const yReleased = released("l", "c") || gamepad.yReleased || touchReleased("y");
     const bReleased = released("b") || gamepad.bReleased || touchReleased("b");
+    const dedicatedThrowHeld = touchHeld("throw");
+    const dedicatedThrowPressed = touchPressed("throw");
+    const dedicatedThrowReleased = touchReleased("throw");
     const edgeFrame = (name, edge) => {
       if (edge) this.inputEdgeFrames.set(name, this.frame);
       return this.inputEdgeFrames.get(name);
     };
     const aEdgeFrame = edgeFrame("a", aPressed);
     const xEdgeFrame = edgeFrame("x", xPressed);
-    const throwHeld = aHeld && xHeld;
+    const throwHeld = dedicatedThrowHeld || (aHeld && xHeld);
     const throwWithinWindow = Number.isFinite(aEdgeFrame) && Number.isFinite(xEdgeFrame) && Math.abs(aEdgeFrame - xEdgeFrame) <= 8;
-    const throwPressed = throwHeld && throwWithinWindow && !this.throwChordHeld;
+    const throwPressed = dedicatedThrowPressed || (throwHeld && throwWithinWindow && !this.throwChordHeld);
     this.throwChordHeld = throwHeld;
     if (!throwHeld) this.throwChordHeld = false;
     let light = aHeld && !throwHeld;
@@ -464,7 +504,7 @@ export class Game {
       a: aHeld, b: bHeld, x: xHeld, y: yHeld,
       jump: jumpHeld, jumpPressed: jump, jumpReleased, specialPressed, specialReleased,
       skillPressed, skillReleased: bReleased,
-      throwHeld, throwPressed, counterThrow: false,
+      throwHeld, throwPressed, throwReleased: dedicatedThrowReleased || (aReleased || xReleased), counterThrow: false,
       leftPressed, rightPressed, upPressed, upReleased, downPressed,
       lightPressed, strongPressed, guardPressed,
       confirm, cancel, pause, start: confirm,
@@ -511,10 +551,12 @@ export class Game {
   setScreen(screen) {
     this.state.screen = screen;
     this.state.screenFrames = 0;
-    this.resetInput();
+    // Do not clear the edge that caused this transition.  The originating
+    // pointer/key event is consumed at the end of the current tick; clearing
+    // it here made the first A/X/touch input disappear when entering battle.
     const touchLockedScreens = new Set([SCREEN.stageIntro, SCREEN.roundIntro, SCREEN.battle, SCREEN.pause, SCREEN.roundResult, SCREEN.stageResult, SCREEN.continue, SCREEN.gameOver, SCREEN.ending]);
     const touchMode = touchLockedScreens.has(screen) ? "battle" : screen === SCREEN.howToPlay ? "howToPlay" : "hidden";
-    this.touchInput?.setMode(touchMode);
+    this.touchInput?.setMode(touchMode, { preserveInput: touchLockedScreens.has(screen) });
     if (screen !== SCREEN.battle) this.state.result = this.state.result || "";
     this.beep(screen === SCREEN.battle ? 330 : 220, 0.045);
     this.syncBgm();
@@ -553,14 +595,14 @@ export class Game {
       this.state.seEnabled = !this.state.seEnabled;
       this.state.sound = this.state.bgmEnabled || this.state.seEnabled;
     } else if (index === 3) {
-      this.state.debug = !this.state.debug;
+      if (debugBuildEnabled()) this.state.debug = !this.state.debug;
     } else if (index === 4) {
       this.save = resetSave(); this.state.sound = true; this.state.bgmEnabled = true; this.state.seEnabled = true; this.state.debug = false;
       this.beep(160, 0.1);
     } else if (index === 5) {
       this.setScreen(SCREEN.menu); return;
     }
-    this.save = saveData({ ...this.save, sound: this.state.sound, bgmEnabled: this.state.bgmEnabled, seEnabled: this.state.seEnabled, debug: this.state.debug });
+    this.save = saveData({ ...this.save, sound: this.state.sound, bgmEnabled: this.state.bgmEnabled, seEnabled: this.state.seEnabled, debug: debugBuildEnabled() && this.state.debug });
     this.syncBgm();
     this.renderPanel();
   }
@@ -857,7 +899,7 @@ export class Game {
       if (plan.released) {
         if (!this.cpuSkillLifecycle.releaseSent) { blank.skillReleased = true; this.cpuSkillLifecycle.releaseSent = true; }
       } else {
-        blank.skill = true; blank.skillHeld = true;
+        blank.skill = true; blank.skillHeld = true; blank.skillHoldRequired = false;
         if (!this.cpuSkillLifecycle.started) { blank.skillPressed = true; this.cpuSkillLifecycle.started = true; }
       }
     }
@@ -870,6 +912,10 @@ export class Game {
     input = input || {};
     const character = CHARACTERS[fighter.id];
     const stats = character.stats || {};
+    if (fighter.comboBuffer) {
+      fighter.comboBuffer.frames = Math.max(0, Number(fighter.comboBuffer.frames || 0) - 1);
+      if (fighter.comboBuffer.frames <= 0) fighter.comboBuffer = null;
+    }
     advanceVisualSequence(fighter);
     if (fighter.state === "grabbed") return;
     if (fighter.hitstopFrames > 0 || fighter.hitstopRemaining > 0) {
@@ -893,10 +939,7 @@ export class Game {
     if (fighter.state === "wakeupInvulnerable") {
       fighter.wakeupInvulnerable = fighter.wakeupInvulnerableFrames > 0;
       if (fighter.wakeupInvulnerableFrames <= 0) { fighter.state = "idle"; fighter.wakeupState = "idle"; fighter.actionFrame = 0; }
-      else if (input.lightPressed || input.strongPressed || input.throwPressed || input.skillPressed || input.specialPressed) {
-        fighter.wakeupInvulnerable = false;
-        fighter.wakeupInvulnerableFrames = 0;
-      }
+      else { fighter.boxProfile = "standing"; fighter.action = "wakeup"; fighter.actionFrame += 1; return; }
     }
     if (fighter.stunFrames > 0) {
       fighter.stunFrames -= 1;
@@ -990,7 +1033,9 @@ export class Game {
         else if (!fighter.crouching && wasCrouching) setVisualSequence(fighter, [{ name: "crouch_end", duration: 8 }]);
         if (direction !== 0 && !input.down) {
           const directionPressed = Boolean(input.leftPressed || input.rightPressed);
-          const doubleTap = directionPressed && this.frame - fighter.lastDirectionFrame <= 14 && direction === fighter.lastDirection;
+          // Two identical direction edges within 250 ms (15 fixed frames)
+          // trigger dash/backstep; held input alone never qualifies.
+          const doubleTap = directionPressed && this.frame - fighter.lastDirectionFrame <= 15 && direction === fighter.lastDirection;
           const isBackstep = doubleTap && direction === -fighter.facing;
           const nextAction = isBackstep ? "backstep" : doubleTap ? "dash" : direction === fighter.facing ? "walk_forward" : "walk_backward";
           fighter.action = nextAction; fighter.actionFrame = fighter.action === nextAction ? fighter.actionFrame + 1 : 0;
@@ -1054,6 +1099,8 @@ export class Game {
 
   startAttack(fighter, input) {
     if (!fighter || fighter.hp <= 0 || fighter.downed || ["wakeup", "knockdownLanding", "downed", "groundHit"].includes(fighter.state)) return false;
+    const wakeupLocked = Number(fighter.wakeupInvulnerableFrames || 0) > 0 && (fighter.wakeupInvulnerable === true || fighter.state === "wakeupInvulnerable");
+    if (wakeupLocked) return false;
     const airborne = !fighter.grounded;
     const crouch = fighter.crouching;
     const direction = (input.right ? 1 : 0) - (input.left ? 1 : 0);
@@ -1081,7 +1128,11 @@ export class Game {
     fighter.action = key;
     fighter.state = "attacking";
     fighter.actionFrame = 0;
+    fighter.attackInstanceId = Number(fighter.attackInstanceId || 0) + 1;
+    fighter.currentAttackId = `${fighter.id}:${fighter.attackInstanceId}`;
     fighter.hitRegistry.clear();
+    if (fighter.alreadyHitTargets instanceof Set) fighter.alreadyHitTargets.clear();
+    else fighter.alreadyHitTargets = new Set();
     fighter.hitConfirmed = false;
     fighter.comboLastMove = key;
     fighter.comboBuffer = null;
@@ -1097,7 +1148,8 @@ export class Game {
     if (!config || !fighter || fighter.hp <= 0 || fighter.flashStunned || (config.type === "tackle" && Number(fighter.tackleCooldown || 0) > 0) || !canStartSkill(fighter, config)) return false;
     fighter.skillPhase = "skillStartup"; fighter.skillState = "skillStartup"; fighter.skill.phase = "skillStartup";
     fighter.skillCopiedUse = config.type === "copy" && Number(fighter.copiedSkillUses || 0) > 0;
-    fighter.skillCharging = Boolean(config.trigger === "hold-release" || (config.type === "copy" && !fighter.skillCopiedUse)); fighter.skillActive = false; fighter.skillInterrupted = false; fighter.skillInterruptionReason = null; fighter.skillRecoveryFrames = 0; fighter.skillActionFrame = 0; fighter.skillHeld = true; fighter.skillStartFrame = this.frame; fighter.action = "skill_start"; fighter.state = "skillStartup"; fighter.actionFrame = 0; fighter.hitRegistry.clear();
+    const holdRequired = input.skillHoldRequired !== false && (input.skillHoldRequired === true || input.skillPressed === true);
+    fighter.skillCharging = false; fighter.skillActive = false; fighter.skillInterrupted = false; fighter.skillInterruptionReason = null; fighter.skillRecoveryFrames = 0; fighter.skillActionFrame = 0; fighter.skillHoldFrames = 0; fighter.skillHoldThresholdFrames = SKILL_HOLD_THRESHOLD_FRAMES; fighter.skillHoldActive = !holdRequired; fighter.skillHoldRequired = holdRequired; fighter.skillCancelled = false; fighter.skillHeld = true; fighter.skillStartFrame = this.frame; fighter.action = "skill_start"; fighter.state = "skillStartup"; fighter.actionFrame = 0; fighter.hitRegistry.clear();
     fighter.skillConfig = config;
     this.spawnVfx(config.effectId, fighter, { x: config.type === "flash" ? fighter.facing * 26 : 0 });
     return true;
@@ -1107,8 +1159,29 @@ export class Game {
     const config = fighter.skillConfig || getSkillConfig(fighter.id);
     if (!config) { fighter.skillPhase = "skillUnavailable"; fighter.skillState = "skillUnavailable"; fighter.state = "idle"; return; }
     if (fighter.hp <= 0) { this.interruptSkillFor(fighter, "ko"); return; }
+    const skillHeld = Boolean(input.skill ?? input.skillHeld);
+    const released = Boolean(input.skillReleased || !skillHeld);
+    // A tap is intentionally inert.  Only after the full 350 ms gesture do
+    // we enter the authored startup/charge phases; releasing sooner cancels
+    // without consuming gauge, ammo, or copy uses.
+    if (!fighter.skillHoldActive) {
+      if (released) {
+        fighter.skillHoldFrames = 0;
+        fighter.skillHoldActive = false;
+        fighter.skillCancelled = true;
+        fighter.skillPhase = "skillUnavailable"; fighter.skillState = "skillUnavailable"; fighter.skill.phase = "skillUnavailable";
+        fighter.skillCharging = false; fighter.skillActive = false; fighter.state = fighter.hp > 0 ? (fighter.grounded ? "idle" : "jumping") : "defeat"; fighter.action = fighter.state; fighter.actionFrame = 0;
+        return;
+      }
+      fighter.skillHoldFrames = Math.min(Number(fighter.skillHoldThresholdFrames || SKILL_HOLD_THRESHOLD_FRAMES), Number(fighter.skillHoldFrames || 0) + 1);
+      fighter.skillHeld = true;
+      fighter.state = "skillStartup"; fighter.action = "skill_charge"; fighter.actionFrame = fighter.skillHoldFrames;
+      if (fighter.skillHoldFrames < Number(fighter.skillHoldThresholdFrames || SKILL_HOLD_THRESHOLD_FRAMES)) return;
+      fighter.skillHoldActive = true;
+      fighter.skillActionFrame = 0;
+      fighter.skillCharging = config.trigger === "hold-release" || (config.type === "copy" && !fighter.skillCopiedUse);
+    }
     fighter.skillActionFrame = (fighter.skillActionFrame || 0) + 1;
-    const released = input.skillReleased || !input.skill;
     if (config.type === "flash" && Number(fighter.skillAmmo || fighter.ammo || 0) <= 0) {
       if (released && !fighter.flashReloading) {
         fighter.flashReloadFrames = 0; fighter.skillPhase = "skillUnavailable"; fighter.skillState = "skillUnavailable"; fighter.skill.phase = "skillUnavailable"; fighter.skillActivated = false; fighter.state = fighter.grounded ? "idle" : "jumping"; fighter.action = fighter.state; return;
@@ -1132,8 +1205,9 @@ export class Game {
     if (fighter.skillPhase === "skillCharging") {
       const rate = Number(config.chargeRate || 0) * Number(CHARACTERS[fighter.id].stats.skillChargeRate || 1);
       fighter.skillGauge = clamp((fighter.skillGauge || 0) + rate, 0, Number(config.chargeMax || 100)); fighter.skill.gauge = fighter.skillGauge; fighter.gauge.skill = fighter.skillGauge;
-      if (released && (config.type !== "copy" || fighter.skillGauge >= Number(config.chargeMax || 100))) { fighter.skillPhase = "skillActive"; fighter.skillState = "skillActive"; fighter.skill.phase = "skillActive"; fighter.state = "skillActive"; fighter.action = "skill_active"; fighter.skillActionFrame = 0; }
-      else if (released && config.type === "copy") { fighter.skillPhase = "skillUnavailable"; fighter.skillState = "skillUnavailable"; fighter.skill.phase = "skillUnavailable"; fighter.skillCharging = false; fighter.skillActivated = false; fighter.state = fighter.grounded ? "idle" : "jumping"; fighter.action = fighter.state; fighter.skillGauge = 0; fighter.skill.gauge = 0; }
+      const requiresFullCharge = config.type === "copy" || config.type === "dogSummon";
+      if (released && (!requiresFullCharge || fighter.skillGauge >= Number(config.chargeMax || 100))) { fighter.skillPhase = "skillActive"; fighter.skillState = "skillActive"; fighter.skill.phase = "skillActive"; fighter.state = "skillActive"; fighter.action = "skill_active"; fighter.skillActionFrame = 0; }
+      else if (released && requiresFullCharge) { fighter.skillPhase = "skillUnavailable"; fighter.skillState = "skillUnavailable"; fighter.skill.phase = "skillUnavailable"; fighter.skillCharging = false; fighter.skillActivated = false; fighter.skillCancelled = true; fighter.state = fighter.grounded ? "idle" : "jumping"; fighter.action = fighter.state; fighter.skillGauge = 0; fighter.skill.gauge = 0; fighter.gauge.skill = 0; }
       else return;
     }
     if (fighter.skillPhase === "skillActive") {
@@ -1186,7 +1260,8 @@ export class Game {
     } else if (type === "dogSummon") {
       this.skillEntities = Array.isArray(this.skillEntities) ? this.skillEntities : [];
       if (this.skillEntities.some((entry) => entry.owner === owner && ["dogMarker", "fallingDog", "dogImpact"].includes(entry.type) && entry.active)) return;
-      this.spawnSkillEntity({ owner, type: "dogMarker", x: opponent?.x || fighter.x + fighter.facing * 90, targetX: opponent?.x || fighter.x + fighter.facing * 90, y: 0, delay: 20, duration: 116, damage: 0, w: 0, h: 0, guardable: true, effectId: config.effectId }); if (resourceMode === "native") { fighter.skillAmmo = Math.max(0, (fighter.skillAmmo || 1) - 1); fighter.ammo = fighter.skillAmmo; }
+      this.spawnSkillEntity({ owner, type: "dogMarker", x: opponent?.x || fighter.x + fighter.facing * 90, targetX: opponent?.x || fighter.x + fighter.facing * 90, y: 0, delay: 20, duration: 116, damage: 0, w: 0, h: 0, guardable: true, effectId: config.effectId });
+      if (resourceMode === "native") { fighter.skillGauge = 0; fighter.skill.gauge = 0; fighter.gauge.skill = 0; }
     } else if (type === "ramenBuff") {
       fighter.buff = { ...(fighter.buff || {}), ...config.buff, frames: config.buffDurationFrames || 600 }; if (resourceMode === "native") { fighter.skillGauge = 0; fighter.skill.gauge = 0; }
     } else if (type === "drumBeat") {
@@ -1229,6 +1304,8 @@ export class Game {
     fighter.currentMove = move;
     fighter.meter = 0;
     fighter.state = "attacking";
+    fighter.attackInstanceId = Number(fighter.attackInstanceId || 0) + 1;
+    fighter.currentAttackId = `${fighter.id}:special:${fighter.attackInstanceId}`;
     fighter.action = "special_start";
     fighter.actionFrame = 0;
     fighter.hitRegistry.clear();
@@ -1246,6 +1323,8 @@ export class Game {
     if (!fighter || fighter.hp <= 0 || fighter.downed || fighter.wakeupTimer > 0) return false;
     fighter.currentMove = { id: "throw", kind: "throw", startupFrames: 5, activeFrames: 3, recoveryFrames: 22, damage: Number(CHARACTERS[fighter.id].stats.throwDamage || 150), hitstunFrames: 30, scoreValue: 400, hitbox: null, causesKnockdown: true, hardKnockdown: false, throw: true };
     fighter.state = "throwing";
+    fighter.attackInstanceId = Number(fighter.attackInstanceId || 0) + 1;
+    fighter.currentAttackId = `${fighter.id}:throw:${fighter.attackInstanceId}`;
     fighter.action = "throw_start";
     fighter.actionFrame = 0;
     fighter.crouching = false;
@@ -1382,13 +1461,14 @@ export class Game {
     const buff = attacker.buff || null;
     const move = buff ? {
       ...rawMove,
+      attackId: attacker.currentAttackId || rawMove?.id,
       damage: Number(rawMove.damage || 0) * Number(buff.attackScale || 1),
       chipDamage: Number(rawMove.chipDamage || 0) * Number(buff.chipScale || 1),
       hitboxWidth: Number(rawMove.hitboxWidth || 0) * Number(buff.hitboxScale || 1),
       hitboxHeight: Number(rawMove.hitboxHeight || 0) * Number(buff.hitboxScale || 1),
       hitbox: rawMove.hitbox ? { ...rawMove.hitbox, w: Number(rawMove.hitbox.w || 0) * Number(buff.hitboxScale || 1), h: Number(rawMove.hitbox.h || 0) * Number(buff.hitboxScale || 1) } : rawMove.hitbox,
       effectScale: Number(buff.effectScale || 1),
-    } : rawMove;
+    } : rawMove ? { ...rawMove, attackId: attacker.currentAttackId || rawMove.id } : rawMove;
     if (!move || attacker.state !== "attacking" && attacker.state !== "throwing") return;
     const wasFlashStunned = Boolean(defender.flashStunned);
     if (wasFlashStunned) { defender.flashStunned = false; defender.flashStunFrames = 0; defender.flashComboHit = false; defender.stunFrames = 0; }
@@ -1429,6 +1509,8 @@ export class Game {
     if (move.specialType === "projectile") return;
     const result = evaluateStrike(attacker, defender, move, attacker.actionFrame, attacker.hitRegistry);
     if (!result.hit) return;
+    if (!(attacker.alreadyHitTargets instanceof Set)) attacker.alreadyHitTargets = new Set();
+    attacker.alreadyHitTargets.add(defender.id);
     const guardDashGuard = defender.guardDashActive && defender.guardDashFrames <= GUARD_DASH_GUARD_FRAMES;
     const guardWasJustPressed = defender.guardHeld && Number.isFinite(defender.guardStartedFrame) && this.frame - defender.guardStartedFrame <= JUST_GUARD_WINDOW && result.guardLevelOk && !result.unblockable;
     const justGuard = guardWasJustPressed && isJustGuardEligible(move) && defender.justGuardConsumedFrame !== defender.guardStartedFrame;
@@ -1458,6 +1540,10 @@ export class Game {
     const comboScale = attacker.comboHits > 0 ? comboDamageScale(attacker.comboHits, CHARACTERS[attacker.id]) : 1;
     const damage = blocked && guardDashGuard ? 0 : result.damage * comboScale * (defender === this.cpu ? 1 : 0.92) * (wasFlashStunned ? 0.5 : 1);
     const dealtDamage = applyDamage(defender, damage, { blocked, knockbackX: move.knockbackX, knockbackY: move.knockbackY, hitstunFrames: blocked ? move.blockstunFrames : move.hitstunFrames });
+    // Freeze the simulation briefly on confirmed contact; the normal tick
+    // path decrements this counter and resumes all state machines cleanly.
+    const contactHitstop = blocked ? 1 : HITSTOP_ON_HIT_FRAMES;
+    this.state.hitstopFrames = Math.max(Number(this.state.hitstopFrames || 0), contactHitstop);
     if (!blocked && move.downFollowup && defender.downed && defender.followupReserved && defender.followupAttacker === attacker) {
       defender.downFollowupUsed = true;
       defender.followupUsed = true;
@@ -1813,6 +1899,20 @@ export class Game {
     bar(294, 14, 170, this.cpu.hp / (this.cpu.maxHp || MAX_HP), "#ef505c");
     bar(16, 25, 110, this.player.meter / 100, "#f6c84c");
     bar(354, 25, 110, this.cpu.meter / 100, "#f6c84c");
+    const drawSkill = (fighter, x, align = "left") => {
+      const skill = skillHudStateFor(fighter);
+      const ratio = skill.max > 0 ? skill.value / skill.max : 0;
+      bar(x, 36, 110, ratio, skill.ready ? "#b875ff" : "#5c6474");
+      ctx.save();
+      ctx.textAlign = align;
+      ctx.font = "bold 7px monospace";
+      ctx.fillStyle = skill.ready ? "#e4c5ff" : "#aab2c3";
+      const valueLabel = skill.mode === "duration" ? `${Math.ceil(skill.value / FIXED_HZ)}s` : `${Math.round(skill.value)}/${Math.round(skill.max)}`;
+      ctx.fillText(`${skill.label} ${valueLabel}${skill.ready ? " READY" : ""}`, align === "right" ? x + 110 : x, 51);
+      ctx.restore();
+    };
+    drawSkill(this.player, 16, "left");
+    drawSkill(this.cpu, 354, "right");
     ctx.fillStyle = "#f6f5de"; ctx.font = "bold 9px monospace";
     ctx.fillText(CHARACTERS[this.player.id]?.name || "1P", 16, 9);
     ctx.textAlign = "right"; ctx.fillText(CHARACTERS[this.cpu.id]?.name || "CPU", 464, 9);

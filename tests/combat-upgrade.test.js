@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { CHARACTERS } from "../src/data.js";
 import { aiPlan, createFighterState } from "../src/engine.js";
 import { Game, SCREEN } from "../src/game.js";
-import { getSkillConfig } from "../src/skills.js";
+import { getSkillConfig, getSkillHudState, SKILL_HOLD_THRESHOLD_FRAMES } from "../src/skills.js";
 import { getEffectAssetManifest } from "../src/sprite-manifest.js";
 import { effectForMove } from "../src/vfx.js";
 
@@ -54,6 +54,28 @@ test("down landing, one follow-up, and wakeup invulnerability are bounded", () =
   assert.equal(defender.wakeupInvulnerableFrames, 12);
 });
 
+test("wakeup invulnerability keeps light/heavy attacks locked until its 12f expiry", () => {
+  const game = new Game(null);
+  const fighter = createFighterState("guitar-boy", 100, 1);
+  game.player = fighter; game.cpu = createFighterState("rusty", 140, -1);
+  game.startWakeupInvulnerable(fighter);
+  assert.equal(fighter.wakeupInvulnerableFrames, 12);
+  assert.equal(fighter.invulnerableFrames, 12);
+  assert.equal(game.startAttack(fighter, { ...blank(), lightPressed: true }), false);
+  assert.equal(game.startAttack(fighter, { ...blank(), strongPressed: true }), false);
+  assert.equal(fighter.wakeupInvulnerableFrames, 12);
+  game.updateFighter(fighter, blank(), true);
+  assert.equal(fighter.wakeupInvulnerableFrames, 11);
+  assert.equal(fighter.invulnerableFrames, 11);
+  assert.equal(game.startAttack(fighter, { ...blank(), lightPressed: true }), false);
+  for (let i = 0; i < 11; i += 1) game.updateFighter(fighter, blank(), true);
+  assert.equal(fighter.wakeupInvulnerableFrames, 0);
+  assert.equal(fighter.invulnerableFrames, 0);
+  assert.equal(fighter.wakeupInvulnerable, false);
+  assert.equal(fighter.state, "idle");
+  assert.equal(game.startAttack(fighter, { ...blank(), strongPressed: true }), true);
+});
+
 test("light combo alternates left/right and respects character limit", () => {
   const game = new Game(null);
   const fighter = createFighterState("rusty", 100, 1);
@@ -64,6 +86,59 @@ test("light combo alternates left/right and respects character limit", () => {
   assert.equal(fighter.currentMove.id, "light_right");
   fighter.comboHits = CHARACTERS.rusty.stats.comboLimit; fighter.comboTimer = 20;
   assert.equal(game.startAttack(fighter, { ...blank(), lightPressed: true }), false);
+});
+
+test("attack instances reset hit registries and edge contact still takes damage", () => {
+  const game = new Game(null);
+  const attacker = createFighterState("guitar-boy", 100, 1);
+  const defender = createFighterState("uncle", 122, -1);
+  game.player = attacker; game.cpu = defender;
+  const heavy = { ...blank(), strongPressed: true };
+  assert.equal(game.startAttack(attacker, heavy), true);
+  const first = attacker.currentAttackId;
+  attacker.state = "idle"; attacker.currentMove = null;
+  assert.equal(game.startAttack(attacker, heavy), true);
+  assert.notEqual(attacker.currentAttackId, first);
+  attacker.currentMove = CHARACTERS[attacker.id].moves.strong_attack_neutral;
+  attacker.state = "attacking"; attacker.actionFrame = attacker.currentMove.startupFrames;
+  const hp = defender.hp;
+  game.handleCombat(attacker, defender);
+  assert.ok(defender.hp < hp);
+  assert.equal(defender.invulnerableFrames, 0);
+  assert.ok(game.state.hitstopFrames > 0);
+  for (const field of ["lightPressed", "strongPressed", "guardPressed", "skillPressed"]) {
+    const input = { ...blank(), [field]: true };
+    attacker.state = "idle"; attacker.currentMove = null; attacker.skillPhase = "skillUnavailable";
+    if (field === "lightPressed" || field === "strongPressed") assert.equal(game.startAttack(attacker, input), true);
+  }
+});
+
+test("forward light has two hit-confirm stages and expires its pre-input buffer", () => {
+  const game = new Game(null);
+  const fighter = createFighterState("guitar-boy", 100, 1);
+  const forward = { ...blank(), right: true, lightPressed: true };
+  assert.equal(game.startAttack(fighter, forward), true);
+  assert.equal(fighter.currentMove.id, "forward_light_left");
+  fighter.state = "idle"; fighter.currentMove = null; fighter.comboHits = 1; fighter.comboTimer = 30;
+  assert.equal(game.startAttack(fighter, forward), true);
+  assert.equal(fighter.currentMove.id, "forward_light_right");
+  fighter.state = "attacking"; fighter.currentMove = { startupFrames: 2, activeFrames: 2, recoveryFrames: 4, id: "light_right" }; fighter.actionFrame = 3; fighter.hitConfirmed = true; fighter.comboHits = 1;
+  game.updateFighter(fighter, { ...blank(), lightPressed: true }, true);
+  assert.ok(fighter.comboBuffer);
+  for (let i = 0; i < 8; i += 1) game.updateFighter(fighter, blank(), true);
+  assert.equal(fighter.comboBuffer, null);
+});
+
+test("direction dash uses a 250 ms edge window and never triggers from held input", () => {
+  const game = new Game(null);
+  const fighter = createFighterState("guitar-boy", 100, 1);
+  game.frame = 1; game.updateFighter(fighter, { ...blank(), right: true, rightPressed: true }, true);
+  game.frame = 16; game.updateFighter(fighter, { ...blank(), right: true, rightPressed: true }, true);
+  assert.equal(fighter.action, "dash");
+  const held = createFighterState("guitar-boy", 100, 1);
+  game.frame = 1; game.updateFighter(held, { ...blank(), right: true, rightPressed: true }, true);
+  game.frame = 30; game.updateFighter(held, { ...blank(), right: true }, true);
+  assert.notEqual(held.action, "dash");
 });
 
 test("guard dash is forward-only, guarded at startup, and attack-cancellable", () => {
@@ -182,6 +257,55 @@ test("dog has marker/falling/impact phases and only impact deals hard knockdown"
   for (let i = 0; i < 21; i += 1) game.updateSkillEntities(); assert.equal(game.skillEntities[0].type, "fallingDog");
   const before = target.hp; for (let i = 0; i < 20; i += 1) game.updateSkillEntities(); assert.equal(game.skillEntities[0].type, "dogImpact");
   assert.ok(target.hp < before); assert.equal(target.downed, true);
+});
+
+test("rusty dog summon uses a charge HUD, requires full B charge, and resets after release", () => {
+  const game = new Game(null);
+  const rusty = createFighterState("rusty", 100, 1);
+  const target = createFighterState("guitar-boy", 130, -1);
+  game.player = rusty; game.cpu = target;
+  const config = getSkillConfig("rusty");
+  let hud = getSkillHudState(rusty, config);
+  assert.deepEqual({ mode: hud.mode, value: hud.value, max: hud.max, label: hud.label, ready: hud.ready, disabled: hud.disabled }, { mode: "charge", value: 0, max: 100, label: "DOG", ready: false, disabled: false });
+  assert.equal(game.startSkill(rusty, { skill: true, skillPressed: true }), true);
+  assert.equal(game.startSkill(rusty, { skill: true, skillPressed: true }), false);
+  for (let i = 0; i < SKILL_HOLD_THRESHOLD_FRAMES + config.phase.startupFrames + 6; i += 1) game.updateFighter(rusty, { skill: true }, true);
+  hud = getSkillHudState(rusty, config);
+  assert.equal(hud.mode, "charge");
+  assert.ok(hud.value > 0 && hud.value < hud.max);
+  assert.equal(hud.ready, false);
+  assert.equal(hud.disabled, true);
+  game.updateFighter(rusty, { skill: false, skillReleased: true }, true);
+  assert.equal(rusty.skillPhase, "skillUnavailable");
+  assert.equal(rusty.skillCancelled, true);
+  assert.equal(rusty.skillGauge, 0);
+  assert.equal(game.skillEntities.some((entry) => entry.type === "dogMarker"), false);
+  assert.equal(game.startSkill(rusty, { skill: true, skillPressed: true }), true);
+  let guard = 0;
+  while (rusty.skillGauge < config.chargeMax && guard < 320) {
+    game.updateFighter(rusty, { skill: true }, true);
+    guard += 1;
+  }
+  assert.equal(rusty.skillGauge, config.chargeMax);
+  hud = getSkillHudState(rusty, config);
+  assert.equal(hud.ready, true);
+  assert.equal(hud.disabled, true);
+  game.updateFighter(rusty, { skill: false, skillReleased: true }, true);
+  assert.equal(game.skillEntities.some((entry) => entry.type === "dogMarker"), true);
+  assert.equal(rusty.skillGauge, 0);
+  assert.equal(rusty.skill.gauge, 0);
+  hud = getSkillHudState(rusty, config);
+  assert.equal(hud.value, 0);
+  assert.equal(hud.ready, false);
+  assert.equal(hud.disabled, true);
+  guard = 0;
+  while (rusty.skillPhase !== "skillUnavailable" && guard < 80) {
+    game.updateFighter(rusty, { skill: false, skillReleased: true }, true);
+    guard += 1;
+  }
+  assert.equal(rusty.skillPhase, "skillUnavailable");
+  assert.equal(getSkillHudState(rusty, config).disabled, false);
+  assert.equal(game.startSkill(rusty, { skill: true, skillPressed: true }), true);
 });
 
 test("tackle cooldown rejects start and norio markers become capped impacts", () => {

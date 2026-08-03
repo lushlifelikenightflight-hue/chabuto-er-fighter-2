@@ -235,10 +235,30 @@ export function resolvePushboxes(a, b, bounds = STAGE_BOUNDS) {
   if (!rectsOverlap(ba, bb)) return { overlap: 0, moved: false };
   const overlap = Math.min(ba.x + ba.w - bb.x, bb.x + bb.w - ba.x);
   const direction = a.x <= b.x ? -1 : 1;
+  // Separate symmetrically first, then spend any remainder on the fighter
+  // that still has room.  The old half-split left both pushboxes overlapping
+  // whenever one fighter was already touching a stage edge.
   const half = overlap / 2;
-  a.x = clamp(a.x + direction * half, bounds.left, bounds.right);
-  b.x = clamp(b.x - direction * half, bounds.left, bounds.right);
-  return { overlap, moved: true };
+  const leftFighter = direction < 0 ? a : b;
+  const rightFighter = direction < 0 ? b : a;
+  const leftRoom = Math.max(0, Number(leftFighter.x) - bounds.left);
+  const rightRoom = Math.max(0, bounds.right - Number(rightFighter.x));
+  const leftMove = Math.min(half, leftRoom);
+  const rightMove = Math.min(half, rightRoom);
+  leftFighter.x = clamp(leftFighter.x - leftMove, bounds.left, bounds.right);
+  rightFighter.x = clamp(rightFighter.x + rightMove, bounds.left, bounds.right);
+  let remaining = overlap - leftMove - rightMove;
+  if (remaining > 0 && leftRoom > leftMove) {
+    const extra = Math.min(remaining, leftRoom - leftMove);
+    leftFighter.x = clamp(leftFighter.x - extra, bounds.left, bounds.right);
+    remaining -= extra;
+  }
+  if (remaining > 0 && rightRoom > rightMove) {
+    const extra = Math.min(remaining, rightRoom - rightMove);
+    rightFighter.x = clamp(rightFighter.x + extra, bounds.left, bounds.right);
+  }
+  const separated = !rectsOverlap(getFighterBoxes(a).pushbox, getFighterBoxes(b).pushbox);
+  return { overlap, moved: true, separated };
 }
 
 export function activeFrame(move, actionFrame) {
@@ -262,12 +282,13 @@ export function evaluateStrike(attacker, defender, move, actionFrame, registry =
   if (!activeFrame(move, actionFrame)) return { hit: false, blocked: false, reason: "inactive" };
   if (!attacker || !defender || attacker.hp <= 0 || defender.hp <= 0) return { hit: false, blocked: false, reason: "ko" };
   if ((defender.invulnerableFrames || 0) > 0) return { hit: false, blocked: false, reason: "invulnerable" };
-  if (hitAlreadyRegistered(registry, move.id, defender.id)) return { hit: false, blocked: false, reason: "registered" };
+  const attackId = move.attackId || attacker.currentAttackId || move.id;
+  if (hitAlreadyRegistered(registry, attackId, defender.id)) return { hit: false, blocked: false, reason: "registered" };
   const attackerBoxes = getFighterBoxes(attacker, move);
   const defenderBoxes = getFighterBoxes(defender);
   const hit = attackerBoxes.hitbox && defenderBoxes.hurtboxes.some((part) => rectsOverlap(attackerBoxes.hitbox, part));
   if (!hit) return { hit: false, blocked: false, reason: "miss" };
-  registerHit(registry, move.id, defender.id);
+  registerHit(registry, attackId, defender.id);
   const guarding = defender.state === "guarding" || defender.state === "blockstun";
   const unblockable = move.unblockable === true;
   const hitLevel = move.hitLevel || "mid";
@@ -344,6 +365,12 @@ export function createFighterState(id, x, facing = 1) {
     throwTarget: null,
     thrownBy: null,
     throwReleased: false,
+    // Monotonic attack instance identity prevents a repeated move from
+    // inheriting a prior hit registry entry.  `alreadyHitTargets` is kept as
+    // an explicit alias for integrations that inspect the combat state.
+    attackInstanceId: 0,
+    currentAttackId: null,
+    alreadyHitTargets: new Set(),
     // Down/landing/follow-up contract.  Existing `knockdown` state names are
     // intentionally accepted by helpers and the browser loop.
     downValue: 0,
@@ -402,6 +429,10 @@ export function createFighterState(id, x, facing = 1) {
     skillInterrupted: false,
     skillInterruptionReason: null,
     skillRecoveryFrames: 0,
+    skillHoldFrames: 0,
+    skillHoldThresholdFrames: 21,
+    skillHoldActive: false,
+    skillCancelled: false,
     skillAmmo: initialAmmo,
     ammo: initialAmmo,
     skillCharges: 0,

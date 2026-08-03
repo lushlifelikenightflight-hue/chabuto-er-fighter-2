@@ -1,0 +1,3 @@
+Use case: production-oriented 2D fighting-game player sprite animation.
+Input images: kazushige/sheet-transparent.png and kazushige/combat-1.png as identity references.
+Generated with image_gen as a 2x3, six-frame result family: victory (three frames) and defeat (three frames). Confident bass raise versus slumped defeat silhouettes, grounded baseline, #FF00FF background, no text/effects or edge contact.

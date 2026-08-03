@@ -14,6 +14,15 @@ export const SKILL_PHASES = Object.freeze([
   "skillUnavailable",
 ]);
 
+// A B press is a charge gesture, not an instant action.  Keeping the
+// threshold in one data-only module lets keyboard, gamepad, touch and CPU
+// inputs share the same deterministic contract (350 ms at the fixed 60 Hz
+// simulation rate).
+export const SKILL_HOLD_THRESHOLD_MS = 350;
+export const SKILL_HOLD_THRESHOLD_FRAMES = Math.ceil(SKILL_HOLD_THRESHOLD_MS / (1000 / 60));
+
+export const SKILL_HUD_MODES = Object.freeze(["charge", "ammo", "uses", "duration"]);
+
 export const SKILL_PHASE_TRANSITIONS = Object.freeze({
   skillStartup: Object.freeze(["skillCharging", "skillActive", "skillRecovery", "skillUnavailable"]),
   skillCharging: Object.freeze(["skillActive", "skillRecovery", "skillUnavailable"]),
@@ -150,6 +159,8 @@ export const SKILL_CONFIGS = Object.freeze({
     skillId: "dog-summon",
     name: "でけぇ犬の召喚",
     type: "dogSummon",
+    hudMode: "charge",
+    hudLabel: "DOG",
     trigger: "hold-release",
     releaseActivates: true,
     chargeRate: 1,
@@ -241,6 +252,36 @@ export const SKILL_IDS = Object.freeze(Object.keys(SKILL_CONFIGS));
 
 export function getSkillConfig(characterId) {
   return SKILL_CONFIGS[characterId] || null;
+}
+
+/**
+ * Return the normalized resource model consumed by the in-game HUD.  The
+ * model deliberately keeps value/max separate from presentation so an ammo,
+ * uses, duration, or charge skill can all share the same rendering path.
+ */
+export function getSkillHudState(fighter = {}, configOrId = fighter.id) {
+  const config = typeof configOrId === "string" ? getSkillConfig(configOrId) : (configOrId || getSkillConfig(fighter.id));
+  if (!config) return Object.freeze({ value: 0, max: 0, mode: "charge", label: "SKILL", ready: false, disabled: true });
+  const type = config.type;
+  const mode = config.hudMode || (type === "copy" ? (Number(fighter.copiedSkillUses || fighter.copyCharges || 0) > 0 ? "uses" : "charge") : type === "mirror" || type === "drumBeat" || type === "flash" ? "ammo" : type === "ramenBuff" ? "duration" : "charge");
+  const max = Math.max(0, Number(mode === "duration" ? (config.buffDurationFrames || config.durationFrames || config.chargeMax) : mode === "ammo" || mode === "uses" ? (config.maxAmmo || config.copyCharges || config.copiedSkillUses || config.chargeMax) : config.chargeMax) || 0);
+  const resourceValue = type === "copy" ? (fighter.copiedSkillUses ?? fighter.copyCharges ?? fighter.ammo ?? fighter.skillAmmo ?? 0) : (fighter.ammo ?? fighter.skillAmmo ?? 0);
+  const value = Math.max(0, Number(mode === "duration" ? (fighter.buff?.frames || 0) : mode === "ammo" || mode === "uses" ? resourceValue : (fighter.skillGauge ?? fighter.skill?.gauge ?? 0)) || 0);
+  // `ready` describes the resource itself.  `disabled` separately reflects
+  // the action/state lock, so a rusty player can start charging at zero while
+  // the HUD still exposes a not-ready meter and a full meter can light up
+  // while the release is still pending.
+  const ready = fighter.hp > 0 && (mode === "charge" ? max > 0 && value >= max : value > 0);
+  const phaseAvailable = fighter.skillPhase === "skillUnavailable" || !fighter.skillPhase;
+  const disabled = !phaseAvailable || !canStartSkill(fighter, config);
+  return Object.freeze({
+    value: Math.min(value, max || value),
+    max,
+    mode,
+    label: config.hudLabel || config.name || config.skillId || "SKILL",
+    ready,
+    disabled,
+  });
 }
 
 export function isSkillPhase(value) {

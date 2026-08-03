@@ -79,11 +79,15 @@ export class TouchInput {
     this.bindings = [];
     this.stickPointerId = null;
     this.viewportSnapshot = null;
+    this.viewportState = { width: 0, height: 0, orientation: "landscape" };
+    // Set by Game so the first touch edge can initialize audio synchronously.
+    this.onInput = null;
     this.onBlur = () => this.reset();
     this.onVisibility = () => {
       if (typeof document !== "undefined" && document.hidden) this.reset();
     };
     this.onResize = () => this.syncAvailability();
+    this.onVisualViewportResize = () => this.syncViewportMetrics();
     this.onWindowPointerUp = (event) => {
       if (event?.pointerId === this.stickPointerId) this.releaseStick(event.pointerId);
       else this.releasePointer(event?.pointerId);
@@ -101,6 +105,7 @@ export class TouchInput {
     window.addEventListener("blur", this.onBlur);
     window.addEventListener("resize", this.onResize, { passive: true });
     window.addEventListener("orientationchange", this.onResize, { passive: true });
+    window.visualViewport?.addEventListener?.("resize", this.onVisualViewportResize, { passive: true });
     window.addEventListener("pointerup", this.onWindowPointerUp, true);
     window.addEventListener("pointercancel", this.onWindowPointerCancel, true);
     document.addEventListener("visibilitychange", this.onVisibility);
@@ -172,6 +177,7 @@ export class TouchInput {
     utilities.setAttribute("aria-label", "ジャンプと必殺技");
     utilities.appendChild(this.createButton("jump", "JUMP", "ジャンプ", ["jump"], "virtual-pad__utility virtual-pad__jump"));
     utilities.appendChild(this.createButton("special", "SP", "必殺技", ["special"], "virtual-pad__utility virtual-pad__special"));
+    utilities.appendChild(this.createButton("throw", "THROW", "throw", ["throw"], "virtual-pad__utility virtual-pad__throw"));
     root.appendChild(utilities);
 
     // Pause is a compact system control outside the four-face action cluster.
@@ -235,6 +241,7 @@ export class TouchInput {
 
   pressStick(event) {
     if (this.destroyed || !this.available || this.mode === TOUCH_MODES.hidden) return;
+    this.onInput?.(event);
     safePreventDefault(event);
     const pointerId = event.pointerId ?? 0;
     if (this.stickPointerId !== null && this.stickPointerId !== pointerId) this.releaseStick(this.stickPointerId);
@@ -273,6 +280,7 @@ export class TouchInput {
 
   pressPointer(event, button, actions) {
     if (this.destroyed || !this.available || this.mode === TOUCH_MODES.hidden) return;
+    this.onInput?.(event);
     safePreventDefault(event);
     const pointerId = event.pointerId ?? 0;
     if (pointerId === this.stickPointerId) this.releaseStick(pointerId);
@@ -332,14 +340,31 @@ export class TouchInput {
   }
 
   syncAvailability() {
-    this.available = isTouchAvailable();
+    const win = typeof window !== "undefined" ? window : null;
+    const nav = typeof navigator !== "undefined" ? navigator : null;
+    this.available = isTouchAvailable(win, nav);
+    this.syncViewportMetrics();
     this.updateVisibility();
     this.syncViewportLock(this.mode === TOUCH_MODES.battle);
   }
 
-  setMode(mode) {
+  syncViewportMetrics() {
+    const win = typeof window !== "undefined" ? window : null;
+    const viewport = win?.visualViewport;
+    const width = Math.max(0, Number(viewport?.width || win?.innerWidth || 0));
+    const height = Math.max(0, Number(viewport?.height || win?.innerHeight || 0));
+    const orientation = width >= height ? "landscape" : "portrait";
+    this.viewportState = { width, height, orientation };
+    if (this.root) {
+      this.root.dataset.orientation = orientation;
+      this.root.style.setProperty("--viewport-width", `${width}px`);
+      this.root.style.setProperty("--viewport-height", `${height}px`);
+    }
+  }
+
+  setMode(mode, { preserveInput = false } = {}) {
     const next = mode === TOUCH_MODES.battle || mode === TOUCH_MODES.preview ? mode : TOUCH_MODES.hidden;
-    if (next !== this.mode) this.reset();
+    if (next !== this.mode && !preserveInput) this.reset();
     this.mode = next;
     if (this.root) this.root.dataset.mode = next;
     this.updateVisibility();
@@ -412,6 +437,7 @@ export class TouchInput {
       window.removeEventListener("blur", this.onBlur);
       window.removeEventListener("resize", this.onResize);
       window.removeEventListener("orientationchange", this.onResize);
+      window.visualViewport?.removeEventListener?.("resize", this.onVisualViewportResize);
       window.removeEventListener("pointerup", this.onWindowPointerUp, true);
       window.removeEventListener("pointercancel", this.onWindowPointerCancel, true);
     }

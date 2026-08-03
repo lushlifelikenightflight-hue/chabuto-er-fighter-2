@@ -74,8 +74,12 @@ function normalizeMove(move, archetype, index = 0) {
   const hit = move.hitbox || box(0, 0, 0, 0);
   const legacyWidth = Number.isFinite(hit.w) ? hit.w : 0;
   const legacyHeight = Number.isFinite(hit.h) ? hit.h : 0;
+  // Collision reach intentionally exceeds the authored pose slightly so the
+  // visible effect and gameplay contact agree at pixel scale: light normals
+  // use a 1.10 multiplier, heavy/forward normals 1.20, and specials retain a
+  // modest character-specific expansion.
   const widthBias = isSpecial ? (id === "special" ? 1.08 + (index % 3) * 0.03 : 1.06) :
-    isStrong ? (id.includes("forward") ? 1.1 : 1.08) : (isAir ? 1.1 : 1.06);
+    isStrong ? 1.2 : (isAir ? 1.1 : 1.1);
   const hitboxWidth = Math.max(1, Math.round((move.hitboxWidth ?? legacyWidth) * widthBias));
   const heightBias = isSpecial ? 1.06 : isAir ? 1.04 : isStrong ? 1.03 : 1.02;
   const hitboxHeight = Math.max(1, Math.round((move.hitboxHeight ?? legacyHeight) * heightBias));

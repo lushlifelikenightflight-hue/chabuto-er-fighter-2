@@ -1,0 +1,5 @@
+Use case: 2D fighting-game player sprite animation. Asset type: bob-girl guard body sheet.
+Input images: Images 1-4 are immutable bob-girl combat keyframes; Image 5 is the accepted idle profile reference. Preserve short black bob hair, large eyes, red dress with white buttons and dark belt, pale legs, black shoes, pixel-art palette and dark outline.
+Primary request: exactly 6 full-body frames in a 2 rows x 3 columns grid, row-major: guard_high 1-2 (upright forearms covering face/chest), guard_low 3-4 (compact bent-knee low cover), just_guard 5-6 (sharp timed parry with a clear open palm and forward weight). Make the three guard silhouettes distinct; no opponent, effects or text.
+Grounded contract: match idle camera, body scale, centered root and common feet baseline in all frames. Keep full body in central 60%-70% safe area, no edge touch.
+Background/containment: perfectly flat solid #FF00FF only, no gradient, floor, shadow, reflection, glow, particles, effects, labels, borders, watermark, UI, props or other characters. Output clean raw 2x3 grid.

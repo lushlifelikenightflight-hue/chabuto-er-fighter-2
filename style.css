@@ -114,8 +114,16 @@ body { display: grid; place-items: center; min-height: 100svh; overflow: auto; }
 .virtual-pad__utility { width: clamp(64px, 14vw, 84px); min-width: clamp(64px, 14vw, 84px) !important; min-height: clamp(64px, 14vw, 84px) !important; padding: 4px !important; border-radius: 12px !important; color: #e9fbff !important; font-size: clamp(10px, 2.8vw, 14px) !important; }
 .virtual-pad__jump { background: linear-gradient(145deg, #346b7c, #102934 75%) !important; }
 .virtual-pad__special { background: linear-gradient(145deg, #74469a, #291638 75%) !important; }
-.virtual-pad__system-control { position: absolute; left: 50%; bottom: 4px; z-index: 2; transform: translateX(-50%); pointer-events: auto; }
+.virtual-pad__system-control { position: absolute; top: max(4px, env(safe-area-inset-top, 0px)); right: max(4px, env(safe-area-inset-right, 0px)); z-index: 4; pointer-events: auto; }
 .virtual-pad__pause { width: clamp(64px, 12vw, 84px); min-width: clamp(64px, 12vw, 84px) !important; min-height: clamp(64px, 12vw, 84px) !important; padding: 2px 5px !important; border-radius: 4px !important; color: #b9f0ff !important; font-size: 12px !important; }
+.virtual-pad__throw { background: linear-gradient(145deg, #8d663c, #342316 75%) !important; color: #fff2ca !important; font-size: clamp(9px, 2.2vw, 12px) !important; }
+.virtual-pad[data-orientation="portrait"] { min-height: 156px; }
+@media (orientation: landscape) {
+  .virtual-pad { min-height: 118px; }
+  .virtual-pad__stick { flex-basis: clamp(86px, 18vh, 120px); width: clamp(86px, 18vh, 120px); }
+  .virtual-pad__actions { grid-template-columns: repeat(3, clamp(52px, 11vh, 72px)); grid-template-rows: repeat(3, clamp(52px, 11vh, 72px)); }
+  .virtual-pad button { min-width: clamp(52px, 11vh, 72px); min-height: clamp(52px, 11vh, 72px); }
+}
 @media (pointer: coarse), (max-width: 620px) {
   #panel button { min-height: 44px; padding-top: 10px; padding-bottom: 10px; }
   .character-grid button { min-height: 44px; }

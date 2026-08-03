@@ -1,0 +1,3 @@
+Use case: production-oriented 2D fighting-game player sprite animation.
+Input images: kazushige/sheet-transparent.png and kazushige/combat-2.png as identity and movement references.
+Generated with image_gen as a 3x4, twelve-frame movement family: walk_forward, walk_backward, dash and backstep (three frames each). Same body/bass scale, grounded shoe line and central safe area on #FF00FF; no effects or edge contact.

@@ -1,0 +1,6 @@
+Use case: production-oriented 2D fighting-game player sprite animation.
+Asset type: bob-girl crouch body sheet.
+Input images: Images 1-4 are immutable bob-girl combat keyframes; Image 5 is the accepted idle profile reference. Preserve the short black bob haircut, large eyes, red dress with white buttons and dark belt, pale legs, black shoes, pixel-art outline and palette.
+Primary request: exactly 6 full-body frames in a 2 rows x 3 columns grid, row-major sequence crouch_start 1-2, crouch_idle 3-4, crouch_end 5-6. Show a clear standing-to-low transition, compact low hold, and return to standing; vary knees, skirt fold and guard hands naturally while keeping identity.
+Grounded contract: match idle camera, body scale, centerline and shared foot/root baseline. Crouch is pose compression, never zoom; keep hair, dress, limbs and shoes inside central 60%-70% safe area with generous magenta margin. No feet drift.
+Background/containment: outside subjects perfectly flat solid #FF00FF only. No gradient, floor, shadow, reflection, texture, glow, dust, effects, text, labels, borders, separators, watermark, UI, props or other characters. No cell-edge touch. Output clean raw 2x3 grid.
