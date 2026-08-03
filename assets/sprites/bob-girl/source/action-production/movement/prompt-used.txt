@@ -1,0 +1,6 @@
+Use case: production-oriented 2D fighting-game player sprite animation.
+Asset type: bob-girl movement body sheet.
+Input images: Images 1-4 are immutable existing bob-girl combat keyframes; Image 5 is the accepted idle profile reference. Preserve short black bob hair, large eyes, red short-sleeve dress with white buttons and dark belt, pale legs, black shoes, pixel-art palette and dark outline.
+Primary request: generate exactly 12 full-body frames in a 3 rows x 4 columns grid, row-major sequence: frames 1-3 walk_forward, 4-6 walk_backward, 7-9 dash, 10-12 backstep. Keep one side-facing girl and change only movement poses. Use compact clear strides, dash lean and guarded retreat, no attack.
+Grounded contract: match accepted idle camera distance, body scale, centerline, shared body root and shoe-sole feet baseline in every frame. Crouch or speed changes are pose compression, never zoom. Keep each body in central 60%-70% safe area and keep hair, limbs, dress and shoes fully inside its cell.
+Background/containment: outside each subject perfectly flat solid #FF00FF only. No gradients, floor, shadow, reflection, texture, glow, dust, effects, text, labels, borders, separators, watermark, UI, props or other characters. No cell-edge touch. Output clean raw 3x4 grid.

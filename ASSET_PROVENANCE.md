@@ -1,12 +1,14 @@
 # Asset provenance
 
-The runtime references only binary assets already supplied in this workspace:
+The canonical fighter animation assets are the numbered PNG frames under:
 
-- `assets/sprites/{guitar-boy,green-slime,bob-girl,uncle,rusty,kazushige,norio,toko}/sheet-transparent.png`
-- The corresponding `combat-1.png` through `combat-4.png` files for each fighter
-- `assets/stages/stage-toko.png`, `stage-norio.png`, `stage-kazushige.png`, `stage-rusty.png`, and `stage-mirror.png`
-- `assets/audio/bgm-title.mp3` and `assets/audio/bgm-battle.mp3`, copied from the existing 茶封筒erファイター source project
+- `assets/sprites/<character>/actions/<group>/<group>-N.png`
+- `assets/sprites/<character>/actions/skill_body/skill_body-N.png`
 
-The combat PNGs are rendered directly with nearest-neighbor scaling. `combat-1` is the idle/neutral frame, `combat-2` is used for light attacks, `combat-3` for strong/throw poses, and `combat-4` for special, hit, knockdown, and defeat poses. Runtime transforms and timing provide the remaining animation contract clips; no SVG, CSS, HTML, or canvas-drawn character substitute is used.
+`src/sprite-manifest.js` is the runtime authority for frame order, timing, and dynamic paths. Each character's `manifest.json` records the organization contract and complete runtime frame list. The top-level `combat-1.png` through `combat-4.png` and `sheet-transparent.png` remain compatibility/keyframe assets referenced by `src/data.js`; they are not the primary expanded animation source.
 
-The game code and UI in this directory are new standalone files. No sibling repository was modified and no external dependency or network asset is required.
+Production inputs, previews, QC output, and historical raw sheets are preserved under `assets/sprites/<character>/source`. Their pre-organization paths and SHA-256 values are recorded in `docs/asset-organization-phase2-map-*.json`. Files under `source` and `archive` are intentionally excluded from production builds.
+
+The runtime also references the supplied stage PNGs, audio files, and generated effect assets under `assets/stages`, `assets/audio`, and `assets/effects`. No SVG, CSS, HTML, or canvas-drawn character substitute is used.
+
+The game code and UI in this directory are standalone files. No sibling repository is modified and no external runtime asset is required.

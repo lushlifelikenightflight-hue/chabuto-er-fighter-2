@@ -315,7 +315,7 @@ export const STAGES = Object.freeze([
 
 export const MENU_ITEMS = Object.freeze(["GAME START", "TRAINING MODE", "HOW TO PLAY", "SCORE", "SETTINGS"]);
 export const SETTINGS_ITEMS = Object.freeze(["SOUND", "BGM", "SE", "DEBUG OVERLAY", "RESET DATA", "BACK"]);
-export const TRAINING_SETTINGS_ITEMS = Object.freeze(["CPU MOVE", "CPU ATTACK", "START TRAINING", "BACK"]);
+export const TRAINING_SETTINGS_ITEMS = Object.freeze(["START TRAINING", "CPU MOVE", "CPU ATTACK", "BACK"]);
 
 export function getOpponentId(stageNumber, selectedId) {
   const stage = STAGES[Math.max(1, Math.min(STAGES.length, stageNumber)) - 1];

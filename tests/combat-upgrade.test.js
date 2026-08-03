@@ -256,7 +256,9 @@ test("dog has marker/falling/impact phases and only impact deals hard knockdown"
   const dog = game.skillEntities[0]; assert.equal(dog.type, "dogMarker"); assert.equal(dog.damage, 0); assert.equal(dog.targetX, target.x);
   for (let i = 0; i < 21; i += 1) game.updateSkillEntities(); assert.equal(game.skillEntities[0].type, "fallingDog");
   const before = target.hp; for (let i = 0; i < 20; i += 1) game.updateSkillEntities(); assert.equal(game.skillEntities[0].type, "dogImpact");
-  assert.ok(target.hp < before); assert.equal(target.downed, true);
+  assert.ok(target.hp < before); assert.equal(target.state, "knockback"); assert.equal(target.grounded, false);
+  for (let i = 0; i < 90 && !target.downed; i += 1) game.updateFighter(target, {}, false);
+  assert.equal(target.downed, true);
 });
 
 test("rusty dog summon uses a charge HUD, requires full B charge, and resets after release", () => {
@@ -278,7 +280,8 @@ test("rusty dog summon uses a charge HUD, requires full B charge, and resets aft
   game.updateFighter(rusty, { skill: false, skillReleased: true }, true);
   assert.equal(rusty.skillPhase, "skillUnavailable");
   assert.equal(rusty.skillCancelled, true);
-  assert.equal(rusty.skillGauge, 0);
+  const retainedCharge = rusty.skillGauge;
+  assert.ok(retainedCharge > 0 && retainedCharge < config.chargeMax);
   assert.equal(game.skillEntities.some((entry) => entry.type === "dogMarker"), false);
   assert.equal(game.startSkill(rusty, { skill: true, skillPressed: true }), true);
   let guard = 0;

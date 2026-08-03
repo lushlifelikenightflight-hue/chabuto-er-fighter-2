@@ -1,0 +1,18 @@
+{
+  "id": "attack-wind",
+  "category": "attack",
+  "frames": [
+    "assets/effects/attack-wind/attack-wind-1.png",
+    "assets/effects/attack-wind/attack-wind-2.png",
+    "assets/effects/attack-wind/attack-wind-3.png",
+    "assets/effects/attack-wind/attack-wind-4.png"
+  ],
+  "frameDuration": 3,
+  "loop": false,
+  "cellWidth": 256,
+  "cellHeight": 256,
+  "origin": { "x": 128, "y": 128 },
+  "source": "imagegen reference-guided from sprite-bob-girl.png",
+  "background": "transparent",
+  "status": "runtime"
+}

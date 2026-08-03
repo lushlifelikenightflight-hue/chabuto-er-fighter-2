@@ -73,6 +73,8 @@ export function getSkillAnimationClip(id, actionName) {
 }
 
 const EFFECT_ASSET_DEFINITIONS = Object.freeze({
+  "attack-wind": ["assets/effects/attack-wind", "attack", 3, false],
+  "hit-burst": ["assets/effects/hit-burst", "hit", 2, false],
   "attack-light": ["assets/effects/attack-light", "attack", 5, false],
   "attack-heavy": ["assets/effects/attack-heavy", "attack", 9, false],
   "attack-weapon": ["assets/effects/attack-weapon", "attack", 10, false],

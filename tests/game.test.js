@@ -179,7 +179,8 @@ test("virtual pad has an always-visible slot below the LCD and title preview mod
   assert.match(css, /\.virtual-pad\s*\{[^}]*position:\s*relative/);
   assert.match(css, /body\s*\{[^}]*overflow:\s*auto/);
   assert.doesNotMatch(css, /100svh\s*-\s*190px/);
-  assert.match(gameSource, /touchLockedScreens/);
+  assert.match(gameSource, /touchBattleScreens = new Set\(\[SCREEN\.battle, SCREEN\.pause\]\)/);
+  assert.match(gameSource, /touchMode = touchBattleScreens\.has\(screen\) \? "battle" : "menu"/);
 });
 
 test("virtual pad A confirms and B cancels on menus", () => {
@@ -195,7 +196,8 @@ test("virtual pad A confirms and B cancels on menus", () => {
   assert.match(source, /key: "b", label: "B"/);
   assert.doesNotMatch(source, /key: "confirm"/);
   assert.doesNotMatch(source, /key: "cancel"/);
-  assert.match(source, /virtual-pad__system-control/);
+  assert.doesNotMatch(source, /virtual-pad__system-control/);
+  assert.doesNotMatch(source, /createButton\("pause"/);
   assert.doesNotMatch(source, /actions\.appendChild\(this\.createButton\("pause"/);
 });
 
@@ -209,7 +211,7 @@ test("combat transitions select just guard, throw, hit, and down-idle visuals", 
   strongAttacker.currentMove = CHARACTERS["guitar-boy"].moves.strong_attack_neutral;
   strongAttacker.actionFrame = strongAttacker.currentMove.startupFrames;
   game.handleCombat(strongAttacker, strongDefender);
-  assert.equal(strongDefender.visualAction, "hit_heavy");
+  assert.equal(strongDefender.visualAction, "air_hit");
   assert.equal(strongDefender.visualQueue[0].name, "knockback");
 
   const thrower = createFighterState("guitar-boy", 100, 1);
@@ -297,7 +299,8 @@ test("throw holds both fighters and deals damage exactly once on release", () =>
   assert.equal(defender.hp, hp);
   attacker.actionFrame = attacker.currentMove.startupFrames + attacker.currentMove.activeFrames + 6;
   game.updateThrowSequence();
-  assert.equal(defender.state, "knockdownLanding");
+  assert.equal(defender.state, "knockback");
+  assert.equal(defender.grounded, false);
   assert.ok(defender.hp < hp);
   const releasedHp = defender.hp;
   game.updateThrowSequence();
@@ -486,7 +489,8 @@ test("projectile specials cannot double-hit and all specials knock down", () => 
   strikeGame.player.state = "attacking";
   strikeGame.player.actionFrame = CHARACTERS["guitar-boy"].special.startupFrames;
   strikeGame.handleCombat(strikeGame.player, strikeGame.cpu);
-  assert.equal(strikeGame.cpu.state, "knockdownLanding");
+  assert.equal(strikeGame.cpu.state, "knockback");
+  assert.equal(strikeGame.cpu.grounded, false);
   assert.equal(strikeGame.cpu.actionFrame, 0);
 });
 

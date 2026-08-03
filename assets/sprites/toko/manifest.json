@@ -1,0 +1,170 @@
+{
+  "version": 1,
+  "character": "toko",
+  "status": "active",
+  "runtimeAuthority": "src/sprite-manifest.js",
+  "runtimeBase": "actions",
+  "runtimeFrames": {
+    "idle": [
+      "actions/idle/idle-1.png",
+      "actions/idle/idle-2.png",
+      "actions/idle/idle-3.png",
+      "actions/idle/idle-4.png"
+    ],
+    "movement": [
+      "actions/movement/movement-1.png",
+      "actions/movement/movement-2.png",
+      "actions/movement/movement-3.png",
+      "actions/movement/movement-4.png",
+      "actions/movement/movement-5.png",
+      "actions/movement/movement-6.png",
+      "actions/movement/movement-7.png",
+      "actions/movement/movement-8.png",
+      "actions/movement/movement-9.png",
+      "actions/movement/movement-10.png",
+      "actions/movement/movement-11.png",
+      "actions/movement/movement-12.png"
+    ],
+    "crouch": [
+      "actions/crouch/crouch-1.png",
+      "actions/crouch/crouch-2.png",
+      "actions/crouch/crouch-3.png",
+      "actions/crouch/crouch-4.png",
+      "actions/crouch/crouch-5.png",
+      "actions/crouch/crouch-6.png"
+    ],
+    "jump": [
+      "actions/jump/jump-1.png",
+      "actions/jump/jump-2.png",
+      "actions/jump/jump-3.png",
+      "actions/jump/jump-4.png",
+      "actions/jump/jump-5.png",
+      "actions/jump/jump-6.png",
+      "actions/jump/jump-7.png",
+      "actions/jump/jump-8.png",
+      "actions/jump/jump-9.png",
+      "actions/jump/jump-10.png",
+      "actions/jump/jump-11.png",
+      "actions/jump/jump-12.png"
+    ],
+    "light_attacks": [
+      "actions/light_attacks/light_attacks-1.png",
+      "actions/light_attacks/light_attacks-2.png",
+      "actions/light_attacks/light_attacks-3.png",
+      "actions/light_attacks/light_attacks-4.png",
+      "actions/light_attacks/light_attacks-5.png",
+      "actions/light_attacks/light_attacks-6.png",
+      "actions/light_attacks/light_attacks-7.png",
+      "actions/light_attacks/light_attacks-8.png",
+      "actions/light_attacks/light_attacks-9.png",
+      "actions/light_attacks/light_attacks-10.png",
+      "actions/light_attacks/light_attacks-11.png",
+      "actions/light_attacks/light_attacks-12.png"
+    ],
+    "heavy_attacks": [
+      "actions/heavy_attacks/heavy_attacks-1.png",
+      "actions/heavy_attacks/heavy_attacks-2.png",
+      "actions/heavy_attacks/heavy_attacks-3.png",
+      "actions/heavy_attacks/heavy_attacks-4.png",
+      "actions/heavy_attacks/heavy_attacks-5.png",
+      "actions/heavy_attacks/heavy_attacks-6.png",
+      "actions/heavy_attacks/heavy_attacks-7.png",
+      "actions/heavy_attacks/heavy_attacks-8.png",
+      "actions/heavy_attacks/heavy_attacks-9.png",
+      "actions/heavy_attacks/heavy_attacks-10.png",
+      "actions/heavy_attacks/heavy_attacks-11.png",
+      "actions/heavy_attacks/heavy_attacks-12.png"
+    ],
+    "guard": [
+      "actions/guard/guard-1.png",
+      "actions/guard/guard-2.png",
+      "actions/guard/guard-3.png",
+      "actions/guard/guard-4.png",
+      "actions/guard/guard-5.png",
+      "actions/guard/guard-6.png"
+    ],
+    "throw": [
+      "actions/throw/throw-1.png",
+      "actions/throw/throw-2.png",
+      "actions/throw/throw-3.png",
+      "actions/throw/throw-4.png",
+      "actions/throw/throw-5.png",
+      "actions/throw/throw-6.png",
+      "actions/throw/throw-7.png",
+      "actions/throw/throw-8.png",
+      "actions/throw/throw-9.png",
+      "actions/throw/throw-10.png"
+    ],
+    "special": [
+      "actions/special/special-1.png",
+      "actions/special/special-2.png",
+      "actions/special/special-3.png",
+      "actions/special/special-4.png",
+      "actions/special/special-5.png",
+      "actions/special/special-6.png",
+      "actions/special/special-7.png",
+      "actions/special/special-8.png",
+      "actions/special/special-9.png"
+    ],
+    "damage": [
+      "actions/damage/damage-1.png",
+      "actions/damage/damage-2.png",
+      "actions/damage/damage-3.png",
+      "actions/damage/damage-4.png",
+      "actions/damage/damage-5.png",
+      "actions/damage/damage-6.png",
+      "actions/damage/damage-7.png",
+      "actions/damage/damage-8.png",
+      "actions/damage/damage-9.png",
+      "actions/damage/damage-10.png",
+      "actions/damage/damage-11.png",
+      "actions/damage/damage-12.png",
+      "actions/damage/damage-13.png",
+      "actions/damage/damage-14.png",
+      "actions/damage/damage-15.png",
+      "actions/damage/damage-16.png"
+    ],
+    "result": [
+      "actions/result/result-1.png",
+      "actions/result/result-2.png",
+      "actions/result/result-3.png",
+      "actions/result/result-4.png",
+      "actions/result/result-5.png",
+      "actions/result/result-6.png"
+    ],
+    "skill_body": [
+      "actions/skill_body/skill_body-1.png",
+      "actions/skill_body/skill_body-2.png",
+      "actions/skill_body/skill_body-3.png",
+      "actions/skill_body/skill_body-4.png",
+      "actions/skill_body/skill_body-5.png",
+      "actions/skill_body/skill_body-6.png"
+    ]
+  },
+  "canvasSize": [
+    256,
+    256
+  ],
+  "anchor": [
+    128,
+    233
+  ],
+  "compatibilityAssets": [
+    "combat-1.png",
+    "combat-2.png",
+    "combat-3.png",
+    "combat-4.png",
+    "sheet-transparent.png"
+  ],
+  "productionSourceRoots": [
+    "source/action-production",
+    "source/legacy-production",
+    "source/root-tmp"
+  ],
+  "provenanceStatus": "partial",
+  "notes": [
+    "Runtime action paths are intentionally unchanged.",
+    "Files under source preserve production inputs, previews, QC outputs, and historical path names.",
+    "Use docs/asset-organization-phase2-map-*.json to resolve pre-organization paths."
+  ]
+}

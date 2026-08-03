@@ -1,0 +1,6 @@
+Use case: 2D fighting-game player sprite animation.
+Asset type: bob-girl jump body sheet.
+Input images: Images 1-4 are immutable bob-girl combat keyframes; Image 5 is the accepted idle identity/scale reference. Preserve short black bob hair, large eyes, red dress with white buttons and dark belt, pale legs, black shoes, pixel-art palette and dark outline.
+Primary request: exactly 12 full-body airborne frames in a 3 rows x 4 columns grid, row-major sequence with two frames each: jump_start 1-2, jump_rise 3-4, jump_apex 5-6, jump_fall 7-8, landing 9-10, double_jump 11-12. Keep one side-facing girl; show a compact launch, clear rising legs, apex tuck, falling extension, landing bend, and a distinct second-jump spring. Airborne poses must differ while identity stays exact.
+Airborne contract: stable camera distance and body scale close to idle; use one shared in-cell centerline/root for airborne poses and intentional vertical pose changes only. Full body central 60%-70% safe area, no hair, limbs, skirt or shoes crossing cell edges. Do not force grounded feet baseline on airborne frames.
+Background/containment: perfectly flat solid #FF00FF outside subjects only; no shadow, floor, dust, glow, particles, effects, text, labels, borders, watermark, UI, props or other characters. Output clean raw 3x4 grid.

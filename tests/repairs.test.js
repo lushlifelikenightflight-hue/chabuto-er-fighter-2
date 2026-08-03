@@ -85,8 +85,8 @@ test("Toko flash is a moving zero-damage projectile with one guarded stun hit", 
 
 test("title/menu screen routing keeps the virtual pad interactive", () => {
   const source = readFileSync(new URL("../src/game.js", import.meta.url), "utf8");
-  assert.match(source, /touchMenuScreens = new Set\(\[SCREEN\.title, SCREEN\.menu\]\)/);
-  assert.match(source, /touchMenuScreens\.has\(screen\) \? "menu"/);
+  assert.match(source, /touchBattleScreens = new Set\(\[SCREEN\.battle, SCREEN\.pause\]\)/);
+  assert.match(source, /touchMode = touchBattleScreens\.has\(screen\) \? "battle" : "menu"/);
   const touch = readFileSync(new URL("../src/touch-input.js", import.meta.url), "utf8");
   assert.match(touch, /menu: "menu"/);
   assert.match(touch, /button\.addEventListener\("click"/);

@@ -23,6 +23,8 @@ function descriptor(id, category, values = {}) {
 }
 
 const CORE_EFFECTS = Object.freeze({
+  "attack-wind": descriptor("attack-wind", "attack", { durationFrames: 12, scale: 0.62, offsetX: 48, offsetY: 78, tags: ["attack", "wind", "trail"] }),
+  "hit-burst": descriptor("hit-burst", "hit", { durationFrames: 8, scale: 0.38, offsetX: 0, offsetY: 0, palette: ["#ffffff", "#ffd84d", "#f06b32"], tags: ["hit", "impact", "burst"] }),
   "attack-light": descriptor("attack-light", "attack", { durationFrames: 5, scale: 0.92, offsetX: 28, offsetY: 82, tags: ["attack", "light", "trail"] }),
   "attack-heavy": descriptor("attack-heavy", "attack", { durationFrames: 9, scale: 1.16, offsetX: 42, offsetY: 79, palette: ["#fff6d5", "#f38b5d", "#d83957"], tags: ["attack", "heavy", "trail"] }),
   "attack-kick": descriptor("attack-kick", "attack", { durationFrames: 8, scale: 1.1, offsetX: 46, offsetY: 95, palette: ["#fff5c7", "#8fc9ff", "#df6cf2"], tags: ["attack", "kick", "trail"] }),

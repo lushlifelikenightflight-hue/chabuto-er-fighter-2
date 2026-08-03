@@ -303,6 +303,10 @@ export function evaluateStrike(attacker, defender, move, actionFrame, registry =
 export function evaluateThrow(attacker, defender, frame = 0) {
   if (!attacker || !defender || frame < 0) return false;
   if (!attacker.grounded || !defender.grounded) return false;
+  // Normal strikes counter a throw attempt. Because both fighters enter
+  // their authored states before collision resolution, this also makes
+  // simultaneous attack/throw input deterministic.
+  if (defender.state === "attacking") return false;
   if (defender.hp <= 0 || ["hitstun", "knockdown", "jumping"].includes(defender.state)) return false;
   return rectsOverlap(getFighterBoxes(attacker).throwbox, getFighterBoxes(defender).pushbox);
 }
@@ -400,6 +404,8 @@ export function createFighterState(id, x, facing = 1) {
     comboHits: 0,
     comboLimit: getComboLimit(stats),
     comboScale: 1,
+    attackCooldownFrames: 0,
+    attackCooldownMax: Math.max(30, 60 - getComboLimit(stats) * 3),
     comboWindowFrames: COMBO_HIT_WINDOW_FRAMES,
     comboStarter: null,
     comboLastMove: null,

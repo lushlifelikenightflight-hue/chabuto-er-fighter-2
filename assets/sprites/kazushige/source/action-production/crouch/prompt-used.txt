@@ -1,0 +1,3 @@
+Use case: production-oriented 2D fighting-game player sprite animation.
+Input images: kazushige/sheet-transparent.png and kazushige/combat-1.png as identity and anchor references.
+Generated with image_gen as a 2x3, six-frame crouch family: crouch_start, crouch_idle and crouch_end (two frames each). Knees/hips compress while overall body and bass scale remain consistent; fixed shoe baseline; #FF00FF background, no effects or edge contact.

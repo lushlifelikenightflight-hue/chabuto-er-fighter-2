@@ -1,0 +1,3 @@
+Use case: production-oriented 2D fighting-game player sprite animation.
+Input images: kazushige/sheet-transparent.png and kazushige/combat-1.png as identity references.
+Generated with image_gen as a 2x5, ten-frame throw family: throw_start, throw_success, throw_miss, thrown and throw_break (two frames each). Grappling/recoil silhouettes differ from attacks, bass remains strapped, #FF00FF background, no opponent/effects or edge contact.

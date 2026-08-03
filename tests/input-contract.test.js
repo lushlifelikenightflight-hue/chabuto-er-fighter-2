@@ -15,7 +15,8 @@ test("face layout and dedicated mobile controls follow the input contract", () =
   assert.match(css, /grid-template-areas:\s*"\. y \."\s*"x \. b"\s*"\. a \."/);
   assert.match(touchSource, /createButton\("jump",\s*"JUMP"/);
   assert.match(touchSource, /createButton\("special",\s*"SP"/);
-  assert.match(touchSource, /createButton\("pause"/);
+  assert.doesNotMatch(touchSource, /createButton\("pause"/);
+  assert.match(html, /data-header-pause[^>]*>PAUSE<\/button>/);
   assert.match(touchSource, /createButton\("throw"/);
   assert.match(html, /<main id="game" data-game-root/);
   assert.doesNotMatch(html, /<footer\b/i);
@@ -51,9 +52,9 @@ test("touch throw edge, viewport orientation, pause placement, and production de
   assert.equal(resolveDebugFlag({ debug: true }), false);
   assert.match(touchSource, /visualViewport/);
   assert.match(touchSource, /dataset\.orientation/);
-  assert.match(css, /\.virtual-pad__system-control\s*\{[^}]*top:/);
+  assert.match(css, /\.header-pause\s*\{/);
   assert.match(css, /\.virtual-pad__throw/);
-  assert.match(touchSource, /createButton\("pause",[^\n]*ポーズ/);
+  assert.doesNotMatch(touchSource, /createButton\("pause"/);
 });
 
 test("B hold threshold and all eight HUD resources expose stable public values", () => {

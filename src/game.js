@@ -206,6 +206,7 @@ export class Game {
     this.panel = this.root?.querySelector?.("[data-panel]") || byId("panel");
     this.hud = this.root?.querySelector?.("[data-hud]") || byId("hud");
     this.hint = this.root?.querySelector?.("[data-hint]") || byId("hint");
+    this.headerPause = this.root?.querySelector?.("[data-header-pause]") || null;
     this.touchInput = new TouchInput(this.root?.querySelector?.("[data-virtual-pad]") || this.root);
     // TouchInput emits its first pointer edge synchronously.  Starting audio
     // here (without awaiting it) keeps that edge in the same simulation tick.
@@ -284,6 +285,15 @@ export class Game {
     this.projectiles = [];
     this.skillEntities = [];
     this.installInput();
+    if (this.headerPause) {
+      this.onHeaderPause = () => {
+        this.ensureAudio();
+        if (this.state.screen === SCREEN.battle) this.setScreen(SCREEN.pause);
+        else if (this.state.screen === SCREEN.pause) this.setScreen(SCREEN.battle);
+      };
+      this.headerPause.addEventListener("click", this.onHeaderPause);
+    }
+    this.touchInput?.setMode("menu");
     this.render();
   }
 
@@ -324,6 +334,7 @@ export class Game {
   }
 
   destroy() {
+    this.headerPause?.removeEventListener?.("click", this.onHeaderPause);
     if (typeof window !== "undefined") {
       window.removeEventListener("keydown", this.onKeyDown);
       window.removeEventListener("keyup", this.onKeyUp);
@@ -587,10 +598,15 @@ export class Game {
     // Do not clear the edge that caused this transition.  The originating
     // pointer/key event is consumed at the end of the current tick; clearing
     // it here made the first A/X/touch input disappear when entering battle.
-    const touchLockedScreens = new Set([SCREEN.stageIntro, SCREEN.roundIntro, SCREEN.battle, SCREEN.pause, SCREEN.roundResult, SCREEN.stageResult, SCREEN.continue, SCREEN.gameOver, SCREEN.ending]);
-    const touchMenuScreens = new Set([SCREEN.title, SCREEN.menu]);
-    const touchMode = touchLockedScreens.has(screen) ? "battle" : touchMenuScreens.has(screen) ? "menu" : screen === SCREEN.howToPlay ? "howToPlay" : "hidden";
-    this.touchInput?.setMode(touchMode, { preserveInput: touchLockedScreens.has(screen) || touchMenuScreens.has(screen) });
+    const touchBattleScreens = new Set([SCREEN.battle, SCREEN.pause]);
+    const touchMode = touchBattleScreens.has(screen) ? "battle" : "menu";
+    this.touchInput?.setMode(touchMode, { preserveInput: false });
+    if (this.headerPause) {
+      const pauseAvailable = touchBattleScreens.has(screen);
+      this.headerPause.disabled = !pauseAvailable;
+      this.headerPause.setAttribute("aria-pressed", screen === SCREEN.pause ? "true" : "false");
+      this.headerPause.setAttribute("aria-label", screen === SCREEN.pause ? "Resume battle" : "Pause battle");
+    }
     if (screen !== SCREEN.battle) this.state.result = this.state.result || "";
     this.beep(screen === SCREEN.battle ? 330 : 220, 0.045);
     this.syncBgm();
@@ -674,9 +690,9 @@ export class Game {
     if (input.downPressed) this.state.trainingSettingsIndex = (this.state.trainingSettingsIndex + 1) % items.length;
     if (input.confirm) {
       const index = this.state.trainingSettingsIndex;
-      if (index === 0) this.state.trainingCpuMove = !this.state.trainingCpuMove;
-      else if (index === 1) this.state.trainingCpuAttack = !this.state.trainingCpuAttack;
-      else if (index === 2) this.startTraining();
+      if (index === 0) this.startTraining();
+      else if (index === 1) this.state.trainingCpuMove = !this.state.trainingCpuMove;
+      else if (index === 2) this.state.trainingCpuAttack = !this.state.trainingCpuAttack;
       else if (index === 3) this.setScreen(SCREEN.colorSelect);
     } else if (input.cancel) this.setScreen(SCREEN.colorSelect);
   }
@@ -870,7 +886,7 @@ export class Game {
         attacker.throwReleased = true;
         const damage = applyDamage(defender, move.damage, { knockbackX: 6, knockbackY: 3, hitstunFrames: move.hitstunFrames });
         defender.thrownBy = null;
-        this.beginKnockdownLanding(defender, false);
+        this.launchKnockdown(defender, move);
         attacker.throwTarget = null;
         setVisualSequence(defender, [{ name: "thrown", duration: 5 }, { name: "knockdown", duration: 10 }]);
         setVisualSequence(attacker, [{ name: "throw_success", duration: 12 }]);
@@ -960,6 +976,7 @@ export class Game {
     fighter.invulnerableFrames = Math.max(0, fighter.invulnerableFrames - 1);
     fighter.guardDashCooldown = Math.max(0, Number(fighter.guardDashCooldown) - 1);
     fighter.tackleCooldown = Math.max(0, Number(fighter.tackleCooldown || 0) - 1);
+    fighter.attackCooldownFrames = Math.max(0, Number(fighter.attackCooldownFrames || 0) - 1);
     if (fighter.buff?.frames > 0) {
       fighter.buff.frames -= 1;
       if (fighter.buff.frames <= 0) fighter.buff = null;
@@ -970,6 +987,7 @@ export class Game {
       if (!fighter.flashStunned && fighter.state === "hitstun") {
         fighter.stunFrames = 0;
         fighter.state = fighter.grounded ? "idle" : "jumping";
+        fighter.flashComboHit = false;
         // A generic stun can follow a training hit that interrupted a down
         // state. Once the stun expires, clear the stale down latch so the
         // dummy can be hit again without requiring a down follow-up.
@@ -1033,6 +1051,11 @@ export class Game {
     if (fighter.state === "attacking" || fighter.state === "throwing") {
       fighter.actionFrame += 1;
       const move = fighter.currentMove;
+      if (move && !fighter.attackVfxSpawned && move.kind !== "throw" && move.specialType !== "projectile" && fighter.actionFrame >= Number(move.startupFrames || 0)) {
+        const point = this.attackReachPoint(fighter, move);
+        this.spawnVfx("attack-wind", point, { x: 0, y: 0, scale: move.id?.includes("strong") ? 0.72 : 0.58 });
+        fighter.attackVfxSpawned = true;
+      }
       if (move?.specialType === "projectile" && fighter.pendingProjectile && !fighter.projectileSpawned && fighter.actionFrame >= move.startupFrames) {
         this.projectiles.push(createProjectile(fighter === this.player ? "player" : "cpu", fighter, move, this.frame));
         fighter.projectileSpawned = true; fighter.pendingProjectile = null;
@@ -1126,6 +1149,23 @@ export class Game {
     this.spawnVfx("down-impact", fighter, { x: 0, y: 0 });
   }
 
+  launchKnockdown(fighter, move = {}) {
+    fighter.state = "knockback";
+    fighter.action = "knockback";
+    fighter.actionFrame = 0;
+    fighter.stunFrames = 0;
+    fighter.downed = false;
+    fighter.downedFrames = 0;
+    fighter.downTimer = 0;
+    fighter.hardKnockdown = Boolean(move.hardKnockdown);
+    fighter.grounded = false;
+    fighter.y = Math.max(1, Number(fighter.y || 0));
+    fighter.vy = Math.max(3.8, Math.abs(Number(move.knockbackY || fighter.vy || 0)));
+    fighter.airFrames = 0;
+    fighter.boxProfile = "air";
+    setVisualSequence(fighter, [{ name: "air_hit", duration: 8 }, { name: "knockback", duration: 12 }]);
+  }
+
   startWakeup(fighter) {
     fighter.state = "wakeup"; fighter.wakeupState = "wakeup"; fighter.action = "wakeup"; fighter.actionFrame = 0; fighter.downed = false; fighter.downValue = 0; fighter.knockdownValue = 0; fighter.followupReserved = false; fighter.followupAttacker = null; fighter.boxProfile = "standing"; fighter.grounded = true; fighter.y = 0;
   }
@@ -1147,6 +1187,7 @@ export class Game {
 
   startAttack(fighter, input) {
     if (!fighter || fighter.hp <= 0 || fighter.downed || ["wakeup", "knockdownLanding", "downed", "groundHit"].includes(fighter.state)) return false;
+    if (Number(fighter.attackCooldownFrames || 0) > 0) return false;
     const wakeupLocked = Number(fighter.wakeupInvulnerableFrames || 0) > 0 && (fighter.wakeupInvulnerable === true || fighter.state === "wakeupInvulnerable");
     if (wakeupLocked) return false;
     const airborne = !fighter.grounded;
@@ -1182,6 +1223,7 @@ export class Game {
     if (fighter.alreadyHitTargets instanceof Set) fighter.alreadyHitTargets.clear();
     else fighter.alreadyHitTargets = new Set();
     fighter.hitConfirmed = false;
+    fighter.attackVfxSpawned = false;
     fighter.comboLastMove = key;
     fighter.comboBuffer = null;
     fighter.locomotionAction = "";
@@ -1197,11 +1239,14 @@ export class Game {
     fighter.skillPhase = "skillStartup"; fighter.skillState = "skillStartup"; fighter.skill.phase = "skillStartup";
     fighter.skillCopiedUse = config.type === "copy" && Number(fighter.copiedSkillUses || 0) > 0;
     const holdRequired = input.skillHoldRequired !== false && (input.skillHoldRequired === true || input.skillPressed === true);
-    fighter.skillCharging = false; fighter.skillActive = false; fighter.skillInterrupted = false; fighter.skillInterruptionReason = null; fighter.skillRecoveryFrames = 0; fighter.skillActionFrame = 0; fighter.skillHoldFrames = 0; fighter.skillHoldThresholdFrames = SKILL_HOLD_THRESHOLD_FRAMES; fighter.skillHoldActive = !holdRequired; fighter.skillHoldRequired = holdRequired; fighter.skillCancelled = false; fighter.skillHeld = true; fighter.skillStartFrame = this.frame; fighter.action = "skill_start"; fighter.state = "skillStartup"; fighter.actionFrame = 0; fighter.hitRegistry.clear();
+    fighter.skillCharging = false; fighter.skillActive = false; fighter.skillActivated = false; fighter.skillInterrupted = false; fighter.skillInterruptionReason = null; fighter.skillRecoveryFrames = 0; fighter.skillActionFrame = 0; fighter.skillHoldFrames = 0; fighter.skillHoldThresholdFrames = SKILL_HOLD_THRESHOLD_FRAMES; fighter.skillHoldActive = !holdRequired; fighter.skillHoldRequired = holdRequired; fighter.skillCancelled = false; fighter.skillHeld = true; fighter.skillStartFrame = this.frame; fighter.action = "skill_start"; fighter.state = "skillStartup"; fighter.actionFrame = 0; fighter.hitRegistry.clear();
     fighter.skillConfig = config;
     // Flash's authored body/shot is rendered by its moving skill entity. Do
     // not seed a second static VFX record during the hold phase.
-    if (config.type !== "flash") this.spawnVfx(config.effectId, fighter, { x: 0 });
+    if (config.type !== "flash") {
+      const midBodyEffect = config.type === "ramenBuff" || config.type === "drumBeat";
+      this.spawnVfx(config.effectId, fighter, { x: 0, y: midBodyEffect ? 84 : 0, scale: config.type === "drumBeat" ? 0.48 : undefined });
+    }
     return true;
   }
 
@@ -1248,16 +1293,17 @@ export class Game {
       if (released && fighter.flashReloading) { fighter.flashReloadFrames = 0; fighter.flashReloading = false; fighter.skillPhase = "skillUnavailable"; fighter.skillState = "skillUnavailable"; fighter.skill.phase = "skillUnavailable"; fighter.skillActivated = false; fighter.state = fighter.grounded ? "idle" : "jumping"; fighter.action = fighter.state; return; }
     }
     if (fighter.skillPhase === "skillStartup" && fighter.skillActionFrame >= (config.phase?.startupFrames || 1)) {
-      const needsCharge = config.trigger === "hold-release" || (config.type === "copy" && !fighter.skillCopiedUse);
+      const needsCharge = config.trigger === "hold-release" || (config.type === "copy" && !fighter.skillCopiedUse) || (config.trigger === "hold" && Number(config.chargeRate || 0) > 0);
       fighter.skillPhase = needsCharge && !released ? "skillCharging" : "skillActive";
       fighter.skillState = fighter.skillPhase; fighter.skill.phase = fighter.skillPhase; fighter.state = fighter.skillPhase; fighter.action = fighter.skillPhase;
     }
     if (fighter.skillPhase === "skillCharging") {
       const rate = Number(config.chargeRate || 0) * Number(CHARACTERS[fighter.id].stats.skillChargeRate || 1);
       fighter.skillGauge = clamp((fighter.skillGauge || 0) + rate, 0, Number(config.chargeMax || 100)); fighter.skill.gauge = fighter.skillGauge; fighter.gauge.skill = fighter.skillGauge;
-      const requiresFullCharge = config.type === "copy" || config.type === "dogSummon";
-      if (released && (!requiresFullCharge || fighter.skillGauge >= Number(config.chargeMax || 100))) { fighter.skillPhase = "skillActive"; fighter.skillState = "skillActive"; fighter.skill.phase = "skillActive"; fighter.state = "skillActive"; fighter.action = "skill_active"; fighter.skillActionFrame = 0; }
-      else if (released && requiresFullCharge) { fighter.skillPhase = "skillUnavailable"; fighter.skillState = "skillUnavailable"; fighter.skill.phase = "skillUnavailable"; fighter.skillCharging = false; fighter.skillActivated = false; fighter.skillCancelled = true; fighter.state = fighter.grounded ? "idle" : "jumping"; fighter.action = fighter.state; fighter.skillGauge = 0; fighter.skill.gauge = 0; fighter.gauge.skill = 0; }
+      const requiresFullCharge = config.type === "copy" || config.type === "dogSummon" || config.type === "ramenBuff";
+      const autoAtFull = config.type === "drumBeat" || config.type === "ramenBuff";
+      if ((autoAtFull && fighter.skillGauge >= Number(config.chargeMax || 100)) || (released && (!requiresFullCharge || fighter.skillGauge >= Number(config.chargeMax || 100)))) { fighter.skillPhase = "skillActive"; fighter.skillState = "skillActive"; fighter.skill.phase = "skillActive"; fighter.state = "skillActive"; fighter.action = "skill_active"; fighter.skillActionFrame = 0; }
+      else if (released && requiresFullCharge) { fighter.skillPhase = "skillUnavailable"; fighter.skillState = "skillUnavailable"; fighter.skill.phase = "skillUnavailable"; fighter.skillCharging = false; fighter.skillActivated = false; fighter.skillCancelled = true; fighter.state = fighter.grounded ? "idle" : "jumping"; fighter.action = fighter.state; fighter.skill.gauge = fighter.skillGauge; fighter.gauge.skill = fighter.skillGauge; }
       else return;
     }
     if (fighter.skillPhase === "skillActive") {
@@ -1306,7 +1352,10 @@ export class Game {
       fighter.mirrorActiveFrames = config.phase?.activeFrames || 2; fighter.mirrorReflectable = new Set(config.reflectable || []); fighter.mirrorNonReflectable = new Set(config.nonReflectable || []); fighter.mirrorHolding = true; fighter.mirrorResourceMode = resourceMode;
     } else if (type === "tackle") {
       fighter.tackleCooldown = Number(config.cooldownFrames || 42);
-      this.spawnSkillEntity({ owner, type: "tackle", x: fighter.x, y: fighter.y + 70, vx: fighter.facing * 5.2, damage: 150, w: 70, h: 42, duration: 24, unblockable: true, causesKnockdown: true, hardKnockdown: true, jumpAvoidable: true, effectId: config.effectId }); if (resourceMode === "native") { fighter.skillGauge = 0; fighter.skill.gauge = 0; }
+      const chargeRatio = clamp(Number(fighter.skillGauge || 0) / Math.max(1, Number(config.chargeMax || 36)), 0.12, 1);
+      const travelDistance = (STAGE_BOUNDS.right - STAGE_BOUNDS.left) * chargeRatio;
+      const duration = 30;
+      this.spawnSkillEntity({ owner, type: "tackle", x: fighter.x, y: fighter.y + 70, vx: fighter.facing * travelDistance / duration, damage: 150, w: 70, h: 42, duration, travelDistance, unblockable: true, causesKnockdown: true, hardKnockdown: true, jumpAvoidable: true, effectId: config.effectId }); if (resourceMode === "native") { fighter.skillGauge = 0; fighter.skill.gauge = 0; fighter.gauge.skill = 0; }
     } else if (type === "dogSummon") {
       this.skillEntities = Array.isArray(this.skillEntities) ? this.skillEntities : [];
       if (this.skillEntities.some((entry) => entry.owner === owner && ["dogMarker", "fallingDog", "dogImpact"].includes(entry.type) && entry.active)) return;
@@ -1329,7 +1378,7 @@ export class Game {
           if (!validPosition(x)) x = STAGE_BOUNDS.left + 20 + ((i * 31 + activation * 17) % span);
         }
         x = clamp(x, STAGE_BOUNDS.left + 20, STAGE_BOUNDS.right - 20); positions.push(x);
-        this.spawnSkillEntity({ owner, type: "snareMarker", x, targetX: x, y: 0, delay: i * (config.intervalFrames || 30), duration: (config.durationFrames || 480) - i * (config.intervalFrames || 30), damage: 36, w: 0, h: 0, marker: true, effectId: config.effectId });
+        this.spawnSkillEntity({ owner, type: "snareMarker", x, targetX: x, y: 88, delay: i * (config.intervalFrames || 30), duration: (config.durationFrames || 480) - i * (config.intervalFrames || 30), damage: 36, w: 0, h: 0, marker: true, scale: 0.48, effectId: config.effectId, spawnVfx: false });
       }
       fighter.norioActivationCount = activation; fighter.norioLastPositions = positions;
       if (resourceMode === "native") { fighter.skillAmmo = Math.max(0, (fighter.skillAmmo || config.initialAmmo || 16) - 1); fighter.ammo = fighter.skillAmmo; }
@@ -1367,6 +1416,7 @@ export class Game {
     fighter.locomotionAction = "";
     fighter.locomotionFramesRemaining = 0;
     fighter.hitConfirmed = false;
+    fighter.attackVfxSpawned = false;
     if (move.specialType === "projectile") {
       fighter.pendingProjectile = { move, owner: fighter === this.player ? "player" : "cpu" };
       fighter.projectileSpawned = false;
@@ -1396,6 +1446,26 @@ export class Game {
     return true;
   }
 
+  attackReachPoint(fighter, move) {
+    const hitbox = getFighterBoxes(fighter, move).hitbox;
+    if (!hitbox) return { x: fighter.x + fighter.facing * 42, y: fighter.y + 80 };
+    return {
+      x: fighter.facing >= 0 ? hitbox.x + hitbox.w : hitbox.x,
+      y: hitbox.y + hitbox.h * 0.5,
+    };
+  }
+
+  combatContactPoint(attacker, defender, move) {
+    const hitbox = getFighterBoxes(attacker, move).hitbox;
+    const hurtbox = getFighterBoxes(defender).hurtboxes.find((part) => part && hitbox && part.x < hitbox.x + hitbox.w && part.x + part.w > hitbox.x && part.y < hitbox.y + hitbox.h && part.y + part.h > hitbox.y);
+    if (!hitbox || !hurtbox) return { x: (attacker.x + defender.x) * 0.5, y: defender.y + 82 };
+    const left = Math.max(hitbox.x, hurtbox.x);
+    const right = Math.min(hitbox.x + hitbox.w, hurtbox.x + hurtbox.w);
+    const bottom = Math.max(hitbox.y, hurtbox.y);
+    const top = Math.min(hitbox.y + hitbox.h, hurtbox.y + hurtbox.h);
+    return { x: (left + right) * 0.5, y: (bottom + top) * 0.5 };
+  }
+
   spawnVfx(effectId, fighterOrPoint = null, overrides = {}) {
     const descriptor = getEffectDescriptor(effectId) || effectForMove({ effectId });
     if (!descriptor) return null;
@@ -1406,8 +1476,8 @@ export class Game {
     const allFramesDuration = frameCount > 0 ? frameCount * frameDuration : Number(descriptor.durationFrames || 1);
     const hasExplicitDuration = Object.prototype.hasOwnProperty.call(overrides, "frames");
     const record = {
-      effectId, x: Number(point.x || 0) + Number(overrides.x || descriptor.offsetX || 0), y: Number(point.y || 0) + Number(overrides.y || descriptor.offsetY || 0),
-      scale: Number(overrides.scale || descriptor.scale || 1),
+      effectId, x: Number(point.x || 0) + Number(overrides.x ?? descriptor.offsetX ?? 0), y: Number(point.y || 0) + Number(overrides.y ?? descriptor.offsetY ?? 0),
+      scale: Number(overrides.scale ?? descriptor.scale ?? 1),
       // Keep the authored descriptor as a lower bound, but let every generic
       // effect advance through its complete numbered-frame manifest unless a
       // caller deliberately supplies a shorter/longer duration.
@@ -1466,11 +1536,13 @@ export class Game {
       }
       if (entity.type === "snareMarker") {
         entity.type = "snareImpact"; entity.age = 0; entity.w = 34; entity.h = 30; entity.duration = 18; entity.hitTargets = new Set();
+        this.spawnVfx("skill-drum-beat", entity, { x: 0, y: 0, scale: 0.48 });
       }
       entity.x += Number(entity.vx || 0); entity.y = Math.max(0, Number(entity.y || 0) + Number(entity.vy || 0));
       const attacker = entity.owner === "player" ? this.player : this.cpu;
       const defender = entity.owner === "player" ? this.cpu : this.player;
       if (!attacker || !defender || attacker.hp <= 0 || defender.hp <= 0) { entity.active = false; continue; }
+      if (entity.type === "tackle") attacker.x = clamp(entity.x, STAGE_BOUNDS.left, STAGE_BOUNDS.right);
       if (entity.type === "tackle" && defender.downed) { entity.active = false; continue; }
       if (entity.type === "tackle" && entity.jumpAvoidable && (defender.y > 0 || defender.boxProfile === "air")) { entity.active = false; continue; }
       const entityHitboxScale = Number(attacker.buff?.hitboxScale || 1);
@@ -1500,8 +1572,9 @@ export class Game {
         const chipScale = Number(buff.chipScale || 1);
         const damage = blocked ? (move.chipDamage * chipScale) : move.damage * damageScale;
         const dealt = blocked ? 0 : applyDamage(defender, damage, { blocked, knockbackX: move.knockbackX, knockbackY: move.knockbackY, hitstunFrames: blocked ? move.blockstunFrames : move.hitstunFrames });
-        if (!blocked && (move.causesKnockdown || move.hardKnockdown || defender.hp <= 0)) this.beginKnockdownLanding(defender, move.hardKnockdown);
-        this.onHit(attacker, defender, move, blocked, false, dealt); this.spawnVfx(blocked ? "guard-spark" : "hit-spark", defender); entity.hit = true; if (entity.oneHit || !["snareImpact", "dogImpact"].includes(entity.type)) entity.active = false;
+        if (!blocked && (move.causesKnockdown || move.hardKnockdown) && defender.hp > 0) this.launchKnockdown(defender, move);
+        const contactPoint = { x: Math.max(hitbox.x, Math.min(defender.x, hitbox.x + hitbox.w)), y: Math.max(hitbox.y, Math.min(defender.y + 82, hitbox.y + hitbox.h)) };
+        this.onHit(attacker, defender, move, blocked, false, dealt); this.spawnVfx(blocked ? "guard-spark" : "hit-burst", contactPoint, { x: 0, y: 0, scale: blocked ? 0.55 : 0.38 }); entity.hit = true; if (entity.oneHit || !["snareImpact", "dogImpact"].includes(entity.type)) entity.active = false;
       }
       if (entity.age >= (entity.duration || 60)) entity.active = false;
     }
@@ -1622,7 +1695,9 @@ export class Game {
       attacker.comboTimer = 0;
       this.state.comboTimer = 0;
     }
-    if (blocked) this.spawnVfx("guard-spark", defender); else this.spawnVfx(effectForMove(move)?.id || move.effectId, attacker, { x: attacker.facing * (effectForMove(move)?.offsetX || 0), scale: move.effectScale || 1 });
+    const contactPoint = this.combatContactPoint(attacker, defender, move);
+    if (blocked) this.spawnVfx("guard-spark", contactPoint, { x: 0, y: 0, scale: 0.55 });
+    else this.spawnVfx("hit-burst", contactPoint, { x: 0, y: 0, scale: 0.38 });
     if (!result.blocked && defender.hp > 0) {
       const firstHit = wasAirborne ? "air_hit" : wasCrouching ? "hit_crouch" : move.id.includes("strong") || move.kind === "special" ? "hit_heavy" : "hit_light";
       const sequence = [{ name: firstHit, duration: firstHit === "hit_heavy" ? 12 : 10 }];
@@ -1632,7 +1707,7 @@ export class Game {
     if (!blocked && defender.hp > 0 && !move.downFollowup) {
       defender.downValue = (defender.downValue || 0) + Number(move.knockdownValue || 0);
       defender.knockdownValue = defender.downValue;
-      if (shouldKnockdown(move, defender.downValue)) this.beginKnockdownLanding(defender, move.hardKnockdown === true);
+      if (shouldKnockdown(move, defender.downValue)) this.launchKnockdown(defender, move);
     }
     if (attacker.hp > 0 && this.state.koFrames <= 0) attacker.meter = clamp(attacker.meter + (blocked ? (move.meterGainOnBlock || 0) : (move.meterGainOnHit || 4)), 0, MAX_METER);
     if (!blocked && defender.hp > 0 && this.state.koFrames <= 0) defender.meter = clamp(defender.meter + Math.max(1, (move.meterGainOnHit || 4) * 0.5), 0, MAX_METER);
@@ -1658,20 +1733,24 @@ export class Game {
     }
     this.showCombatNotice(`HIT ${Math.round(Number(damage) || 0)}`, "hit", damage, defender);
     if (this.state.mode === "training") this.state.trainingDamage = Math.round(Number(damage) || 0);
+    const limit = getComboLimit(CHARACTERS[attacker.id]);
+    attacker.comboHits = Math.min(limit, (attacker.comboHits || 0) + 1);
+    attacker.combo = attacker.comboHits;
+    attacker.comboScale = comboDamageScale(attacker.comboHits - 1, CHARACTERS[attacker.id]);
+    attacker.comboTimer = 70;
+    if (attacker.comboHits >= limit) {
+      attacker.comboFinished = true;
+      attacker.attackCooldownFrames = Math.max(Number(attacker.attackCooldownFrames || 0), Number(attacker.attackCooldownMax || 36));
+    }
     if (!playerAttacker) {
       // CPU damage never awards player points/combo and ends a perfect run.
       this.state.perfect = false;
       this.state.combo = 0;
       return;
     }
-    const limit = getComboLimit(CHARACTERS[attacker.id]);
-    attacker.comboHits = Math.min(limit, (attacker.comboHits || 0) + 1);
-    attacker.combo = attacker.comboHits;
-    attacker.comboScale = comboDamageScale(attacker.comboHits - 1, CHARACTERS[attacker.id]);
     this.state.combo = Math.min(limit, attacker.comboHits);
     this.state.maxCombo = Math.max(this.state.maxCombo, this.state.combo);
     this.state.comboTimer = 70;
-    attacker.comboTimer = 70;
     const key = thrown ? "throw" : move.kind === "special" ? "special" : move.id.includes("strong") ? "strong" : "light";
     this.state.score += scoreForEvent(key) + this.state.combo * 25;
     if (move.kind === "special") this.state.specialHits += 1;
@@ -1695,7 +1774,10 @@ export class Game {
         this.showCombatNotice(`HIT ${Math.round(Number(damage) || 0)}`, "hit", damage, target);
         if (this.state.mode === "training") this.state.trainingDamage = Math.round(Number(damage) || 0);
         if (target.hp > 0) setVisualSequence(target, [{ name: "hit_heavy", duration: 12 }, { name: "knockback", duration: 10 }]);
-        if (target.hp > 0) this.beginKnockdownLanding(target, false);
+        if (target.hp > 0) this.launchKnockdown(target, { knockbackY: 4, hardKnockdown: false });
+        const part = targetBoxes.find((box) => box && box.x < hitbox.x + hitbox.w && box.x + box.w > hitbox.x && box.y < hitbox.y + hitbox.h && box.y + box.h > hitbox.y);
+        const contactPoint = part ? { x: (Math.max(part.x, hitbox.x) + Math.min(part.x + part.w, hitbox.x + hitbox.w)) * 0.5, y: (Math.max(part.y, hitbox.y) + Math.min(part.y + part.h, hitbox.y + hitbox.h)) * 0.5 } : { x: target.x, y: target.y + 82 };
+        this.spawnVfx("hit-burst", contactPoint, { x: 0, y: 0, scale: 0.38 });
         if (target.skillPhase && target.skillPhase !== "skillUnavailable") this.interruptSkillFor(target, "hit");
         if (projectile.owner === "player") this.state.score += scoreForEvent("special");
         else this.state.perfect = false;
@@ -2037,7 +2119,14 @@ export class Game {
     const button = (label, onClick, selected = false, parent = this.panel) => { const b = document.createElement("button"); b.type = "button"; b.textContent = label; b.setAttribute("aria-label", String(label)); if (selected) { b.classList.add("selected"); b.setAttribute("aria-current", "true"); } b.addEventListener("click", () => { this.ensureAudio(); onClick(); }); parent.appendChild(b); return b; };
     const buttonRow = (items) => { const row = document.createElement("div"); row.className = "action-button-row"; this.panel.appendChild(row); items.forEach(({ label, onClick, selected = false }) => button(label, onClick, selected, row)); return row; };
     if (screen === SCREEN.boot) heading(GAME_TITLE, "LOADING...");
-    else if (screen === SCREEN.title) { heading(GAME_TITLE, "RETRO DUEL / PRESS ENTER"); button("START", () => this.setScreen(SCREEN.menu)); }
+    else if (screen === SCREEN.title) {
+      const logo = document.createElement("img");
+      logo.className = "title-logo";
+      logo.src = "assets/ui/title-logo.png";
+      logo.alt = GAME_TITLE;
+      this.panel.appendChild(logo);
+      button("START", () => this.setScreen(SCREEN.menu));
+    }
     else if (screen === SCREEN.menu) {
       heading(GAME_TITLE, "MAIN MENU");
       MENU_ITEMS.forEach((item, index) => button(item, () => this.activateMenu(index), index === this.state.menuIndex));
@@ -2052,9 +2141,9 @@ export class Game {
       const trainingLabel = (item) => item === "CPU MOVE" ? `${item}: ${this.state.trainingCpuMove ? "ON" : "OFF"}` : item === "CPU ATTACK" ? `${item}: ${this.state.trainingCpuAttack ? "ON" : "OFF"}` : item;
       TRAINING_SETTINGS_ITEMS.forEach((item, index) => button(trainingLabel(item), () => {
         this.state.trainingSettingsIndex = index;
-        if (index === 0) this.state.trainingCpuMove = !this.state.trainingCpuMove;
-        else if (index === 1) this.state.trainingCpuAttack = !this.state.trainingCpuAttack;
-        else if (index === 2) this.startTraining();
+        if (index === 0) this.startTraining();
+        else if (index === 1) this.state.trainingCpuMove = !this.state.trainingCpuMove;
+        else if (index === 2) this.state.trainingCpuAttack = !this.state.trainingCpuAttack;
         else this.setScreen(SCREEN.colorSelect);
         this.renderPanel();
       }, index === this.state.trainingSettingsIndex));
@@ -2069,8 +2158,9 @@ export class Game {
       CHARACTER_IDS.forEach((id) => { const b = document.createElement("button"); b.type = "button"; b.className = this.state.selectedId === id ? "selected" : ""; b.setAttribute("aria-label", `${CHARACTERS[id].name}を選択`); if (this.state.selectedId === id) b.setAttribute("aria-current", "true"); b.innerHTML = `<img alt="" src="${CHARACTERS[id].sprite.frames[0]}"><strong>${CHARACTERS[id].name}</strong><small>${CHARACTERS[id].type}</small>`; b.addEventListener("click", () => { this.ensureAudio(); this.state.selectedId = id; this.beep(320); this.renderPanel(); }); grid.appendChild(b); });
       this.panel.appendChild(grid);
       const selected = CHARACTERS[this.state.selectedId];
+      const selectedSkill = getSkillConfig(this.state.selectedId);
       const stats = document.createElement("div"); stats.className = "fighter-stats";
-      stats.textContent = `HP ${selected.stats.hp}  SPD ${selected.stats.speed.toFixed(2)}  POW ${selected.stats.power.toFixed(2)}  REACH ${selected.stats.reach.toFixed(2)}  DEF ${selected.stats.defense.toFixed(2)}  THROW ${selected.stats.throwPower.toFixed(2)}  →+J ${selected.moves.forward_light.name}  SPECIAL ${selected.special.name}`;
+      stats.textContent = `HP ${selected.stats.hp}  SPD ${selected.stats.speed.toFixed(2)}  POW ${selected.stats.power.toFixed(2)}  REACH ${selected.stats.reach.toFixed(2)}  DEF ${selected.stats.defense.toFixed(2)}  COMBO ${selected.stats.comboLimit}  A ${selected.moves.light_attack_neutral.name}  →+A ${selected.moves.forward_light.name}  X ${selected.moves.strong_attack_neutral.name}  B長押し ${selectedSkill?.name || "固有スキル"}  SP ${selected.special.name}`;
       this.panel.appendChild(stats);
       buttonRow([{ label: "CONFIRM", onClick: () => this.setScreen(SCREEN.colorSelect) }, { label: "BACK", onClick: () => this.setScreen(this.state.mode === "training" ? SCREEN.menu : SCREEN.difficultySelect) }]);
     } else if (screen === SCREEN.colorSelect) {
@@ -2078,9 +2168,12 @@ export class Game {
       [1, 2].forEach((color) => button(`COLOR ${color}`, () => { this.state.color = color; this.renderPanel(); }, color === this.state.color));
       buttonRow([{ label: "FIGHT", onClick: () => this.state.mode === "training" ? this.setScreen(SCREEN.trainingSettings) : this.startMatch() }, { label: "BACK", onClick: () => this.setScreen(SCREEN.characterSelect) }]);
     } else if (screen === SCREEN.howToPlay) {
-      heading("HOW TO PLAY", "基本操作・攻撃・防御");
-      this.hintText("A LIGHT / X STRONG / Y GUARD / B SKILL / A+X THROW / JUMP + SPECIAL / DOWN FOLLOW-UP + COMBO");
-      const p = document.createElement("pre"); p.textContent = "A/D・←/→  移動　同方向を素早く2回：ダッシュ／バックステップ\nW・↑  ジャンプ　空中でもう1回：二段ジャンプ\nS・↓  しゃがむ／下段ガード\nJ  弱攻撃　　→+J  キャラ固有通常技　　K  強攻撃\nL+J  投げ（ガード中に弱攻撃）\nL  上段ガード　攻撃直前のガード：ジャストガード\nI  ゲージ100でキャラ固有必殺技（ガード不能）\nESC  ポーズ／再開（トレーニング中はタイトルへ戻る）"; this.panel.appendChild(p); button("BACK", () => this.setScreen(SCREEN.menu));
+      heading("HOW TO PLAY", "現在の操作と技相性");
+      this.hintText("A 弱攻撃 / X 強攻撃 / Y ガード / B長押し 固有スキル / A+X 投げ / JUMP ジャンプ / SP 必殺技");
+      const p = document.createElement("pre");
+      p.textContent = "スティック・A/D・←/→  移動\nスティック上・W・↑・JUMP  ジャンプ（空中でもう1回で二段ジャンプ）\nスティック下・S・↓  しゃがみ／下段ガード\nA・J  弱攻撃　　→+A・→+J  キャラクター固有通常技\nX・K  強攻撃　　Y・L  ガード／ジャストガード\nA+X  投げ（ガード中の相手に有効）\nB長押し  キャラクター固有スキル（チャージは次回へ持越し）\nSP・I  必殺技（必殺ゲージ100で発動）\n相性：ガード ＞ 弱・強攻撃 ＞ 投げ ＞ ガード\nPAUSE・ESC  ポーズ／再開";
+      this.panel.appendChild(p);
+      button("BACK", () => this.setScreen(SCREEN.menu));
     } else if (screen === SCREEN.stageIntro) {
       const stage = STAGES[this.state.stage - 1];
       const opponentId = stageOpponent(this.state.stage, this.state.selectedId);

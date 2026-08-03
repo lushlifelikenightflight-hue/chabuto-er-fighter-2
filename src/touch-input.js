@@ -44,15 +44,10 @@ function canUseDom() {
 }
 
 export function isTouchAvailable(win = typeof window !== "undefined" ? window : null, nav = typeof navigator !== "undefined" ? navigator : null) {
-  // Pointer events cover touch, mouse, and stylus. A maxTouchPoints fallback
-  // keeps the pad available in WebViews that omit window.PointerEvent.
-  return Boolean(
-    win && (
-      typeof win.PointerEvent !== "undefined" ||
-      Number(nav?.maxTouchPoints) > 0 ||
-      "ontouchstart" in win
-    ),
-  );
+  // The on-screen controller is an input option for mouse, pen and touch,
+  // not a touch-device fallback. Any browser window can use it.
+  void nav;
+  return Boolean(win);
 }
 
 function safePreventDefault(event) {
@@ -179,14 +174,6 @@ export class TouchInput {
     utilities.appendChild(this.createButton("special", "SP", "必殺技", ["special"], "virtual-pad__utility virtual-pad__special"));
     utilities.appendChild(this.createButton("throw", "THROW", "throw", ["throw"], "virtual-pad__utility virtual-pad__throw"));
     root.appendChild(utilities);
-
-    // Pause is a compact system control outside the four-face action cluster.
-    const system = document.createElement("div");
-    system.className = "virtual-pad__system-control";
-    system.setAttribute("role", "group");
-    system.setAttribute("aria-label", "システム操作");
-    system.appendChild(this.createButton("pause", "Ⅱ", "ポーズ", ["pause"], "virtual-pad__pause"));
-    root.appendChild(system);
 
     this.container.appendChild(root);
     this.root = root;

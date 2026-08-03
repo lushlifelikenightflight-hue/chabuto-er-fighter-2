@@ -1,0 +1,2602 @@
+{
+  "version": 1,
+  "mode": "applied",
+  "runtimePathsChanged": false,
+  "deletedFiles": 0,
+  "files": 323,
+  "bytes": 64351337,
+  "trackedFiles": 0,
+  "untrackedFiles": 323,
+  "byCategory": {
+    "root-tmp": {
+      "files": 323,
+      "bytes": 64351337
+    }
+  },
+  "moves": [
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_crouch/crouch-1.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_crouch/crouch-1.png",
+      "tracked": false,
+      "sizeBytes": 18111,
+      "sha256": "92e254d90588d5813b62daebfff9ae2d7491e7281befe50d43441f9c58219e09"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_crouch/crouch-2.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_crouch/crouch-2.png",
+      "tracked": false,
+      "sizeBytes": 16470,
+      "sha256": "f7e09d44f19ab1e701511f211b2c89031b51581d18331711ee47d52be34bf53e"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_crouch/crouch-3.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_crouch/crouch-3.png",
+      "tracked": false,
+      "sizeBytes": 16395,
+      "sha256": "c90766a20214c05b020da0ccd33f35111eaf83609b45cce113b2b3784a96d844"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_crouch/crouch-4.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_crouch/crouch-4.png",
+      "tracked": false,
+      "sizeBytes": 16566,
+      "sha256": "7b54937b3dd41f052743616939e351dee36efa1fe0a48dd224043ecb8ed1c064"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_crouch/crouch-5.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_crouch/crouch-5.png",
+      "tracked": false,
+      "sizeBytes": 17086,
+      "sha256": "9dd3642a717454baad35f38ef1867d7010e036cb9b13cd64d8e856f4341ef32a"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_crouch/crouch-6.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_crouch/crouch-6.png",
+      "tracked": false,
+      "sizeBytes": 18215,
+      "sha256": "d78967414f5e75fd0c2aec2f4af87e10bbd86be66da193662b04eac1493ca9ae"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_damage/damage-1.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_damage/damage-1.png",
+      "tracked": false,
+      "sizeBytes": 31404,
+      "sha256": "697280e1dc976889535125102ba7bf49ef4ca09e9d98414e03042fee9e5d8c9c"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_damage/damage-10.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_damage/damage-10.png",
+      "tracked": false,
+      "sizeBytes": 28728,
+      "sha256": "5271d8cb1f98f5f5b6ce4eb5688e70a0b3a9fd7764fa624e6506c472d7dc1d43"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_damage/damage-11.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_damage/damage-11.png",
+      "tracked": false,
+      "sizeBytes": 22693,
+      "sha256": "08cf8b50db2b38349480b03687e5e5bd5200ae51f08e41793edd10dd15003139"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_damage/damage-12.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_damage/damage-12.png",
+      "tracked": false,
+      "sizeBytes": 20147,
+      "sha256": "e4d99eb998d7d610ecd81da8e7471ee51f50d098421293e60c08261226f35a60"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_damage/damage-13.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_damage/damage-13.png",
+      "tracked": false,
+      "sizeBytes": 20435,
+      "sha256": "34eb27d906d573ce7f5d5ebbbbcd914cda1a1b000e150296bc000142dc90cd23"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_damage/damage-14.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_damage/damage-14.png",
+      "tracked": false,
+      "sizeBytes": 25678,
+      "sha256": "f0636c7a6dbf8d8063a19eee21924bdd5cc553b53125efc9d3c6bb5b09cb3631"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_damage/damage-15.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_damage/damage-15.png",
+      "tracked": false,
+      "sizeBytes": 28919,
+      "sha256": "5f1caa4ccba9b58a507d5a41ece4559f0cbd4ad8791194558ad848f6a570619c"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_damage/damage-16.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_damage/damage-16.png",
+      "tracked": false,
+      "sizeBytes": 29626,
+      "sha256": "81f540a0d1f6b25bcf1f26c3bf657e04ae8e67d2fb0769b4471af39cd6403984"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_damage/damage-2.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_damage/damage-2.png",
+      "tracked": false,
+      "sizeBytes": 29559,
+      "sha256": "5b352b47e4e0da550e6f3159f9c8e665bad4ee2fb4d01c68b2b409b1d015417a"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_damage/damage-3.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_damage/damage-3.png",
+      "tracked": false,
+      "sizeBytes": 35907,
+      "sha256": "9c83892f427ac5373a58de5ff91a5154fd7e7339c0de9b98149fd2669b528f7b"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_damage/damage-4.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_damage/damage-4.png",
+      "tracked": false,
+      "sizeBytes": 31554,
+      "sha256": "5065a73d2f8d4654a94658072a9b4eec5dcf0ac16908f238711765b6ef332da7"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_damage/damage-5.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_damage/damage-5.png",
+      "tracked": false,
+      "sizeBytes": 27018,
+      "sha256": "ba1c11f4b4073a33a0ac45a96e0b166998ec8d30f3d7dc01e1ff1c5e19f725d9"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_damage/damage-6.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_damage/damage-6.png",
+      "tracked": false,
+      "sizeBytes": 23973,
+      "sha256": "2c06e0a6a33c842b58b2b70ed5ff8a0f0b23e1e772d9eed75fda88171cd68eef"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_damage/damage-7.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_damage/damage-7.png",
+      "tracked": false,
+      "sizeBytes": 32099,
+      "sha256": "34542277974e6d38e1768f7ce9958ca9911623f7b244c950744be510e3f55069"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_damage/damage-8.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_damage/damage-8.png",
+      "tracked": false,
+      "sizeBytes": 31011,
+      "sha256": "5d7c5c4bc9f140945b13829fbd3528731e04f4cd7897f475aa63c29b90e10256"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_damage/damage-9.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_damage/damage-9.png",
+      "tracked": false,
+      "sizeBytes": 32847,
+      "sha256": "bed966e510d4316b6f3681604eef5d0f48760f0bac105a83c514eb842013bcf9"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_guard/guard-1.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_guard/guard-1.png",
+      "tracked": false,
+      "sizeBytes": 19200,
+      "sha256": "f0c19164ad593153f55269ce00fe0c36ad6c7c1e2543c26c5a9302847445528a"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_guard/guard-2.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_guard/guard-2.png",
+      "tracked": false,
+      "sizeBytes": 19090,
+      "sha256": "4a5c0d882347975196ebd097ae24dc05300689e5e58d00032cf7f16583e3fd8b"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_guard/guard-3.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_guard/guard-3.png",
+      "tracked": false,
+      "sizeBytes": 17995,
+      "sha256": "799631722649e1da0a1985719a8449364b343d89e0eec2eccd379dcf03e7ec34"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_guard/guard-4.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_guard/guard-4.png",
+      "tracked": false,
+      "sizeBytes": 16923,
+      "sha256": "8805fd7a8047840f42eebbd32619c9ce6a0c858d0f9cd7828cc445201552b8ce"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_guard/guard-5.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_guard/guard-5.png",
+      "tracked": false,
+      "sizeBytes": 16374,
+      "sha256": "4d526a689b670f05fdefe6f32debea30daa2ebe9007b8ffd900c7c878f8471ee"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_guard/guard-6.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_guard/guard-6.png",
+      "tracked": false,
+      "sizeBytes": 18801,
+      "sha256": "4918282728d3bfd16fe06dd3e92336834a4416ee36bf1743441034b55ca426e1"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_heavy_attacks/heavy_attacks-1.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_heavy_attacks/heavy_attacks-1.png",
+      "tracked": false,
+      "sizeBytes": 27807,
+      "sha256": "93877de6a06587398ded79c65e18e42cf84a53a91cfc36c88e7e013ca6305df6"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_heavy_attacks/heavy_attacks-10.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_heavy_attacks/heavy_attacks-10.png",
+      "tracked": false,
+      "sizeBytes": 27910,
+      "sha256": "db5f4a00e91e0ef4499c2f43974c797be0e1ac426f297fd9837372664b7193b8"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_heavy_attacks/heavy_attacks-11.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_heavy_attacks/heavy_attacks-11.png",
+      "tracked": false,
+      "sizeBytes": 22175,
+      "sha256": "348fc76c4757a5439ff5cf92442c7b6ae1c4970659ffa6491ec22acae1425c4d"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_heavy_attacks/heavy_attacks-12.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_heavy_attacks/heavy_attacks-12.png",
+      "tracked": false,
+      "sizeBytes": 23300,
+      "sha256": "9de8afb4e9120559a271b7caa88c37f3af4b99f94e34f345e71e7718209ba2ae"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_heavy_attacks/heavy_attacks-2.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_heavy_attacks/heavy_attacks-2.png",
+      "tracked": false,
+      "sizeBytes": 28714,
+      "sha256": "92588edd33a3c3b6b8fe1066d5fe6f2ab2581c71b99f9d69c1ec0db9c502027f"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_heavy_attacks/heavy_attacks-3.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_heavy_attacks/heavy_attacks-3.png",
+      "tracked": false,
+      "sizeBytes": 26700,
+      "sha256": "1b93b0d93dcae2a3b41d9998b873767e3f21c1d02a1201fead789c1db1cb0de7"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_heavy_attacks/heavy_attacks-4.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_heavy_attacks/heavy_attacks-4.png",
+      "tracked": false,
+      "sizeBytes": 21262,
+      "sha256": "a01b78db13a2d0d93c30d15c95e91353fd0dec7af78ad01980e6683c7e38ad28"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_heavy_attacks/heavy_attacks-5.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_heavy_attacks/heavy_attacks-5.png",
+      "tracked": false,
+      "sizeBytes": 22257,
+      "sha256": "19d109accdc11b9e04f985a610b614c6a762e90ef3779d387558858c0463696d"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_heavy_attacks/heavy_attacks-6.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_heavy_attacks/heavy_attacks-6.png",
+      "tracked": false,
+      "sizeBytes": 21397,
+      "sha256": "5b7d69182d04a4681bcd5f5dfcb34eee7f0074ec9cddf24e3b8c5d81e802a486"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_heavy_attacks/heavy_attacks-7.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_heavy_attacks/heavy_attacks-7.png",
+      "tracked": false,
+      "sizeBytes": 17918,
+      "sha256": "3f97d62e0fccba1848097c02f38da3e12fb3b41c3c39858cd7247fae41eea57f"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_heavy_attacks/heavy_attacks-8.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_heavy_attacks/heavy_attacks-8.png",
+      "tracked": false,
+      "sizeBytes": 20888,
+      "sha256": "67e063000a28ee42e473053a326ce2c4f9d95a020b8372351d7e9611821bdf2b"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_heavy_attacks/heavy_attacks-9.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_heavy_attacks/heavy_attacks-9.png",
+      "tracked": false,
+      "sizeBytes": 21923,
+      "sha256": "d6b7e2079f4a6bb54f6c40a51d43c12bd7df7aab81b9fb3b54f91410e1d62588"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_light_attacks/light_attacks-1.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_light_attacks/light_attacks-1.png",
+      "tracked": false,
+      "sizeBytes": 26878,
+      "sha256": "c37efb8552b4e8609aed033a7ebcecd638e5315f431d50c47760534521fd856a"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_light_attacks/light_attacks-10.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_light_attacks/light_attacks-10.png",
+      "tracked": false,
+      "sizeBytes": 23142,
+      "sha256": "12f2cefb10180f85721852b387c7ccc77560294aa3fedd897abfb48b2fb5c22d"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_light_attacks/light_attacks-11.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_light_attacks/light_attacks-11.png",
+      "tracked": false,
+      "sizeBytes": 20421,
+      "sha256": "d3d7ce18989fde4a7c5106621f6ab60a7d494f6fcce53fb8cac0b5fa0a5d985b"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_light_attacks/light_attacks-12.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_light_attacks/light_attacks-12.png",
+      "tracked": false,
+      "sizeBytes": 24355,
+      "sha256": "2f105c407f35b88737cc1b24117cb40f6a861df83a60171e894ed11e33aed7ec"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_light_attacks/light_attacks-2.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_light_attacks/light_attacks-2.png",
+      "tracked": false,
+      "sizeBytes": 27690,
+      "sha256": "f3f7899be82213aeb4f7f2bf151a0e991c76b1cbdf16ab80ea8f41133f4d4c3e"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_light_attacks/light_attacks-3.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_light_attacks/light_attacks-3.png",
+      "tracked": false,
+      "sizeBytes": 24120,
+      "sha256": "92914001200fb366f512110986470d2df4777e9e51d2d2d453db81f15aca59d8"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_light_attacks/light_attacks-4.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_light_attacks/light_attacks-4.png",
+      "tracked": false,
+      "sizeBytes": 26843,
+      "sha256": "627cfd21d27b7df64625faecf0629086d5bbf7c7ee3f7364664bce5ac8c1f907"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_light_attacks/light_attacks-5.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_light_attacks/light_attacks-5.png",
+      "tracked": false,
+      "sizeBytes": 20886,
+      "sha256": "0b64b1ca4bc3ac49eb81ee9e754c853269734a51c8c1434871b95d1be1add43c"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_light_attacks/light_attacks-6.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_light_attacks/light_attacks-6.png",
+      "tracked": false,
+      "sizeBytes": 22023,
+      "sha256": "c4d9f789a6d1c365e39c0646f8405b37abbec3455e028dc8c862ea76363d6d5a"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_light_attacks/light_attacks-7.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_light_attacks/light_attacks-7.png",
+      "tracked": false,
+      "sizeBytes": 20262,
+      "sha256": "e03f8473edcdeccc7ee2af3b8f23fa4a177157a9c5f2c1ea70c733829c32f336"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_light_attacks/light_attacks-8.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_light_attacks/light_attacks-8.png",
+      "tracked": false,
+      "sizeBytes": 19847,
+      "sha256": "1a5c8cedecabf0ebdcc82edae82a32eb08e08e98188ccf6cd44d5fc48ec48da1"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_light_attacks/light_attacks-9.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_light_attacks/light_attacks-9.png",
+      "tracked": false,
+      "sizeBytes": 25851,
+      "sha256": "ca6c9a508997f9855b82920fd4a95e45bd2152c51f8edc3386df67cfd6f27249"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_movement/movement-1.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_movement/movement-1.png",
+      "tracked": false,
+      "sizeBytes": 22436,
+      "sha256": "aa78992525f1bf9a215ce3d7c83b0ad04ae000dab686a4ac4c9ef621d4d82ed5"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_movement/movement-10.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_movement/movement-10.png",
+      "tracked": false,
+      "sizeBytes": 23043,
+      "sha256": "c6945461214d45dcdff4f310f316e6e50a04d42c6bb337402bd9b859c8a31cf1"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_movement/movement-11.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_movement/movement-11.png",
+      "tracked": false,
+      "sizeBytes": 21893,
+      "sha256": "bed278db51aef81abb1dbf56a596ad50a9f94c1bb89aebb46a61e1225e4780e2"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_movement/movement-12.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_movement/movement-12.png",
+      "tracked": false,
+      "sizeBytes": 21663,
+      "sha256": "3ca479653ac21b8a47c2441ca6c2ab5d7d867d0667ea44730ee564265c7feb1d"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_movement/movement-2.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_movement/movement-2.png",
+      "tracked": false,
+      "sizeBytes": 22908,
+      "sha256": "431450e1f536aa60e6b66df8b39a4ed2e0f14769c6d24976f0a8989bb57f9a9a"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_movement/movement-3.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_movement/movement-3.png",
+      "tracked": false,
+      "sizeBytes": 24634,
+      "sha256": "7c7a2fe3a6e456afa1e75bf54fcbb651fd617477ce623204137dddaa44920434"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_movement/movement-4.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_movement/movement-4.png",
+      "tracked": false,
+      "sizeBytes": 23418,
+      "sha256": "2451329f5b2e324b618a8a13108aead53bbda799c8ba82a6e97115a75b62c98d"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_movement/movement-5.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_movement/movement-5.png",
+      "tracked": false,
+      "sizeBytes": 19377,
+      "sha256": "21d8e67b8adb24fe7a640606047dd48e9a60411504007f2b97cb5d2b5086bd1b"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_movement/movement-6.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_movement/movement-6.png",
+      "tracked": false,
+      "sizeBytes": 19921,
+      "sha256": "97562a46bca7c87b099d2f9fee4d7eaa17f54fd4e1c92fdec8bd335f3e936603"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_movement/movement-7.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_movement/movement-7.png",
+      "tracked": false,
+      "sizeBytes": 20269,
+      "sha256": "105dfe76fc809ec7083e24ef4ab54f7b03937532cbe7e049938201146779d0de"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_movement/movement-8.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_movement/movement-8.png",
+      "tracked": false,
+      "sizeBytes": 20589,
+      "sha256": "d015a4014c78ba2f12b18b8dd77c4fe74de1e91253b622cd1ff2fbc61faeb737"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_movement/movement-9.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_movement/movement-9.png",
+      "tracked": false,
+      "sizeBytes": 23332,
+      "sha256": "5dcf1e7b72a4daabb3ce8113221ac42e9d60f28b888af8ab9ca53d58ee8f27ac"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_result/result-1.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_result/result-1.png",
+      "tracked": false,
+      "sizeBytes": 24063,
+      "sha256": "6b558120c7d6fefbb3d7396859fec6a8e75e108cad838af8d6e5f19bcd7269d6"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_result/result-2.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_result/result-2.png",
+      "tracked": false,
+      "sizeBytes": 23982,
+      "sha256": "59c195979b9f55634a86b066183e7443f2baea5e592716fbc1db31ce1bf3443f"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_result/result-3.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_result/result-3.png",
+      "tracked": false,
+      "sizeBytes": 24857,
+      "sha256": "88a3a82b2b27dbbcf172925aa097d1748c49a1f2ed283faedfa653a2324d5d79"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_result/result-4.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_result/result-4.png",
+      "tracked": false,
+      "sizeBytes": 22275,
+      "sha256": "d663b6bf21baea37c0ffca1d72024f9ed68d1ca8afeeab82b9a1ee9fab2bd8c8"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_result/result-5.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_result/result-5.png",
+      "tracked": false,
+      "sizeBytes": 21354,
+      "sha256": "6f0294e74794effe9999e9c73db4593a92a165e05f3ac1a384a55cb8e7a7e497"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_result/result-6.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_result/result-6.png",
+      "tracked": false,
+      "sizeBytes": 21158,
+      "sha256": "0fd10e449b183b2b0be5d8dbb6c6d2d52b5046d2dc408fb1fcecb5339a4f3ac3"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_special/special-1.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_special/special-1.png",
+      "tracked": false,
+      "sizeBytes": 27058,
+      "sha256": "d9a3aa949ba4a6bc51e8ccb73d4b9cc108a9939793a0a87946d78a6eb79be388"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_special/special-2.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_special/special-2.png",
+      "tracked": false,
+      "sizeBytes": 41508,
+      "sha256": "007d579c6680ecca56dfe216cf91d8f69849a6bb67c839a247649d10ab0eb4eb"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_special/special-3.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_special/special-3.png",
+      "tracked": false,
+      "sizeBytes": 32383,
+      "sha256": "0f324793cdfe912b198e6487ac2be3eb098231076ff337dafb5c966d590f2df2"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_special/special-4.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_special/special-4.png",
+      "tracked": false,
+      "sizeBytes": 33841,
+      "sha256": "ea98437cc3c62a52e75e937f28646f7da594beb6147531f09daba34c7c66a84e"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_special/special-5.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_special/special-5.png",
+      "tracked": false,
+      "sizeBytes": 30376,
+      "sha256": "96987d94a8a0282165f285764246dbc249069b498a1a62bbba6390e588b084db"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_special/special-6.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_special/special-6.png",
+      "tracked": false,
+      "sizeBytes": 34503,
+      "sha256": "aed206e46f9f365b673e800781316882592d4495b7cc310f80b9b19275af866b"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_special/special-7.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_special/special-7.png",
+      "tracked": false,
+      "sizeBytes": 28355,
+      "sha256": "bf7b6960d4b09e6abd45e6fcaaa6977eb92cdd1c91fd1c7eee2ee99f8f9221c2"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_special/special-8.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_special/special-8.png",
+      "tracked": false,
+      "sizeBytes": 25922,
+      "sha256": "0508bfb70d110396babdff13c274f4a366330193e06b78bc5d5535e42b0c60bf"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_special/special-9.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_special/special-9.png",
+      "tracked": false,
+      "sizeBytes": 26184,
+      "sha256": "b672b3018b5285c54e8019ef61def85f48d41347b6bb587f1132f970f39582fd"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_throw/throw-1.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_throw/throw-1.png",
+      "tracked": false,
+      "sizeBytes": 18449,
+      "sha256": "7b599ccd34400b9f61f11cad468b12fdebca1ad025f75832eccecad49da7b3f6"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_throw/throw-10.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_throw/throw-10.png",
+      "tracked": false,
+      "sizeBytes": 16252,
+      "sha256": "fccd2fad6a700017e10a2ec1ad3bf67a57735a641228fccfdee36d1873c6e2e6"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_throw/throw-2.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_throw/throw-2.png",
+      "tracked": false,
+      "sizeBytes": 18166,
+      "sha256": "dcfca5b8d71d2cda2baf314447b507dcd2d179f6963ac55b531cc15607ad6659"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_throw/throw-3.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_throw/throw-3.png",
+      "tracked": false,
+      "sizeBytes": 16845,
+      "sha256": "db72125e47c52e15889a3e5049b4736ef4de1b3d958ebad0bf7484c4886d8fbe"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_throw/throw-4.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_throw/throw-4.png",
+      "tracked": false,
+      "sizeBytes": 16571,
+      "sha256": "1a1ce075cf0059fabb58cbc84ffd266ed3bb90f0b16d09bed0c0c3c6ea36c6de"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_throw/throw-5.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_throw/throw-5.png",
+      "tracked": false,
+      "sizeBytes": 16928,
+      "sha256": "d447079eeadad39795ca7d53c00d6085e90f45617c377f8be6a07cef76a74f4e"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_throw/throw-6.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_throw/throw-6.png",
+      "tracked": false,
+      "sizeBytes": 16851,
+      "sha256": "99490f072854daea27c756e5d939a5ec1f32f936afba160692fc8dd9c201838a"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_throw/throw-7.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_throw/throw-7.png",
+      "tracked": false,
+      "sizeBytes": 19150,
+      "sha256": "06798ff6ff2378f5816c883c8f4c66fd0bb86b2cd665378f6a6c87900a6d6035"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_throw/throw-8.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_throw/throw-8.png",
+      "tracked": false,
+      "sizeBytes": 14804,
+      "sha256": "64821514b53480fcc2115897e9f75d86a8c709fa016afae6ea973a7caa4d30b7"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_norio_throw/throw-9.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_aligned_norio_throw/throw-9.png",
+      "tracked": false,
+      "sizeBytes": 15607,
+      "sha256": "e6ecada3c127f862ed7d49c5ce979209b12a78c44c70722554fff1420213c8b0"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_crouch/crouch-1.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_crouch/crouch-1.png",
+      "tracked": false,
+      "sizeBytes": 22290,
+      "sha256": "5375178c50a6ef31fe9bb5f960d8c4a8512e4a79e0fd851b41ef1a68d712533c"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_crouch/crouch-2.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_crouch/crouch-2.png",
+      "tracked": false,
+      "sizeBytes": 20191,
+      "sha256": "4a228c8f6fd237a7d5b3c71c73bc51c9bfd587a878479f90fbc714e0aec6205b"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_crouch/crouch-3.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_crouch/crouch-3.png",
+      "tracked": false,
+      "sizeBytes": 17278,
+      "sha256": "2d0ff61b3db396d769f30df022dd6d82fe4fb2c48f1aed18899baaed0a11f65f"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_crouch/crouch-4.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_crouch/crouch-4.png",
+      "tracked": false,
+      "sizeBytes": 17645,
+      "sha256": "ecd28f30cd1c756ce12b3aaeeda3ee5df3bfead8b8047d5a8567956c49d7e080"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_crouch/crouch-5.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_crouch/crouch-5.png",
+      "tracked": false,
+      "sizeBytes": 21990,
+      "sha256": "3b20c6ddf58df604c9af618742772121bc0d3df3d2765ddf253c4709a32ca384"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_crouch/crouch-6.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_crouch/crouch-6.png",
+      "tracked": false,
+      "sizeBytes": 22366,
+      "sha256": "243f9e90da096614219226010dc6432a40666abc7c3ee45a5fde02467b4fa959"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_damage/damage-1.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_damage/damage-1.png",
+      "tracked": false,
+      "sizeBytes": 27890,
+      "sha256": "5eb9b9f35828146085c587372da43426412f61fff2368c20d18153728449adb0"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_damage/damage-10.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_damage/damage-10.png",
+      "tracked": false,
+      "sizeBytes": 29778,
+      "sha256": "c0e2a8a9d825af3da1421cf2868d1f07bbf62491650c047d991cd4d2e55fd5cd"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_damage/damage-11.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_damage/damage-11.png",
+      "tracked": false,
+      "sizeBytes": 23800,
+      "sha256": "def5d271080e3ddfaf6541b3d3abe86731912cb2f010f75a380c78123b80daf9"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_damage/damage-12.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_damage/damage-12.png",
+      "tracked": false,
+      "sizeBytes": 22411,
+      "sha256": "03dc8ab973364167af299c72c841837180c153bd0ac59a53e87f459482073bcf"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_damage/damage-13.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_damage/damage-13.png",
+      "tracked": false,
+      "sizeBytes": 24539,
+      "sha256": "2f7728b4f6dedb86b38f901d647db4a9c88097e847f32ce3d6f976a38bb5086c"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_damage/damage-14.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_damage/damage-14.png",
+      "tracked": false,
+      "sizeBytes": 24003,
+      "sha256": "230a06f315b3cfc06abacdec2a92f77cba990a16cc2ae0995d2468c19ee58619"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_damage/damage-15.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_damage/damage-15.png",
+      "tracked": false,
+      "sizeBytes": 26496,
+      "sha256": "679d81f622385ea096215b6411a0b95a262471c4c0f3049a515457892838b8c8"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_damage/damage-16.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_damage/damage-16.png",
+      "tracked": false,
+      "sizeBytes": 27958,
+      "sha256": "d7ee8c8d968274491c9eb179b1bfab7c29c2f0aae52429996f3bde741d807dc0"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_damage/damage-2.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_damage/damage-2.png",
+      "tracked": false,
+      "sizeBytes": 28896,
+      "sha256": "119ef617f544f65dbcbd8b9355940ccaeb91a095200dfbcbe6a37697477797e3"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_damage/damage-3.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_damage/damage-3.png",
+      "tracked": false,
+      "sizeBytes": 31080,
+      "sha256": "19562e283487ccaa95beb1018f5b81326e5c86c227fd933d3d787b319ecf02a5"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_damage/damage-4.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_damage/damage-4.png",
+      "tracked": false,
+      "sizeBytes": 30013,
+      "sha256": "e640cf957a4a6f0b8b2bd8537e945058c3164ffcf6604c4975175d124f8eb57c"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_damage/damage-5.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_damage/damage-5.png",
+      "tracked": false,
+      "sizeBytes": 25017,
+      "sha256": "6b1f4f7a3dababcad36787cd1a1d8c3ce0a26b86834a637f214f0fc8303bcc14"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_damage/damage-6.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_damage/damage-6.png",
+      "tracked": false,
+      "sizeBytes": 25761,
+      "sha256": "ae2b35c3d000a0c16515f12fc2dee655fe55bc2e80cd878fcc97874f53932727"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_damage/damage-7.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_damage/damage-7.png",
+      "tracked": false,
+      "sizeBytes": 30514,
+      "sha256": "27f3c10cf0ed7b002a4cffd029877613b4b6384f1a8f01f4ac584d7e2393b5a3"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_damage/damage-8.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_damage/damage-8.png",
+      "tracked": false,
+      "sizeBytes": 27616,
+      "sha256": "f41444641e81fbd9c1e24cc49447eae2a525d57150bcd044b742125dce515bb4"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_damage/damage-9.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_damage/damage-9.png",
+      "tracked": false,
+      "sizeBytes": 29918,
+      "sha256": "1f93feb2433f9d714232e4e659fe84e96a433a440b92b25bb03d810236b4c1d8"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_guard/guard-1.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_guard/guard-1.png",
+      "tracked": false,
+      "sizeBytes": 23852,
+      "sha256": "5da83c2c61a70fcd0568f1e85d1d1ae90d841c463d37f7e437d484aefdb77b20"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_guard/guard-2.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_guard/guard-2.png",
+      "tracked": false,
+      "sizeBytes": 23775,
+      "sha256": "3f93cb726fe1973830aad9e4c7d673f21fa47e6fc244aceac2f0216fb856a891"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_guard/guard-3.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_guard/guard-3.png",
+      "tracked": false,
+      "sizeBytes": 23535,
+      "sha256": "79007ff60375df9afd1a789a34911402c9506d5eb0c20b84f7660fd4ac2adfec"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_guard/guard-4.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_guard/guard-4.png",
+      "tracked": false,
+      "sizeBytes": 20845,
+      "sha256": "48f82f7a89d956e1c6e21feeaefd132539260f358f8aa7adb7d6422e604eeb53"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_guard/guard-5.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_guard/guard-5.png",
+      "tracked": false,
+      "sizeBytes": 20266,
+      "sha256": "8925f4a70b374b8cdbd8dbb3a7b15f920559471f7aa7140513b055131914c85b"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_guard/guard-6.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_guard/guard-6.png",
+      "tracked": false,
+      "sizeBytes": 23764,
+      "sha256": "aee85f7d235e57ba0e6a2b72665c0daaa4f7fb161630f36e1f3e94a567647083"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_heavy_attacks/heavy_attacks-1.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_heavy_attacks/heavy_attacks-1.png",
+      "tracked": false,
+      "sizeBytes": 22847,
+      "sha256": "39ad55984b356b8ca649c1df18e2bee3a17761a9809788361134a0f13d1d4067"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_heavy_attacks/heavy_attacks-10.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_heavy_attacks/heavy_attacks-10.png",
+      "tracked": false,
+      "sizeBytes": 23982,
+      "sha256": "a9e5e1dfb2c3df6f3328b215e61bda998076a8249873c8e500782f032871b26c"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_heavy_attacks/heavy_attacks-11.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_heavy_attacks/heavy_attacks-11.png",
+      "tracked": false,
+      "sizeBytes": 19719,
+      "sha256": "96d2ae19e2ebc68ab960ad97892e85f0c2495e616bb3c647bdadaadf970ff5e5"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_heavy_attacks/heavy_attacks-12.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_heavy_attacks/heavy_attacks-12.png",
+      "tracked": false,
+      "sizeBytes": 22241,
+      "sha256": "909bb589d0305b070f87545fa77ddfb54bf13b55ceef99df57a1f2bd61626dbd"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_heavy_attacks/heavy_attacks-2.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_heavy_attacks/heavy_attacks-2.png",
+      "tracked": false,
+      "sizeBytes": 22920,
+      "sha256": "f827c6ff41c7b9dce18fa1e353de49437239f0397d16f050cc685362a25b4b9a"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_heavy_attacks/heavy_attacks-3.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_heavy_attacks/heavy_attacks-3.png",
+      "tracked": false,
+      "sizeBytes": 26348,
+      "sha256": "e1772a1264b66097476d1d4c1c8f17d6afbd913aa1036c08c0a4bc5bfddee1db"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_heavy_attacks/heavy_attacks-4.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_heavy_attacks/heavy_attacks-4.png",
+      "tracked": false,
+      "sizeBytes": 20432,
+      "sha256": "ba373b77b986932bf390e40e98709a48085368ebfb8eab7ad5894eaf57563a03"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_heavy_attacks/heavy_attacks-5.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_heavy_attacks/heavy_attacks-5.png",
+      "tracked": false,
+      "sizeBytes": 23631,
+      "sha256": "e198ba8fcb5127291f2bf654b5b5cdcda130a4e194476bb99dcd30dec3f8dc55"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_heavy_attacks/heavy_attacks-6.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_heavy_attacks/heavy_attacks-6.png",
+      "tracked": false,
+      "sizeBytes": 21608,
+      "sha256": "1b021dbe9a18ebf5cf9a0a41c99a5c05572b220942676302e5e1efb7dfb76efb"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_heavy_attacks/heavy_attacks-7.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_heavy_attacks/heavy_attacks-7.png",
+      "tracked": false,
+      "sizeBytes": 20647,
+      "sha256": "bb5a0ea7bb99375e42a63121139a201ab04d99664308ae57641ba82b35b63600"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_heavy_attacks/heavy_attacks-8.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_heavy_attacks/heavy_attacks-8.png",
+      "tracked": false,
+      "sizeBytes": 19712,
+      "sha256": "060e535fbb3f307875616a56bbbf985726b11f4fd94ea1ac1d610cc9ac98c9b1"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_heavy_attacks/heavy_attacks-9.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_heavy_attacks/heavy_attacks-9.png",
+      "tracked": false,
+      "sizeBytes": 23571,
+      "sha256": "19a74bd6f97d667c0805f95ffeed46d055bd8e94136dea1e1a566bfaa99fe96e"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_light_attacks/light_attacks-1.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_light_attacks/light_attacks-1.png",
+      "tracked": false,
+      "sizeBytes": 23731,
+      "sha256": "e4cf580e163aa25a77f85b3d2fb61a2b5e20669f1ff6dd8a3d89a10642450780"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_light_attacks/light_attacks-10.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_light_attacks/light_attacks-10.png",
+      "tracked": false,
+      "sizeBytes": 23216,
+      "sha256": "a34b19fa054a51429cb430fb70ab0ea2cdb2347b912c34dbb9e83cda58d37ada"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_light_attacks/light_attacks-11.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_light_attacks/light_attacks-11.png",
+      "tracked": false,
+      "sizeBytes": 19753,
+      "sha256": "3f7179c91b8304b8e9c922a99f8087c0e8898b27408fc1de6f7495676ded0fd9"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_light_attacks/light_attacks-12.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_light_attacks/light_attacks-12.png",
+      "tracked": false,
+      "sizeBytes": 22071,
+      "sha256": "fba4e806fb6e68301a382aa5a0e1aebbf4fd875c49030a605b0b8af070073601"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_light_attacks/light_attacks-2.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_light_attacks/light_attacks-2.png",
+      "tracked": false,
+      "sizeBytes": 25746,
+      "sha256": "ca061eb9e9ac59f3aabe77f0a0a4bf097d1e9a516e3e7937a8701debaf22f6c2"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_light_attacks/light_attacks-3.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_light_attacks/light_attacks-3.png",
+      "tracked": false,
+      "sizeBytes": 26446,
+      "sha256": "1927fc8e868b61d472a946b462c937e2eee3e2300cecd5fef747bb6334dcd34b"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_light_attacks/light_attacks-4.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_light_attacks/light_attacks-4.png",
+      "tracked": false,
+      "sizeBytes": 24841,
+      "sha256": "6701c652a1db0d6fefc22dae0a74fb4dd41f583439952e28b9343237bad92c51"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_light_attacks/light_attacks-5.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_light_attacks/light_attacks-5.png",
+      "tracked": false,
+      "sizeBytes": 18409,
+      "sha256": "f34c186d9aff9a3e89c633dfb8649c1f6b5699aab7a88865ef6e67f19c74a18d"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_light_attacks/light_attacks-6.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_light_attacks/light_attacks-6.png",
+      "tracked": false,
+      "sizeBytes": 23596,
+      "sha256": "8bc622a0fd25f5b56bea2d707f9626928c024cb9a4ace471afc24366fc4c7d54"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_light_attacks/light_attacks-7.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_light_attacks/light_attacks-7.png",
+      "tracked": false,
+      "sizeBytes": 18579,
+      "sha256": "c54ee4d7d9f11fc11f393ab2aa5cf48a6f31882c3b24d69383d0b263740dc29b"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_light_attacks/light_attacks-8.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_light_attacks/light_attacks-8.png",
+      "tracked": false,
+      "sizeBytes": 18400,
+      "sha256": "23ed3ec3b4472b8087826aa70996d1aadf0fed825109ead7c351dd89647d068c"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_light_attacks/light_attacks-9.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_light_attacks/light_attacks-9.png",
+      "tracked": false,
+      "sizeBytes": 21368,
+      "sha256": "742ee07fbc7ce8750848f117331ae37aef25c0fdc63d6334740f69145873d050"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_movement/movement-1.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_movement/movement-1.png",
+      "tracked": false,
+      "sizeBytes": 22775,
+      "sha256": "3247a6b8c957b4ae672f9c3cf0bc1802d5fd54321455a33a9e41eb1667a65245"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_movement/movement-10.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_movement/movement-10.png",
+      "tracked": false,
+      "sizeBytes": 22864,
+      "sha256": "2790eae232a6785a98e9c6f7a680909fd7a662eab3060ab22f4d569c5329ea91"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_movement/movement-11.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_movement/movement-11.png",
+      "tracked": false,
+      "sizeBytes": 27842,
+      "sha256": "96262d86031115c6ab63fdf9dd93da248e1c6136dad9ae7ca7033be15475d1fd"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_movement/movement-12.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_movement/movement-12.png",
+      "tracked": false,
+      "sizeBytes": 20352,
+      "sha256": "83f5ab69f089142809774b2b1c45d7c0e8c4e69273886916b36f6fdfb5d8e19c"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_movement/movement-2.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_movement/movement-2.png",
+      "tracked": false,
+      "sizeBytes": 24333,
+      "sha256": "1335c6035f10a282b633b7d07d7d51dc632eb5daca0cf67725cb2a45c1984c1f"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_movement/movement-3.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_movement/movement-3.png",
+      "tracked": false,
+      "sizeBytes": 25206,
+      "sha256": "4d4b4382b694e7d4c867602e7d3314caa94c91e510975ac82c21620cc0ced829"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_movement/movement-4.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_movement/movement-4.png",
+      "tracked": false,
+      "sizeBytes": 19582,
+      "sha256": "89460a12febcda9c5795484a4dd8c21490830253614049457fcd68546e3142de"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_movement/movement-5.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_movement/movement-5.png",
+      "tracked": false,
+      "sizeBytes": 20790,
+      "sha256": "e29fbf9d68b9a25a23f5b35bb4411ea508a4bd80239bed60c67073e579ca06e5"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_movement/movement-6.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_movement/movement-6.png",
+      "tracked": false,
+      "sizeBytes": 20439,
+      "sha256": "8276248418e82ae92a0761f3ea69852190b2644572a8fa40d173608983efd2f9"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_movement/movement-7.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_movement/movement-7.png",
+      "tracked": false,
+      "sizeBytes": 24174,
+      "sha256": "2a4b98effaca8d6bbdefaabe0980f35d6c2753f0e1c61ce4600328c9eaf65c73"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_movement/movement-8.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_movement/movement-8.png",
+      "tracked": false,
+      "sizeBytes": 21701,
+      "sha256": "93668b8ddc6c8b3df736b7a352a71cf0f4b5fd7332d110663d7f23a3a1bab6ed"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_movement/movement-9.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_movement/movement-9.png",
+      "tracked": false,
+      "sizeBytes": 26440,
+      "sha256": "300e6459d3d0440c06c1396892f62156bbfb2c6a59a9b4ee4ed4bdd7ce03f840"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_result/result-1.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_result/result-1.png",
+      "tracked": false,
+      "sizeBytes": 28162,
+      "sha256": "14dd55e771e9c8c2eb97d4969cadb0e1e9e466a811f81ddbc370b135b9d4e089"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_result/result-2.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_result/result-2.png",
+      "tracked": false,
+      "sizeBytes": 28276,
+      "sha256": "82bd10dbede8afde7bff472e9a268ea976286b34e21f2955216d468df9bacbe9"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_result/result-3.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_result/result-3.png",
+      "tracked": false,
+      "sizeBytes": 26950,
+      "sha256": "9cfe1c71ce96e3781fdc294918777fe77b97df345c8fa7b386d93103f394ba32"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_result/result-4.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_result/result-4.png",
+      "tracked": false,
+      "sizeBytes": 22228,
+      "sha256": "db77fef8d3ccaabfee5c812b453c429e47dde364e90b5bb1f074bbdea4d78973"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_result/result-5.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_result/result-5.png",
+      "tracked": false,
+      "sizeBytes": 22177,
+      "sha256": "2d470e9932ea17e1b0e377c63e76c3b2104706ce6915852eca2a9edaa43f0750"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_result/result-6.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_result/result-6.png",
+      "tracked": false,
+      "sizeBytes": 20011,
+      "sha256": "df9f419489f1d9039a825f464b91c8ff86dec43c5262c77737c2b70f15024254"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_special/special-1.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_special/special-1.png",
+      "tracked": false,
+      "sizeBytes": 23383,
+      "sha256": "d2ed7dc3f6cfb7b0a610759021b3de6b6d6ce38b1fb059e588f1c85743276185"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_special/special-2.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_special/special-2.png",
+      "tracked": false,
+      "sizeBytes": 27841,
+      "sha256": "942f14ee8e5a134beec1514df7b97de58b73c554f882bc0981d72051ca69299d"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_special/special-3.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_special/special-3.png",
+      "tracked": false,
+      "sizeBytes": 29147,
+      "sha256": "28c9dec180bd8b16afb20bd0122f241ddad1ca86ed3641b97104d8418a3dc07d"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_special/special-4.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_special/special-4.png",
+      "tracked": false,
+      "sizeBytes": 32965,
+      "sha256": "db6c7994b40b144995fd8a4942c353eb17a59282228e3d15a13b25cff49e8e35"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_special/special-5.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_special/special-5.png",
+      "tracked": false,
+      "sizeBytes": 28806,
+      "sha256": "a225fb8d187c3133c2bee07c4b6ed0716a6fb92f5365e21442e5f6d87e58def2"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_special/special-6.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_special/special-6.png",
+      "tracked": false,
+      "sizeBytes": 29652,
+      "sha256": "6d14327342e7ba9765c9b803a062419996fc6c1731d194c12e7906110774c208"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_special/special-7.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_special/special-7.png",
+      "tracked": false,
+      "sizeBytes": 25513,
+      "sha256": "faf57a6b11a82ed3c7a7e3722e427db5902ff6f850ae4c5f14234b0d4ba9ef7d"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_special/special-8.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_special/special-8.png",
+      "tracked": false,
+      "sizeBytes": 22715,
+      "sha256": "4dc2a2e29ab5a1ee2a5a50e67dcec3d6cbae38ee7be3021d5f271b209f074f49"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_special/special-9.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_special/special-9.png",
+      "tracked": false,
+      "sizeBytes": 22552,
+      "sha256": "62664d8f21eabd051a38e56058da2fc5ebed10803a5348ee0507c4eab988ce82"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_throw/throw-1.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_throw/throw-1.png",
+      "tracked": false,
+      "sizeBytes": 18137,
+      "sha256": "9a214cd72184b3145affc04c4d5af01db6c67145387f0e260f3e9cc0834b467b"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_throw/throw-10.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_throw/throw-10.png",
+      "tracked": false,
+      "sizeBytes": 16576,
+      "sha256": "ec25d51e4cd100d246b0c92e41e3906a99d9179d4a929aefb6726fc0f05aa05c"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_throw/throw-2.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_throw/throw-2.png",
+      "tracked": false,
+      "sizeBytes": 16758,
+      "sha256": "ca9153dfe3e582597b4beae73287b76332193268e537f54cc353e37622175ff1"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_throw/throw-3.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_throw/throw-3.png",
+      "tracked": false,
+      "sizeBytes": 16448,
+      "sha256": "9b1dbcc6bf6fc9bf52a6139aa36c0326cac603d42aeda60e88f7a1ae7abdddc9"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_throw/throw-4.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_throw/throw-4.png",
+      "tracked": false,
+      "sizeBytes": 19248,
+      "sha256": "6507cc8ef3bd7238d767a4d7932c9a7ca9e7cebb15f8b05aad4120cef6b3c9dd"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_throw/throw-5.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_throw/throw-5.png",
+      "tracked": false,
+      "sizeBytes": 16317,
+      "sha256": "80f6e21d1b50381e59939957f1c244693319d42c3ca304e8c53267d37e18f78c"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_throw/throw-6.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_throw/throw-6.png",
+      "tracked": false,
+      "sizeBytes": 17168,
+      "sha256": "933351eacf062cdda75c1b1405eb1edce074a04aac7d23078b15d7e500a73d3f"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_throw/throw-7.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_throw/throw-7.png",
+      "tracked": false,
+      "sizeBytes": 16922,
+      "sha256": "2d986a3f0080f424dbda2639cc638e5483e37623d132fee61edb2b7a4474e4a0"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_throw/throw-8.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_throw/throw-8.png",
+      "tracked": false,
+      "sizeBytes": 14039,
+      "sha256": "76b6a2e2beb33cd5b02783453e4d26d42799840e4c395982fa238f74632902ca"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_aligned_toko_throw/throw-9.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_aligned_toko_throw/throw-9.png",
+      "tracked": false,
+      "sizeBytes": 15277,
+      "sha256": "a4717d6fe23f0e0312a38fa6ffae73387ac063727a5fea81d7890a551feb3e4c"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_norio_crouch_raw.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_norio_crouch_raw.png",
+      "tracked": false,
+      "sizeBytes": 1370913,
+      "sha256": "5e93bd3418df437d49ca21ccc0e32440a15cd1893f468509e5d509b035a353b6"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_norio_damage_raw.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_norio_damage_raw.png",
+      "tracked": false,
+      "sizeBytes": 1609541,
+      "sha256": "77b8cc74cc0064f50f2f870d896a94df87e197e44293ffb1f8767e8a854312a8"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_norio_guard_raw.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_norio_guard_raw.png",
+      "tracked": false,
+      "sizeBytes": 1419411,
+      "sha256": "cb68573499b0065f7ff5008ca40981ccdb2ec2b1acaf2612bb340c31cdd26e1a"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_norio_heavy_attacks_raw.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_norio_heavy_attacks_raw.png",
+      "tracked": false,
+      "sizeBytes": 1604360,
+      "sha256": "d4c818323a90e3312e96fe91a1c3d94036dcebd6367e77eefc01664037a31e1f"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_norio_idle_raw.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_norio_idle_raw.png",
+      "tracked": false,
+      "sizeBytes": 1347547,
+      "sha256": "e09f24f6ec5e6d355a54b42d8527d88d4e4189b3117b13a1d669134731c2b259"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_norio_jump_raw.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_norio_jump_raw.png",
+      "tracked": false,
+      "sizeBytes": 1537266,
+      "sha256": "4b5884ea54f9fe8e8d6d410ba093ea28ae49282be50cd20d80c5dae8a4d92f3b"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_norio_light_attacks_raw.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_norio_light_attacks_raw.png",
+      "tracked": false,
+      "sizeBytes": 1582796,
+      "sha256": "5a45d1c69dfb89adf4db8c9e39eed7cfc3a96e2770b8ebeda4f40ed936b4d6c8"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_norio_movement_raw.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_norio_movement_raw.png",
+      "tracked": false,
+      "sizeBytes": 1537804,
+      "sha256": "d0cc920f6213d72f8cd2ac622bcff736ff028af23537eeab654c2b74bb24137b"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_norio_result_raw.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_norio_result_raw.png",
+      "tracked": false,
+      "sizeBytes": 1553412,
+      "sha256": "990156ae00c478535b35495b07c82743f460b6d2cf27747a7ea27240e2eff217"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_norio_special_raw.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_norio_special_raw.png",
+      "tracked": false,
+      "sizeBytes": 1591425,
+      "sha256": "9e7ed35a828c98832501b608d6dcd95e043cf084a38ce1920a6fb1853983d7d4"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_norio_throw_raw.png",
+      "destination": "assets/sprites/norio/source/root-tmp/tmp_norio_throw_raw.png",
+      "tracked": false,
+      "sizeBytes": 1652442,
+      "sha256": "4dcf8b13c97b5a9cf49dd09462f5dc8965079800474595e7de6a4a6fd2bc6253"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_toko_crouch_raw.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_toko_crouch_raw.png",
+      "tracked": false,
+      "sizeBytes": 1499609,
+      "sha256": "5bd15820b1abdb663129271eb57a08156f4320ca25b82db95a39d99fb3d98e55"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_toko_damage_raw.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_toko_damage_raw.png",
+      "tracked": false,
+      "sizeBytes": 1564356,
+      "sha256": "46064a4ef58d4afa187bf6b605c872ecf66e1d50cf1c2479cc5a5988d8a92387"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_toko_guard_raw.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_toko_guard_raw.png",
+      "tracked": false,
+      "sizeBytes": 1529981,
+      "sha256": "cc2faf711f9fe5dfb1663c3a8150dc845f11c2f528c6750e6fc4fa6cd50b0afc"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_toko_heavy_attacks_raw.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_toko_heavy_attacks_raw.png",
+      "tracked": false,
+      "sizeBytes": 1572249,
+      "sha256": "42ae9d5a5d5cbbb91d730ef1cc9023edf962a256b697066d137a33e8e0b06383"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_toko_idle_raw.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_toko_idle_raw.png",
+      "tracked": false,
+      "sizeBytes": 1247389,
+      "sha256": "8a803a806104d3f90e90a5175ef4251bd81afd86ed670f039af709274fd26dae"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_toko_jump_raw.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_toko_jump_raw.png",
+      "tracked": false,
+      "sizeBytes": 1500960,
+      "sha256": "02741d01d84b2a5a73ffd570b4d8173b2173f75f7b7b2496d66f97129f5ed081"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_toko_light_attacks_raw.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_toko_light_attacks_raw.png",
+      "tracked": false,
+      "sizeBytes": 1557489,
+      "sha256": "e55ac2a5b552288c95e0bbcf8f7dfab330b0dce307974f6edce7067f233db213"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_toko_movement_raw.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_toko_movement_raw.png",
+      "tracked": false,
+      "sizeBytes": 1544858,
+      "sha256": "64c8158eddd1ebdb2db3f697baeb6d3eedea25e60af4fd94198fa03b83738676"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_toko_result_raw.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_toko_result_raw.png",
+      "tracked": false,
+      "sizeBytes": 1551696,
+      "sha256": "21cee43878a125fa4c864569fc0d65fd057ee9dc228f3a899d3a61cbe0aea946"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_toko_special_raw.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_toko_special_raw.png",
+      "tracked": false,
+      "sizeBytes": 1545264,
+      "sha256": "cc1cf762c1fb533147df87ee11385f26a3d9bfd82765f4ff186c7aefbc589af7"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp_toko_throw_raw.png",
+      "destination": "assets/sprites/toko/source/root-tmp/tmp_toko_throw_raw.png",
+      "tracked": false,
+      "sizeBytes": 1649727,
+      "sha256": "7f2e38c1f1c0aee0185c096b34d5213af708ebf7f748d1bec1cde865267f7c65"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill-repair/animation.gif",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill-repair/animation.gif",
+      "tracked": false,
+      "sizeBytes": 30684,
+      "sha256": "b41703ead6344bbdbc604e509ff8feba8b84bcb9c8a95960a5d4014f840a87a0"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill-repair/pipeline-meta.json",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill-repair/pipeline-meta.json",
+      "tracked": false,
+      "sizeBytes": 10517,
+      "sha256": "2881dfffb86bc1f8a53ee69d2448dbeed41c388f91a7c5c67166e5a6ca2f4e6b"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill-repair/raw-sheet-clean.png",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill-repair/raw-sheet-clean.png",
+      "tracked": false,
+      "sizeBytes": 493394,
+      "sha256": "882f4fc7cc8f3ac1f85221bfb3a728525a0da67dba29313c3dd0f16957731b3a"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill-repair/raw-sheet.png",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill-repair/raw-sheet.png",
+      "tracked": false,
+      "sizeBytes": 1458458,
+      "sha256": "2a18101b7aed94fa0b70df9c581e0bc78f93ba407cc53cb9cec8f934ca81d64e"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill-repair/sheet-transparent.png",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill-repair/sheet-transparent.png",
+      "tracked": false,
+      "sizeBytes": 74176,
+      "sha256": "21d668fd966821c81c2946c859ada442cac727b09792c5937e5049630b8feba7"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill-repair/skill_body-1.png",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill-repair/skill_body-1.png",
+      "tracked": false,
+      "sizeBytes": 12255,
+      "sha256": "16831ffcc945c7d26b4734f72b649bfe6db022051ad89e86fb7f26b95b3e48f6"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill-repair/skill_body-2.png",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill-repair/skill_body-2.png",
+      "tracked": false,
+      "sizeBytes": 14538,
+      "sha256": "ecb7b88af600e70ec03d0921b7881331bf654018cca199b0fb5786dace312816"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill-repair/skill_body-3.png",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill-repair/skill_body-3.png",
+      "tracked": false,
+      "sizeBytes": 14163,
+      "sha256": "16e1ab380c55c284d649234d07da523e6792c3a54f78de8a3491d3942da903ba"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill-repair/skill_body-4.png",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill-repair/skill_body-4.png",
+      "tracked": false,
+      "sizeBytes": 11993,
+      "sha256": "c0b3e5173b5d369dc5c8bedc74acbdd4200fbeb8373926cca66cb2621aac9e66"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill-repair/skill_body-5.png",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill-repair/skill_body-5.png",
+      "tracked": false,
+      "sizeBytes": 14393,
+      "sha256": "3d19161d4e11bb5e67ccefab6e50d72e006de19852f710437c2b11b4b5c7a8c0"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill-repair/skill_body-6.png",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill-repair/skill_body-6.png",
+      "tracked": false,
+      "sizeBytes": 12693,
+      "sha256": "d8bd33a2334184645276ef56043936d5a740b90e1f941b0cff139a4b1d9b0e4c"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill/animation.gif",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill/animation.gif",
+      "tracked": false,
+      "sizeBytes": 36782,
+      "sha256": "b248c0c51f3330c4c3f9f327da9cf18eb57647faa45304e0616fdfcf4e4c22e6"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill/pipeline-meta.json",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill/pipeline-meta.json",
+      "tracked": false,
+      "sizeBytes": 10640,
+      "sha256": "d335be67daae450a5a08aeeb54438a1de5cd492972614e26525fa2bdfd661a6a"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill/raw-sheet-clean.png",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill/raw-sheet-clean.png",
+      "tracked": false,
+      "sizeBytes": 493394,
+      "sha256": "882f4fc7cc8f3ac1f85221bfb3a728525a0da67dba29313c3dd0f16957731b3a"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill/raw-sheet.png",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill/raw-sheet.png",
+      "tracked": false,
+      "sizeBytes": 1458458,
+      "sha256": "2a18101b7aed94fa0b70df9c581e0bc78f93ba407cc53cb9cec8f934ca81d64e"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill/sheet-transparent.png",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill/sheet-transparent.png",
+      "tracked": false,
+      "sizeBytes": 90092,
+      "sha256": "41e5dc3ff4ff33f2c1db84248b16ec0776f05a124aadf6045035100e3b7b2f2c"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill/skill_body-1.png",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill/skill_body-1.png",
+      "tracked": false,
+      "sizeBytes": 14699,
+      "sha256": "78efb7a3b8a793ba78294b3aac1a8bafcdb457668373fd5ee39222fb0a6ccd90"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill/skill_body-2.png",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill/skill_body-2.png",
+      "tracked": false,
+      "sizeBytes": 17450,
+      "sha256": "6aef5ea01f219628677d04015fe8edc6b0476bf8bd94f46059b8d11354a13221"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill/skill_body-3.png",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill/skill_body-3.png",
+      "tracked": false,
+      "sizeBytes": 17903,
+      "sha256": "3b573e1bd5603f9d664b269d995e1e9fc477873f3c40a3f9d3d4fc03184c2998"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill/skill_body-4.png",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill/skill_body-4.png",
+      "tracked": false,
+      "sizeBytes": 15020,
+      "sha256": "27bf809c2328aba191ae45cc8752ee0ecb37c649285dcc03627af737dc8496fb"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill/skill_body-5.png",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill/skill_body-5.png",
+      "tracked": false,
+      "sizeBytes": 16536,
+      "sha256": "20ad45de320d1c43d7d15c2269908dd4d0c6296ceabba91fcc95344044965c24"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/bob-girl-skill/skill_body-6.png",
+      "destination": "assets/sprites/bob-girl/source/root-tmp/imagegen/bob-girl-skill/skill_body-6.png",
+      "tracked": false,
+      "sizeBytes": 14742,
+      "sha256": "ea8378e926fe97e225f44c4b8c7089b400a1b4b79a59923144f3664c79265694"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/green-slime-skill/animation.gif",
+      "destination": "assets/sprites/green-slime/source/root-tmp/imagegen/green-slime-skill/animation.gif",
+      "tracked": false,
+      "sizeBytes": 51558,
+      "sha256": "b4ffd14fb3981a7a10e9ffe342d99dd13ca2c5f3a1e3152412df194db2e7c0ae"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/green-slime-skill/pipeline-meta.json",
+      "destination": "assets/sprites/green-slime/source/root-tmp/imagegen/green-slime-skill/pipeline-meta.json",
+      "tracked": false,
+      "sizeBytes": 10447,
+      "sha256": "8233c31de5d4c48c5d0044b567013ae45253e75abbb3ea74075f3557f271ad6e"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/green-slime-skill/raw-sheet-clean.png",
+      "destination": "assets/sprites/green-slime/source/root-tmp/imagegen/green-slime-skill/raw-sheet-clean.png",
+      "tracked": false,
+      "sizeBytes": 617440,
+      "sha256": "a1ac879122ded36dedbc72b0b9856c710a53242171aed9ba8a3f0a2b44e9bce0"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/green-slime-skill/raw-sheet.png",
+      "destination": "assets/sprites/green-slime/source/root-tmp/imagegen/green-slime-skill/raw-sheet.png",
+      "tracked": false,
+      "sizeBytes": 1489060,
+      "sha256": "020b0239b8d25a78e1ea1ec8748966211f5a23bc5fbf4a8562af779b02ca3bb4"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/green-slime-skill/sheet-transparent.png",
+      "destination": "assets/sprites/green-slime/source/root-tmp/imagegen/green-slime-skill/sheet-transparent.png",
+      "tracked": false,
+      "sizeBytes": 111196,
+      "sha256": "359f790bfac1286e13c2aaa32652404f9c775e9ea4289515e69bf2a134f967f6"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/green-slime-skill/skill_body-1.png",
+      "destination": "assets/sprites/green-slime/source/root-tmp/imagegen/green-slime-skill/skill_body-1.png",
+      "tracked": false,
+      "sizeBytes": 19193,
+      "sha256": "91945dcd30b429062241a7aaafd83891481ada10247a4fa30113ba6a3f27cfb5"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/green-slime-skill/skill_body-2.png",
+      "destination": "assets/sprites/green-slime/source/root-tmp/imagegen/green-slime-skill/skill_body-2.png",
+      "tracked": false,
+      "sizeBytes": 14063,
+      "sha256": "07e20abf31c36dfa02664993367228f9ce2caa73d4d642e8fd422ebe19fdd62d"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/green-slime-skill/skill_body-3.png",
+      "destination": "assets/sprites/green-slime/source/root-tmp/imagegen/green-slime-skill/skill_body-3.png",
+      "tracked": false,
+      "sizeBytes": 20221,
+      "sha256": "72fa443578256d55b06021e3cbce6a2acb111075664bd81065a8cd5cf3a603cb"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/green-slime-skill/skill_body-4.png",
+      "destination": "assets/sprites/green-slime/source/root-tmp/imagegen/green-slime-skill/skill_body-4.png",
+      "tracked": false,
+      "sizeBytes": 19801,
+      "sha256": "ea5edd8450e2fff6e6d3dc4727446b88460c7a2876820d9991fc1f12877fbe68"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/green-slime-skill/skill_body-5.png",
+      "destination": "assets/sprites/green-slime/source/root-tmp/imagegen/green-slime-skill/skill_body-5.png",
+      "tracked": false,
+      "sizeBytes": 21014,
+      "sha256": "534b3b00fd4f0c8abe3c719d5ab7589023c1128ecb7c17c0b1efea65bb3f5ac3"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/green-slime-skill/skill_body-6.png",
+      "destination": "assets/sprites/green-slime/source/root-tmp/imagegen/green-slime-skill/skill_body-6.png",
+      "tracked": false,
+      "sizeBytes": 22200,
+      "sha256": "1cda7aa8d37ce81e8d6262e4db6182c84eabdd8b384976e1f9ece13d409b4cae"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/guitar-boy-skill/animation.gif",
+      "destination": "assets/sprites/guitar-boy/source/root-tmp/imagegen/guitar-boy-skill/animation.gif",
+      "tracked": false,
+      "sizeBytes": 44797,
+      "sha256": "aeb8d0cb91338d3aac77df9cb95421cd4d3d74c5c13a267991d1d2bbebc81bda"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/guitar-boy-skill/pipeline-meta.json",
+      "destination": "assets/sprites/guitar-boy/source/root-tmp/imagegen/guitar-boy-skill/pipeline-meta.json",
+      "tracked": false,
+      "sizeBytes": 10452,
+      "sha256": "17fb3a6da30f9ef4de61f836466d3400d90c7e3ad7476f797d3b47ba5235ca16"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/guitar-boy-skill/raw-sheet-clean.png",
+      "destination": "assets/sprites/guitar-boy/source/root-tmp/imagegen/guitar-boy-skill/raw-sheet-clean.png",
+      "tracked": false,
+      "sizeBytes": 679962,
+      "sha256": "a4cf55a1371ab4be6dc56a60c439327d93f5f0b015248e9e159d2594978e5b04"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/guitar-boy-skill/raw-sheet.png",
+      "destination": "assets/sprites/guitar-boy/source/root-tmp/imagegen/guitar-boy-skill/raw-sheet.png",
+      "tracked": false,
+      "sizeBytes": 1664402,
+      "sha256": "6952e80e669d5c96ef1a5e7f8831fd4eb6bdc5cbf033cfdb54b238e26f8894ae"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/guitar-boy-skill/sheet-transparent.png",
+      "destination": "assets/sprites/guitar-boy/source/root-tmp/imagegen/guitar-boy-skill/sheet-transparent.png",
+      "tracked": false,
+      "sizeBytes": 115546,
+      "sha256": "49250e865369873a3de30384888bc47861a461bf671fdd4052325733b2109b42"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/guitar-boy-skill/skill_body-1.png",
+      "destination": "assets/sprites/guitar-boy/source/root-tmp/imagegen/guitar-boy-skill/skill_body-1.png",
+      "tracked": false,
+      "sizeBytes": 20485,
+      "sha256": "e9dbd02bf2c2acad98acc66a1f5690bc2b63ac884a909ca5515616523dbaacd3"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/guitar-boy-skill/skill_body-2.png",
+      "destination": "assets/sprites/guitar-boy/source/root-tmp/imagegen/guitar-boy-skill/skill_body-2.png",
+      "tracked": false,
+      "sizeBytes": 20945,
+      "sha256": "c8c3ca4bdd24289cc72b4600f6599c62e9172466f63134854b22b47532f850ee"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/guitar-boy-skill/skill_body-3.png",
+      "destination": "assets/sprites/guitar-boy/source/root-tmp/imagegen/guitar-boy-skill/skill_body-3.png",
+      "tracked": false,
+      "sizeBytes": 19996,
+      "sha256": "61c9123d18305aac9bdf0356dbec2375dfb1c9db772793092c9382cad93dd879"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/guitar-boy-skill/skill_body-4.png",
+      "destination": "assets/sprites/guitar-boy/source/root-tmp/imagegen/guitar-boy-skill/skill_body-4.png",
+      "tracked": false,
+      "sizeBytes": 24122,
+      "sha256": "15150dd612fee4a8c1a6ca68c2f360cb195d14c4ff9b8da6bcf659163cae126e"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/guitar-boy-skill/skill_body-5.png",
+      "destination": "assets/sprites/guitar-boy/source/root-tmp/imagegen/guitar-boy-skill/skill_body-5.png",
+      "tracked": false,
+      "sizeBytes": 17839,
+      "sha256": "cb96a1e07740b7ce27bc6b2f554ec1113ca5da39b0d82dad418f8b9bf6cf9eb4"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/guitar-boy-skill/skill_body-6.png",
+      "destination": "assets/sprites/guitar-boy/source/root-tmp/imagegen/guitar-boy-skill/skill_body-6.png",
+      "tracked": false,
+      "sizeBytes": 20477,
+      "sha256": "d1f8e6e5b5148b8114e6e3b0ed5cd92602b02a5f8e668b00239ecbfe61d60c5c"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill-repair/animation.gif",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill-repair/animation.gif",
+      "tracked": false,
+      "sizeBytes": 39765,
+      "sha256": "1bd86a4450dfa4d2cb6229038ff1773cea0097d433b49c09b9fa4226efc7e59d"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill-repair/pipeline-meta.json",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill-repair/pipeline-meta.json",
+      "tracked": false,
+      "sizeBytes": 10720,
+      "sha256": "3a6ebbd1669ae3fa83d46edbefa3ce91537696ae27175a022336a03bff96cbc8"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill-repair/raw-sheet-clean.png",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill-repair/raw-sheet-clean.png",
+      "tracked": false,
+      "sizeBytes": 687419,
+      "sha256": "60eb7ecb003ac73382f0763ecd2a89ff6485da5d3154e3882a5a87877c75f7ba"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill-repair/raw-sheet.png",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill-repair/raw-sheet.png",
+      "tracked": false,
+      "sizeBytes": 1693356,
+      "sha256": "528ec0478b22b1d884aa20a30f9b039ab93e984f071d9f37d2f1257aaea5df2b"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill-repair/sheet-transparent.png",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill-repair/sheet-transparent.png",
+      "tracked": false,
+      "sizeBytes": 99491,
+      "sha256": "26723b6b0e05145432f600d7e2310458f20c0fc734403c208e8f02dc4eaf9ca4"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill-repair/skill_body-1.png",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill-repair/skill_body-1.png",
+      "tracked": false,
+      "sizeBytes": 16790,
+      "sha256": "5a88fd22260559bea291295a4a7ed8621d16a890028b05d930714c1e3431d62b"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill-repair/skill_body-2.png",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill-repair/skill_body-2.png",
+      "tracked": false,
+      "sizeBytes": 17351,
+      "sha256": "4f7348d7515a2293d846d56bdb7666d501d02fb0c254e93c3c6d70d98a2dd3ad"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill-repair/skill_body-3.png",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill-repair/skill_body-3.png",
+      "tracked": false,
+      "sizeBytes": 17656,
+      "sha256": "69360be6de3a5d57a8779faaa73a7464c610962055a88cc2b9f09002106221ff"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill-repair/skill_body-4.png",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill-repair/skill_body-4.png",
+      "tracked": false,
+      "sizeBytes": 17201,
+      "sha256": "f13ddfe6fe9040f3bf9f8ea43fcaa4ffd0df7d64b5a4f2ce69b6b98d1e16bbff"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill-repair/skill_body-5.png",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill-repair/skill_body-5.png",
+      "tracked": false,
+      "sizeBytes": 18960,
+      "sha256": "22ce30c3e4fbcc33dc92506232eebc4a791936cc2bba3ee14ab16e35cf531628"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill-repair/skill_body-6.png",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill-repair/skill_body-6.png",
+      "tracked": false,
+      "sizeBytes": 18365,
+      "sha256": "9dda4b5f9d8a21c4e51d93a11aee09efc83c7337387c8cfbfc1f9153d6dbcf2e"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill/animation.gif",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill/animation.gif",
+      "tracked": false,
+      "sizeBytes": 48036,
+      "sha256": "4b0d10360a2fd59fcd2b42a990328902016655261b883b00ab1068c081683739"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill/pipeline-meta.json",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill/pipeline-meta.json",
+      "tracked": false,
+      "sizeBytes": 10724,
+      "sha256": "54928577407526332fdf50fb11f3d623a509b08dca0359fc64ea563435e72856"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill/raw-sheet-clean.png",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill/raw-sheet-clean.png",
+      "tracked": false,
+      "sizeBytes": 687419,
+      "sha256": "60eb7ecb003ac73382f0763ecd2a89ff6485da5d3154e3882a5a87877c75f7ba"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill/raw-sheet.png",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill/raw-sheet.png",
+      "tracked": false,
+      "sizeBytes": 1693356,
+      "sha256": "528ec0478b22b1d884aa20a30f9b039ab93e984f071d9f37d2f1257aaea5df2b"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill/sheet-transparent.png",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill/sheet-transparent.png",
+      "tracked": false,
+      "sizeBytes": 122802,
+      "sha256": "a25e1c524c775c9499251e03b06f51c6c88987348534f3148b3429910f84a2fc"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill/skill_body-1.png",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill/skill_body-1.png",
+      "tracked": false,
+      "sizeBytes": 20192,
+      "sha256": "90b1873858a01d1ff5e6a41dd3dac147ad83c5a816962014c49810c9c1c1725c"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill/skill_body-2.png",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill/skill_body-2.png",
+      "tracked": false,
+      "sizeBytes": 20909,
+      "sha256": "58548e8322da06b2f9c2875aacee759114273f0aa92b3250d2ee511a3397523e"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill/skill_body-3.png",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill/skill_body-3.png",
+      "tracked": false,
+      "sizeBytes": 21932,
+      "sha256": "137b8ea8d5c08e73f0f0057a991481fe5c3ea8c958c1c5a4c25031761c113ee2"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill/skill_body-4.png",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill/skill_body-4.png",
+      "tracked": false,
+      "sizeBytes": 21302,
+      "sha256": "a296d1194d2623c2c86c2201e5f5159ad6719fe063acc3b04999b7808bdd4579"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill/skill_body-5.png",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill/skill_body-5.png",
+      "tracked": false,
+      "sizeBytes": 23240,
+      "sha256": "ed81a3422bba0662df0ee26de93f0291d3469bfe06366634fe2483aeb61ca926"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/kazushige-skill/skill_body-6.png",
+      "destination": "assets/sprites/kazushige/source/root-tmp/imagegen/kazushige-skill/skill_body-6.png",
+      "tracked": false,
+      "sizeBytes": 22500,
+      "sha256": "16ee3dedf27849108feae8a109012df8874e2fcec62a7f80c3186c3c3548eb31"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill-repair/animation.gif",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill-repair/animation.gif",
+      "tracked": false,
+      "sizeBytes": 52283,
+      "sha256": "5eda1cd12e58770ee298455cbc6c44fe68f2876aabf11ea0542a826a410ec9b6"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill-repair/pipeline-meta.json",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill-repair/pipeline-meta.json",
+      "tracked": false,
+      "sizeBytes": 8603,
+      "sha256": "83df578cbc6c3d9d4068598e18001ff2d1cd955eeccd994bea58252a4fc285fb"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill-repair/raw-sheet-clean.png",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill-repair/raw-sheet-clean.png",
+      "tracked": false,
+      "sizeBytes": 549133,
+      "sha256": "cf567c9e6caa3f2c3976584c0b616fa946766440afbc1949f82607d469bbb331"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill-repair/raw-sheet.png",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill-repair/raw-sheet.png",
+      "tracked": false,
+      "sizeBytes": 1552168,
+      "sha256": "979fc984d2f665e21b44c6ef4ffdd956263d05cc3c2e875a2bf6a4b67fcbb069"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill-repair/sheet-transparent.png",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill-repair/sheet-transparent.png",
+      "tracked": false,
+      "sizeBytes": 150709,
+      "sha256": "01ed3ca4d88ef50a21c08421176d7e46b24241ec2fd2b51974f2b501a0ea482d"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill-repair/skill_body-1.png",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill-repair/skill_body-1.png",
+      "tracked": false,
+      "sizeBytes": 26865,
+      "sha256": "8eeebe69232392eefedce85342bc1680eadffe68e2fa2880e703e7752c9c785b"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill-repair/skill_body-2.png",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill-repair/skill_body-2.png",
+      "tracked": false,
+      "sizeBytes": 27621,
+      "sha256": "437e9faa77da8157aadf2ebb023b3a056887feb31d645209575bc774622526c5"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill-repair/skill_body-3.png",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill-repair/skill_body-3.png",
+      "tracked": false,
+      "sizeBytes": 25981,
+      "sha256": "e56cff3b88e3970cba300abbafd6e2139387056af6bb48b1c1149d34cb75db93"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill-repair/skill_body-4.png",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill-repair/skill_body-4.png",
+      "tracked": false,
+      "sizeBytes": 26898,
+      "sha256": "9667a9b593d88f642f333d88e05899e0c7b8f6dd02b6e6753f4e0256a4826409"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill-repair/skill_body-5.png",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill-repair/skill_body-5.png",
+      "tracked": false,
+      "sizeBytes": 28576,
+      "sha256": "b7b97a3202eeb485b22400676a440fb9d6bd99f8d26a7c291b07220e0fe1d524"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill-repair/skill_body-6.png",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill-repair/skill_body-6.png",
+      "tracked": false,
+      "sizeBytes": 25862,
+      "sha256": "981c8ee02e71111982bee6138ce4d7bcdbc6750bf5d5537829d8f4644b6775be"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill/animation.gif",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill/animation.gif",
+      "tracked": false,
+      "sizeBytes": 64926,
+      "sha256": "79bd1c6738ef66420c1fdf606726b9af4d11ee9b38a102555e3cbe0540aae38c"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill/pipeline-meta.json",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill/pipeline-meta.json",
+      "tracked": false,
+      "sizeBytes": 8649,
+      "sha256": "317af47c9d2d2174de372fa99e779957e25b797bec91b6d092b71cc6aa96438f"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill/raw-sheet-clean.png",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill/raw-sheet-clean.png",
+      "tracked": false,
+      "sizeBytes": 549133,
+      "sha256": "cf567c9e6caa3f2c3976584c0b616fa946766440afbc1949f82607d469bbb331"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill/raw-sheet.png",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill/raw-sheet.png",
+      "tracked": false,
+      "sizeBytes": 1552168,
+      "sha256": "979fc984d2f665e21b44c6ef4ffdd956263d05cc3c2e875a2bf6a4b67fcbb069"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill/sheet-transparent.png",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill/sheet-transparent.png",
+      "tracked": false,
+      "sizeBytes": 189164,
+      "sha256": "2a630b3202a26f6062dde6294e2324fcd380b433c02f698e742b415b19b2cd5b"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill/skill_body-1.png",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill/skill_body-1.png",
+      "tracked": false,
+      "sizeBytes": 34038,
+      "sha256": "facf1d39b4ac1a752cbd6337089a42e49a18f42fa1be1d780612abf96e5aa52b"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill/skill_body-2.png",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill/skill_body-2.png",
+      "tracked": false,
+      "sizeBytes": 34693,
+      "sha256": "6d2677e3243ca679a87974b57c5bb411dd8fb89b60edf6ab70f0f579158a4830"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill/skill_body-3.png",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill/skill_body-3.png",
+      "tracked": false,
+      "sizeBytes": 33050,
+      "sha256": "f4b9455210a9e83f057c833a02df3caf8ee477059a3b9aab2bc2edf0b5f7adfc"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill/skill_body-4.png",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill/skill_body-4.png",
+      "tracked": false,
+      "sizeBytes": 34926,
+      "sha256": "d9107787f1657a7c8b24274d7ee0ca48af6d10e6e0040cd3ba27163a6eea7b87"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill/skill_body-5.png",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill/skill_body-5.png",
+      "tracked": false,
+      "sizeBytes": 34625,
+      "sha256": "f20c234e2a38939244d34471f7d2a842024e77ea075d72c28ec65bb64fdb8df8"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/norio-skill/skill_body-6.png",
+      "destination": "assets/sprites/norio/source/root-tmp/imagegen/norio-skill/skill_body-6.png",
+      "tracked": false,
+      "sizeBytes": 30491,
+      "sha256": "d7808cb9549e4bd91e40d65f85af47caebed9179f96f9aeb1955c37df903d354"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/rusty-skill/animation.gif",
+      "destination": "assets/sprites/rusty/source/root-tmp/imagegen/rusty-skill/animation.gif",
+      "tracked": false,
+      "sizeBytes": 38152,
+      "sha256": "9af20a93ed806c1d5c6de02c14fa991fbffd94ef79f0fa22d6d472e3741c3785"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/rusty-skill/pipeline-meta.json",
+      "destination": "assets/sprites/rusty/source/root-tmp/imagegen/rusty-skill/pipeline-meta.json",
+      "tracked": false,
+      "sizeBytes": 10451,
+      "sha256": "b5b0c39805a1c0ec4f6cd4b31426645d3b6dd67e822dc74eecbd90f0e6063d4a"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/rusty-skill/raw-sheet-clean.png",
+      "destination": "assets/sprites/rusty/source/root-tmp/imagegen/rusty-skill/raw-sheet-clean.png",
+      "tracked": false,
+      "sizeBytes": 560322,
+      "sha256": "adf026b88f762337a07e8821bacd37041254d056d9a2b27b22d048fea6ccda8a"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/rusty-skill/raw-sheet.png",
+      "destination": "assets/sprites/rusty/source/root-tmp/imagegen/rusty-skill/raw-sheet.png",
+      "tracked": false,
+      "sizeBytes": 1557229,
+      "sha256": "2db1a01084ae70e5deeaa91a97f36be8288ffc801dc37567f91fb1f300e9a2b4"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/rusty-skill/sheet-transparent.png",
+      "destination": "assets/sprites/rusty/source/root-tmp/imagegen/rusty-skill/sheet-transparent.png",
+      "tracked": false,
+      "sizeBytes": 94350,
+      "sha256": "c756ff24ec54c669c16f98c307ca71bd63c44901687fac306502918eb39fde9a"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/rusty-skill/skill_body-1.png",
+      "destination": "assets/sprites/rusty/source/root-tmp/imagegen/rusty-skill/skill_body-1.png",
+      "tracked": false,
+      "sizeBytes": 16589,
+      "sha256": "7e5fbe572e4a9b76d282af29bb37686a94c517a9eb149ad3941a8e782205287c"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/rusty-skill/skill_body-2.png",
+      "destination": "assets/sprites/rusty/source/root-tmp/imagegen/rusty-skill/skill_body-2.png",
+      "tracked": false,
+      "sizeBytes": 17099,
+      "sha256": "8c8b1c20eac34ebace3a622aeb278d9e0fe4acb1f02be851011bf7362cc24069"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/rusty-skill/skill_body-3.png",
+      "destination": "assets/sprites/rusty/source/root-tmp/imagegen/rusty-skill/skill_body-3.png",
+      "tracked": false,
+      "sizeBytes": 17564,
+      "sha256": "3cf7f9dbca4cd34aae942ea302eac19d29eeb4165034aa8621555c8c1ef1789e"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/rusty-skill/skill_body-4.png",
+      "destination": "assets/sprites/rusty/source/root-tmp/imagegen/rusty-skill/skill_body-4.png",
+      "tracked": false,
+      "sizeBytes": 16913,
+      "sha256": "521e5a4512906313a3205718d441ff2560d448d6d451b606f2b94325670b018c"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/rusty-skill/skill_body-5.png",
+      "destination": "assets/sprites/rusty/source/root-tmp/imagegen/rusty-skill/skill_body-5.png",
+      "tracked": false,
+      "sizeBytes": 17426,
+      "sha256": "8a8b562214a48463c4a7d07c6f01da83346fc9bdedeb8c3f60468b3598130383"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/rusty-skill/skill_body-6.png",
+      "destination": "assets/sprites/rusty/source/root-tmp/imagegen/rusty-skill/skill_body-6.png",
+      "tracked": false,
+      "sizeBytes": 16234,
+      "sha256": "d3ecc1943588f63381cf5543b868ca90d9942b3e28ba0606988fa36fdbbcb7d2"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/toko-skill/animation.gif",
+      "destination": "assets/sprites/toko/source/root-tmp/imagegen/toko-skill/animation.gif",
+      "tracked": false,
+      "sizeBytes": 37550,
+      "sha256": "c54d59445601129ce2894eb5aaa4603417e010238aa2c91165b0b63b7bf0d392"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/toko-skill/pipeline-meta.json",
+      "destination": "assets/sprites/toko/source/root-tmp/imagegen/toko-skill/pipeline-meta.json",
+      "tracked": false,
+      "sizeBytes": 10597,
+      "sha256": "615619e3bde9cf2783bc46459c03f3df9203107e9bac0b0f93766ff26a30af61"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/toko-skill/raw-sheet-clean.png",
+      "destination": "assets/sprites/toko/source/root-tmp/imagegen/toko-skill/raw-sheet-clean.png",
+      "tracked": false,
+      "sizeBytes": 543031,
+      "sha256": "efe1d752d2a947a2b7b32a28449d155f20e5cab06aa102ad272a91a6c68ae6ca"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/toko-skill/raw-sheet.png",
+      "destination": "assets/sprites/toko/source/root-tmp/imagegen/toko-skill/raw-sheet.png",
+      "tracked": false,
+      "sizeBytes": 1517306,
+      "sha256": "6a2739f45e54b47b494834881fb18b7d787a44e982ac263adfe91af2e2f14a84"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/toko-skill/sheet-transparent.png",
+      "destination": "assets/sprites/toko/source/root-tmp/imagegen/toko-skill/sheet-transparent.png",
+      "tracked": false,
+      "sizeBytes": 88155,
+      "sha256": "adb306f3e14d40d6ea65a636ff06b774123c6c3079945dbc775b209bfcc8d7c1"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/toko-skill/skill_body-1.png",
+      "destination": "assets/sprites/toko/source/root-tmp/imagegen/toko-skill/skill_body-1.png",
+      "tracked": false,
+      "sizeBytes": 15318,
+      "sha256": "621dbfd42d7304a0a953c922adfc6d2c3c36dd77da98c284e32b616eb6905209"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/toko-skill/skill_body-2.png",
+      "destination": "assets/sprites/toko/source/root-tmp/imagegen/toko-skill/skill_body-2.png",
+      "tracked": false,
+      "sizeBytes": 15675,
+      "sha256": "f1c2984a78c0def16d093a0996180298e34a216e0059a79b2b6d291bac5d6844"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/toko-skill/skill_body-3.png",
+      "destination": "assets/sprites/toko/source/root-tmp/imagegen/toko-skill/skill_body-3.png",
+      "tracked": false,
+      "sizeBytes": 15834,
+      "sha256": "b7098a7df675a365c62940594f7c5dbee386dd8c1dc907613ff1c7447b0fe972"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/toko-skill/skill_body-4.png",
+      "destination": "assets/sprites/toko/source/root-tmp/imagegen/toko-skill/skill_body-4.png",
+      "tracked": false,
+      "sizeBytes": 15771,
+      "sha256": "a3daa1c3bfda3d3048363cf3d57a802786163d9a44905a2b28d0734be430c918"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/toko-skill/skill_body-5.png",
+      "destination": "assets/sprites/toko/source/root-tmp/imagegen/toko-skill/skill_body-5.png",
+      "tracked": false,
+      "sizeBytes": 15856,
+      "sha256": "ee89858c08ba7362179639fa444809007e33605e9b5623cc46b0e7d3f5cb39da"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/toko-skill/skill_body-6.png",
+      "destination": "assets/sprites/toko/source/root-tmp/imagegen/toko-skill/skill_body-6.png",
+      "tracked": false,
+      "sizeBytes": 14790,
+      "sha256": "1557a6e430930c1dbbf0694047b3dd3d41168c49e4c9d6cb116ff79994c865b3"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/uncle-skill/animation.gif",
+      "destination": "assets/sprites/uncle/source/root-tmp/imagegen/uncle-skill/animation.gif",
+      "tracked": false,
+      "sizeBytes": 39451,
+      "sha256": "02a3321234b111cdf3e50d1470d4b7b1a4d9b341456044d774831910f93adfe8"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/uncle-skill/pipeline-meta.json",
+      "destination": "assets/sprites/uncle/source/root-tmp/imagegen/uncle-skill/pipeline-meta.json",
+      "tracked": false,
+      "sizeBytes": 10317,
+      "sha256": "87e4f5f4d8965035aa67e532b6ff55ff13620e3f2cc48610b5daf6e89e61364a"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/uncle-skill/raw-sheet-clean.png",
+      "destination": "assets/sprites/uncle/source/root-tmp/imagegen/uncle-skill/raw-sheet-clean.png",
+      "tracked": false,
+      "sizeBytes": 510738,
+      "sha256": "5012425ea12055608a77389cf0c54d3d99de6425e0af75d902e28b8c91d9137e"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/uncle-skill/raw-sheet.png",
+      "destination": "assets/sprites/uncle/source/root-tmp/imagegen/uncle-skill/raw-sheet.png",
+      "tracked": false,
+      "sizeBytes": 1445591,
+      "sha256": "50c0005a5d01f553672acf273ab3dece7098fd65e127173240673d074e6a6ece"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/uncle-skill/sheet-transparent.png",
+      "destination": "assets/sprites/uncle/source/root-tmp/imagegen/uncle-skill/sheet-transparent.png",
+      "tracked": false,
+      "sizeBytes": 93088,
+      "sha256": "def186a6d690c6ef148074d7eaf88b8f92e59ff4d19ce98f528d67e6c3cb5f7d"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/uncle-skill/skill_body-1.png",
+      "destination": "assets/sprites/uncle/source/root-tmp/imagegen/uncle-skill/skill_body-1.png",
+      "tracked": false,
+      "sizeBytes": 17377,
+      "sha256": "c49c40029e513afe1f8f7555e7655065848d074c72118d792659f2145c0e9301"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/uncle-skill/skill_body-2.png",
+      "destination": "assets/sprites/uncle/source/root-tmp/imagegen/uncle-skill/skill_body-2.png",
+      "tracked": false,
+      "sizeBytes": 15395,
+      "sha256": "28eac80efeacee2683e1cf75d473acf236f4bde1b343a4e35d3ed25484fb3aeb"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/uncle-skill/skill_body-3.png",
+      "destination": "assets/sprites/uncle/source/root-tmp/imagegen/uncle-skill/skill_body-3.png",
+      "tracked": false,
+      "sizeBytes": 16014,
+      "sha256": "023960011ca922e27dc66e7cf2d6c6d8095eeff3f07fab44ae79e4a71cef71dc"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/uncle-skill/skill_body-4.png",
+      "destination": "assets/sprites/uncle/source/root-tmp/imagegen/uncle-skill/skill_body-4.png",
+      "tracked": false,
+      "sizeBytes": 15177,
+      "sha256": "996cf084824d20bef000ea68cb576d9d6c170d186464abbb3351f52eb0baef25"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/uncle-skill/skill_body-5.png",
+      "destination": "assets/sprites/uncle/source/root-tmp/imagegen/uncle-skill/skill_body-5.png",
+      "tracked": false,
+      "sizeBytes": 15419,
+      "sha256": "fcf0bcb50cd3f69b00579ed7b32aedfa35ebf800af2fdd9dd86ea7b2142e898c"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/imagegen/uncle-skill/skill_body-6.png",
+      "destination": "assets/sprites/uncle/source/root-tmp/imagegen/uncle-skill/skill_body-6.png",
+      "tracked": false,
+      "sizeBytes": 18526,
+      "sha256": "80911634754818a576a51a5ab123eb4b9073fadfb8334e95c2cfaefa88eebf43"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/review-norio-skill-shift/skill_body-5.png",
+      "destination": "assets/sprites/norio/source/root-tmp/review-norio-skill-shift/skill_body-5.png",
+      "tracked": false,
+      "sizeBytes": 28312,
+      "sha256": "eefbb9a53a6cb5b43fc4262d3dc005fd0ff7a2c2d7b3804611cfb5acab6d20d8"
+    },
+    {
+      "category": "root-tmp",
+      "source": "tmp/review-norio-skill-shift/skill_body-6.png",
+      "destination": "assets/sprites/norio/source/root-tmp/review-norio-skill-shift/skill_body-6.png",
+      "tracked": false,
+      "sizeBytes": 25596,
+      "sha256": "6eda14384ab8691a40299aacd542941c99fe15f42f8c3c43cc6c47f72b7791e1"
+    }
+  ]
+}
