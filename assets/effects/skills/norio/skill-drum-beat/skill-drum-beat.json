@@ -1,0 +1,38 @@
+{
+  "id": "skill-drum-beat",
+  "category": "skill",
+  "frames": [
+    "assets/effects/skills/norio/skill-drum-beat/skill-drum-beat-1.png",
+    "assets/effects/skills/norio/skill-drum-beat/skill-drum-beat-2.png",
+    "assets/effects/skills/norio/skill-drum-beat/skill-drum-beat-3.png",
+    "assets/effects/skills/norio/skill-drum-beat/skill-drum-beat-4.png"
+  ],
+  "frameDuration": 12,
+  "loop": false,
+  "cellWidth": 256,
+  "cellHeight": 256,
+  "origin": {
+    "x": 128,
+    "y": 128
+  },
+  "groundPoint": {
+    "x": 128,
+    "y": 128
+  },
+  "qc": {
+    "strict": true,
+    "frameCount": 4,
+    "cellSize": [
+      256,
+      256
+    ],
+    "edgeTouchFrames": [],
+    "sourceEdgeTouchFrames": [],
+    "pasteClampedFrames": [],
+    "emptyFrames": [],
+    "outputSubjectHeightMean": 171,
+    "bodyScaleCv": 0.4141181554220338,
+    "anchorXStd": 0.002709290764337388,
+    "anchorYStd": 0.02491221954154131
+  }
+}

@@ -1,16 +1,18 @@
 import { cp, mkdir, rm, writeFile } from "node:fs/promises";
-import { extname, relative, resolve } from "node:path";
+import { basename, extname, relative, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 const dist = resolve(root, "dist");
 const client = resolve(dist, "client");
 const server = resolve(dist, "server");
+const NON_DEPLOYABLE_BASENAMES = new Set(["raw-sheet.png", "raw-sheet-clean.png", "animation.gif"]);
 
 await rm(dist, { recursive: true, force: true });
 await mkdir(client, { recursive: true });
 await mkdir(server, { recursive: true });
 
 function deployableAsset(source) {
+  if (NON_DEPLOYABLE_BASENAMES.has(basename(source))) return false;
   const normalized = relative(root, source).replaceAll("\\", "/");
   if (!normalized.includes("/actions/")) return true;
   if (!extname(source)) return true;

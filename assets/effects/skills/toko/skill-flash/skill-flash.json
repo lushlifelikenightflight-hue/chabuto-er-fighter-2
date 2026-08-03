@@ -1,0 +1,38 @@
+{
+  "id": "skill-flash",
+  "category": "skill",
+  "frames": [
+    "assets/effects/skills/toko/skill-flash/skill-flash-1.png",
+    "assets/effects/skills/toko/skill-flash/skill-flash-2.png",
+    "assets/effects/skills/toko/skill-flash/skill-flash-3.png",
+    "assets/effects/skills/toko/skill-flash/skill-flash-4.png"
+  ],
+  "frameDuration": 9,
+  "loop": false,
+  "cellWidth": 256,
+  "cellHeight": 256,
+  "origin": {
+    "x": 128,
+    "y": 128
+  },
+  "groundPoint": {
+    "x": 128,
+    "y": 128
+  },
+  "qc": {
+    "strict": true,
+    "frameCount": 4,
+    "cellSize": [
+      256,
+      256
+    ],
+    "edgeTouchFrames": [],
+    "sourceEdgeTouchFrames": [],
+    "pasteClampedFrames": [],
+    "emptyFrames": [],
+    "outputSubjectHeightMean": 158,
+    "bodyScaleCv": 0.591761451582821,
+    "anchorXStd": 0.050947794810157,
+    "anchorYStd": 0.030071907058136147
+  }
+}

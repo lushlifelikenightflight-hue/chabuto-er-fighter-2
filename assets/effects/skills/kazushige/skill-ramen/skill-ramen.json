@@ -1,0 +1,38 @@
+{
+  "id": "skill-ramen",
+  "category": "skill",
+  "frames": [
+    "assets/effects/skills/kazushige/skill-ramen/skill-ramen-1.png",
+    "assets/effects/skills/kazushige/skill-ramen/skill-ramen-2.png",
+    "assets/effects/skills/kazushige/skill-ramen/skill-ramen-3.png",
+    "assets/effects/skills/kazushige/skill-ramen/skill-ramen-4.png"
+  ],
+  "frameDuration": 20,
+  "loop": false,
+  "cellWidth": 256,
+  "cellHeight": 256,
+  "origin": {
+    "x": 128,
+    "y": 128
+  },
+  "groundPoint": {
+    "x": 128,
+    "y": 128
+  },
+  "qc": {
+    "strict": true,
+    "frameCount": 4,
+    "cellSize": [
+      256,
+      256
+    ],
+    "edgeTouchFrames": [],
+    "sourceEdgeTouchFrames": [],
+    "pasteClampedFrames": [],
+    "emptyFrames": [],
+    "outputSubjectHeightMean": 163.25,
+    "bodyScaleCv": 0.3650252780839552,
+    "anchorXStd": 0.030684038632023538,
+    "anchorYStd": 0.05517766991162594
+  }
+}

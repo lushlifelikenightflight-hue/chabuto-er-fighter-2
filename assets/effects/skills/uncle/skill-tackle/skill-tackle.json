@@ -1,0 +1,38 @@
+{
+  "id": "skill-tackle",
+  "category": "skill",
+  "frames": [
+    "assets/effects/skills/uncle/skill-tackle/skill-tackle-1.png",
+    "assets/effects/skills/uncle/skill-tackle/skill-tackle-2.png",
+    "assets/effects/skills/uncle/skill-tackle/skill-tackle-3.png",
+    "assets/effects/skills/uncle/skill-tackle/skill-tackle-4.png"
+  ],
+  "frameDuration": 14,
+  "loop": false,
+  "cellWidth": 256,
+  "cellHeight": 256,
+  "origin": {
+    "x": 128,
+    "y": 128
+  },
+  "groundPoint": {
+    "x": 128,
+    "y": 128
+  },
+  "qc": {
+    "strict": true,
+    "frameCount": 4,
+    "cellSize": [
+      256,
+      256
+    ],
+    "edgeTouchFrames": [],
+    "sourceEdgeTouchFrames": [],
+    "pasteClampedFrames": [],
+    "emptyFrames": [],
+    "outputSubjectHeightMean": 69.5,
+    "bodyScaleCv": 0.17225581519235264,
+    "anchorXStd": 0.04535084427978547,
+    "anchorYStd": 0.10960189026035069
+  }
+}

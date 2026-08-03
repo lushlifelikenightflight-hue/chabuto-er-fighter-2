@@ -1,0 +1,38 @@
+{
+  "id": "throw-impact",
+  "category": "throw",
+  "frames": [
+    "assets/effects/throw-impact/throw-impact-1.png",
+    "assets/effects/throw-impact/throw-impact-2.png",
+    "assets/effects/throw-impact/throw-impact-3.png",
+    "assets/effects/throw-impact/throw-impact-4.png"
+  ],
+  "frameDuration": 14,
+  "loop": false,
+  "cellWidth": 256,
+  "cellHeight": 256,
+  "origin": {
+    "x": 128,
+    "y": 128
+  },
+  "groundPoint": {
+    "x": 128,
+    "y": 128
+  },
+  "qc": {
+    "strict": true,
+    "frameCount": 4,
+    "cellSize": [
+      256,
+      256
+    ],
+    "edgeTouchFrames": [],
+    "sourceEdgeTouchFrames": [],
+    "pasteClampedFrames": [],
+    "emptyFrames": [],
+    "outputSubjectHeightMean": 98.25,
+    "bodyScaleCv": 0.2871185161950054,
+    "anchorXStd": 0.050241336109592125,
+    "anchorYStd": 0.11293406645680469
+  }
+}

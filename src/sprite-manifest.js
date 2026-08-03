@@ -1,3 +1,5 @@
+import { SKILL_CONFIGS } from "./skills.js";
+
 export const EXPANDED_FIGHTER_IDS = Object.freeze([
   "guitar-boy", "green-slime", "bob-girl", "uncle",
   "rusty", "kazushige", "norio", "toko",
@@ -26,7 +28,146 @@ export const RUNTIME_ANIMATION_ALIASES = Object.freeze({
   strong_attack_crouch: "heavy_crouch",
   strong_attack_air: "heavy_air",
   throw_hit: "throw_success",
+  // A few callers retain the authored damage-sheet frame labels. Keep those
+  // labels pointed at the semantic down clips so damage-11..16 are rendered
+  // instead of falling through to the idle sheet.
+  damage11: "knockdown",
+  damage12: "knockdown",
+  damage13: "down_idle",
+  damage14: "down_idle",
+  damage15: "wakeup",
+  damage16: "wakeup",
+  "damage-11": "knockdown",
+  "damage-12": "knockdown",
+  "damage-13": "down_idle",
+  "damage-14": "down_idle",
+  "damage-15": "wakeup",
+  "damage-16": "wakeup",
 });
+
+// Skill artwork is authored as one six-frame body sheet for each fighter.
+// Skill phase names remain data-owned by `skills.js`; this small bridge keeps
+// those public action ids resolvable by the runtime loader without inflating
+// the canonical 41-clip fighter manifest.
+export const SKILL_BODY_FRAME_COUNT = 6;
+export const SKILL_BODY_FRAME_DURATION = 4;
+
+export const SKILL_SPRITE_ACTIONS = Object.freeze(Object.fromEntries(
+  Object.entries(SKILL_CONFIGS).map(([id, config]) => [id, Object.freeze([...(config.spriteActions || [])])]),
+));
+
+export function getSkillAnimationClip(id, actionName) {
+  const actions = SKILL_SPRITE_ACTIONS[id];
+  if (!actions || !actions.includes(actionName)) return null;
+  return Object.freeze({
+    name: actionName,
+    group: "skill_body",
+    frames: Object.freeze(Array.from({ length: SKILL_BODY_FRAME_COUNT }, (_, index) => `assets/sprites/${id}/actions/skill_body/skill_body-${index + 1}.png`)),
+    frameDuration: SKILL_BODY_FRAME_DURATION,
+    loop: false,
+    cellWidth: 256,
+    cellHeight: 256,
+    origin: Object.freeze({ x: 128, y: 233 }),
+    groundPoint: Object.freeze({ x: 128, y: 233 }),
+  });
+}
+
+const EFFECT_ASSET_DEFINITIONS = Object.freeze({
+  "attack-light": ["assets/effects/attack-light", "attack", 5, false],
+  "attack-heavy": ["assets/effects/attack-heavy", "attack", 9, false],
+  "attack-weapon": ["assets/effects/attack-weapon", "attack", 10, false],
+  "attack-slime": ["assets/effects/attack-slime", "attack", 8, false],
+  "hit-spark": ["assets/effects/hit-spark", "hit", 7, false],
+  "guard-spark": ["assets/effects/guard-spark", "guard", 6, false],
+  "just-guard-ring": ["assets/effects/just-guard-ring", "guard", 10, false],
+  "throw-impact": ["assets/effects/throw-impact", "throw", 14, false],
+  "down-impact": ["assets/effects/down-impact", "down", 16, false],
+  "skill-copy": ["assets/effects/skills/guitar-boy/skill-copy", "skill", 20, false],
+  "skill-slime-shot": ["assets/effects/skills/green-slime/skill-slime-shot", "skill", 18, false],
+  "skill-mirror": ["assets/effects/skills/bob-girl/skill-mirror", "skill", 12, false],
+  "skill-tackle": ["assets/effects/skills/uncle/skill-tackle", "skill", 14, false],
+  "skill-ramen": ["assets/effects/skills/kazushige/skill-ramen", "skill", 20, false],
+  "skill-drum-beat": ["assets/effects/skills/norio/skill-drum-beat", "skill", 12, false],
+  "skill-flash": ["assets/effects/skills/toko/skill-flash", "skill", 9, false],
+});
+
+function effectFramePaths(basePath, id) {
+  return Array.from({ length: 4 }, (_, index) => `${basePath}/${id}-${index + 1}.png`);
+}
+
+function effectManifestEntry(id, [basePath, category, frameDuration, loop]) {
+  return Object.freeze({
+    id,
+    category,
+    metadata: `${basePath}/${id}.json`,
+    frames: Object.freeze(effectFramePaths(basePath, id)),
+    frameDuration,
+    loop,
+    cellWidth: 256,
+    cellHeight: 256,
+    origin: Object.freeze({ x: 128, y: 128 }),
+    groundPoint: Object.freeze({ x: 128, y: 128 }),
+  });
+}
+
+const DOG_SUMMON_MANIFEST = Object.freeze({
+  id: "skill-dog-summon",
+  category: "skill",
+  metadata: "assets/effects/skills/rusty/dog-drop/skill-dog-summon.json",
+  frames: Object.freeze([
+    "assets/effects/skills/rusty/dog-drop/dog-marker-1.png",
+    "assets/effects/skills/rusty/dog-drop/dog-marker-2.png",
+    "assets/effects/skills/rusty/dog-drop/dog-marker-3.png",
+    "assets/effects/skills/rusty/dog-drop/dog-marker-4.png",
+    "assets/effects/skills/rusty/dog-drop/dog-fall-1.png",
+    "assets/effects/skills/rusty/dog-drop/dog-fall-2.png",
+    "assets/effects/skills/rusty/dog-drop/dog-fall-3.png",
+    "assets/effects/skills/rusty/dog-drop/dog-fall-4.png",
+    "assets/effects/skills/rusty/dog-drop/dog-impact-1.png",
+    "assets/effects/skills/rusty/dog-drop/dog-impact-2.png",
+    "assets/effects/skills/rusty/dog-drop/dog-impact-3.png",
+    "assets/effects/skills/rusty/dog-drop/dog-impact-4.png",
+  ]),
+  frameDuration: 24,
+  loop: false,
+  cellWidth: 256,
+  cellHeight: 256,
+  origin: Object.freeze({ x: 128, y: 128 }),
+  groundPoint: Object.freeze({ x: 128, y: 128 }),
+});
+
+/** Runtime-ready, generated VFX assets. Paths are project-relative and stable. */
+export const EFFECT_ASSET_MANIFEST = Object.freeze({
+  ...Object.fromEntries(Object.entries(EFFECT_ASSET_DEFINITIONS).map(([id, definition]) => [id, effectManifestEntry(id, definition)])),
+  "skill-dog-summon": DOG_SUMMON_MANIFEST,
+});
+
+/** Semantic aliases reuse the numbered frames above without duplicating files. */
+export const EFFECT_ASSET_ALIASES = Object.freeze({
+  combo: "attack-light",
+  comboLight: "attack-light",
+  comboHeavy: "attack-heavy",
+  combo_light: "attack-light",
+  combo_heavy: "attack-heavy",
+  down: "down-impact",
+  wakeup: "down-impact",
+  guardDash: "attack-weapon",
+  guard_dash: "attack-weapon",
+  justGuardRecoil: "just-guard-ring",
+  just_guard_recoil: "just-guard-ring",
+  skillStartup: "skill-copy",
+  skillCharging: "skill-copy",
+  skillActive: "skill-slime-shot",
+  skillRecovery: "skill-flash",
+  skillUnavailable: "hit-spark",
+});
+
+export const REQUIRED_EFFECT_ASSET_IDS = Object.freeze(Object.keys(EFFECT_ASSET_MANIFEST));
+
+export function getEffectAssetManifest(effectId) {
+  const canonicalId = EFFECT_ASSET_ALIASES[effectId] || effectId;
+  return EFFECT_ASSET_MANIFEST[canonicalId] || null;
+}
 
 const GROUPS = Object.freeze({
   idle: ["idle", 1, 4, 10, true],
@@ -82,7 +223,7 @@ function numberedFrames(id, group, start, count) {
 
 export function createExpandedAnimationManifest(id) {
   if (!EXPANDED_FIGHTER_IDS.includes(id)) return null;
-  return Object.freeze(Object.fromEntries(REQUIRED_ANIMATION_CLIPS.map((name) => {
+  const clips = Object.fromEntries(REQUIRED_ANIMATION_CLIPS.map((name) => {
     const [group, start, count, frameDuration, loop] = GROUPS[name];
     return [name, Object.freeze({
       name,
@@ -95,5 +236,12 @@ export function createExpandedAnimationManifest(id) {
       origin: Object.freeze({ x: 128, y: 233 }),
       groundPoint: Object.freeze({ x: 128, y: 233 }),
     })];
-  })));
+  }));
+  // Keep skill actions available through the normal character.animation
+  // lookup while leaving the canonical clip enumeration/metadata contract
+  // unchanged for existing tools.
+  for (const action of SKILL_SPRITE_ACTIONS[id] || []) {
+    Object.defineProperty(clips, action, { value: getSkillAnimationClip(id, action), enumerable: false });
+  }
+  return Object.freeze(clips);
 }

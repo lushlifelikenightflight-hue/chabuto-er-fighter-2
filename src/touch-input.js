@@ -1,8 +1,8 @@
-const TOUCH_MODES = Object.freeze({ hidden: "hidden", battle: "battle", preview: "howToPlay" });
+const TOUCH_MODES = Object.freeze({ hidden: "hidden", menu: "menu", battle: "battle", preview: "howToPlay" });
 
 // Pointer coordinates are normalized to the stick's travel radius before
-// direction edges are emitted. Keeping this as a pure helper also makes the
-// dead-zone contract deterministic for keyboard-less/mobile test harnesses.
+// direction edges are emitted. Keeping this helper pure makes the mobile
+// input contract deterministic in browser and headless test harnesses.
 export const STICK_DEAD_ZONE = 0.28;
 export function stickActionsFromVector(x = 0, y = 0, deadZone = STICK_DEAD_ZONE) {
   const horizontal = Number(x) || 0;
@@ -16,27 +16,54 @@ export function stickActionsFromVector(x = 0, y = 0, deadZone = STICK_DEAD_ZONE)
   return actions;
 }
 
+// Keep these keys raw. The game layer decides what A/B/X/Y mean in each
+// screen; the touch layer only reports physical button edges.
 const ACTIONS = Object.freeze([
   { key: "a", label: "A", ariaLabel: "A: 弱攻撃" },
-  { key: "b", label: "B", ariaLabel: "B: キャンセル / バックステップ" },
-  { key: "x", label: "X", ariaLabel: "X: ガード / 左で投げ返し" },
-  { key: "y", label: "Y", ariaLabel: "Y: ジャンプ" },
+  { key: "b", label: "B", ariaLabel: "B: 固有スキル" },
+  { key: "x", label: "X", ariaLabel: "X: 強攻撃" },
+  { key: "y", label: "Y", ariaLabel: "Y: ガード" },
+]);
+
+const VIEWPORT_STYLE_PROPERTIES = Object.freeze([
+  "position",
+  "inset",
+  "width",
+  "height",
+  "maxWidth",
+  "minHeight",
+  "overflow",
+  "touchAction",
+  "overscrollBehavior",
+  "userSelect",
+  "webkitUserSelect",
 ]);
 
 function canUseDom() {
   return typeof document !== "undefined" && typeof document.createElement === "function";
 }
 
-export function isTouchAvailable(win = typeof window !== "undefined" ? window : null, _nav = typeof navigator !== "undefined" ? navigator : null) {
-  // Pointer events work for touch, mouse, and stylus. The pad intentionally
-  // remains available on desktop as well as mobile.
-  return Boolean(win && typeof win.PointerEvent !== "undefined");
+export function isTouchAvailable(win = typeof window !== "undefined" ? window : null, nav = typeof navigator !== "undefined" ? navigator : null) {
+  // Pointer events cover touch, mouse, and stylus. A maxTouchPoints fallback
+  // keeps the pad available in WebViews that omit window.PointerEvent.
+  return Boolean(
+    win && (
+      typeof win.PointerEvent !== "undefined" ||
+      Number(nav?.maxTouchPoints) > 0 ||
+      "ontouchstart" in win
+    ),
+  );
+}
+
+function safePreventDefault(event) {
+  if (event?.cancelable !== false) event?.preventDefault?.();
 }
 
 export class TouchInput {
   constructor(container = null) {
     this.container = container;
     this.root = null;
+    this.gameRoot = null;
     this.stick = null;
     this.stickKnob = null;
     this.mode = TOUCH_MODES.hidden;
@@ -46,29 +73,54 @@ export class TouchInput {
     this.buttonCounts = new Map();
     this.actionCounts = new Map();
     this.pressed = new Set();
+    this.released = new Set();
     this.stickActions = new Set();
     this.stickVector = { x: 0, y: 0 };
     this.bindings = [];
     this.stickPointerId = null;
+    this.viewportSnapshot = null;
+    this.viewportState = { width: 0, height: 0, orientation: "landscape" };
+    // Set by Game so the first touch edge can initialize audio synchronously.
+    this.onInput = null;
     this.onBlur = () => this.reset();
-    this.onVisibility = () => { if (document.hidden) this.reset(); };
-    this.onResize = () => this.syncAvailability();
-    this.onWindowPointerUp = (event) => {
-      if (event.pointerId === this.stickPointerId) this.releaseStick(event.pointerId);
-      else this.releasePointer(event.pointerId);
+    this.onVisibility = () => {
+      if (typeof document !== "undefined" && document.hidden) this.reset();
     };
+    this.onResize = () => this.syncAvailability();
+    this.onVisualViewportResize = () => this.syncViewportMetrics();
+    this.onWindowPointerUp = (event) => {
+      if (event?.pointerId === this.stickPointerId) this.releaseStick(event.pointerId);
+      else this.releasePointer(event?.pointerId);
+    };
+    // A cancelled touch can represent several active contacts on mobile. A
+    // full reset is intentional so no phantom held action survives a gesture.
     this.onWindowPointerCancel = () => this.reset();
-    // The pad is deliberately non-copyable/non-contextual in every mode.
-    this.onContextMenu = (event) => event.preventDefault();
+    this.onRootPointerMove = (event) => {
+      if (this.available && this.mode !== TOUCH_MODES.hidden) safePreventDefault(event);
+    };
+    this.onContextMenu = (event) => safePreventDefault(event);
     if (!container || !canUseDom()) return;
+    this.gameRoot = this.resolveGameRoot();
     this.build();
     window.addEventListener("blur", this.onBlur);
     window.addEventListener("resize", this.onResize, { passive: true });
     window.addEventListener("orientationchange", this.onResize, { passive: true });
+    window.visualViewport?.addEventListener?.("resize", this.onVisualViewportResize, { passive: true });
     window.addEventListener("pointerup", this.onWindowPointerUp, true);
     window.addEventListener("pointercancel", this.onWindowPointerCancel, true);
     document.addEventListener("visibilitychange", this.onVisibility);
     this.syncAvailability();
+  }
+
+  resolveGameRoot() {
+    const closest = this.container?.closest?.("[data-game-root], #game");
+    if (closest) return closest;
+    let node = this.container;
+    while (node) {
+      if (node.id === "game" || node.dataset?.gameRoot !== undefined) return node;
+      node = node.parentElement;
+    }
+    return document.querySelector?.("[data-game-root], #game") || this.container;
   }
 
   build() {
@@ -80,11 +132,12 @@ export class TouchInput {
     root.setAttribute("aria-label", "バーチャルゲームコントローラー");
     root.setAttribute("aria-hidden", "true");
     root.addEventListener("contextmenu", this.onContextMenu);
+    root.addEventListener("pointermove", this.onRootPointerMove, { passive: false });
 
     const stick = document.createElement("div");
     stick.className = "virtual-pad__stick";
     stick.setAttribute("role", "application");
-    stick.setAttribute("aria-label", "3Dスティック: 移動、しゃがむ、ジャンプ");
+    stick.setAttribute("aria-label", "スティック: 移動、しゃがむ、ジャンプ");
     stick.setAttribute("aria-disabled", "true");
     stick.tabIndex = -1;
     const knob = document.createElement("span");
@@ -110,10 +163,22 @@ export class TouchInput {
     actions.className = "virtual-pad__actions";
     actions.setAttribute("role", "group");
     actions.setAttribute("aria-label", "A B X Y アクションボタン");
+    // DOM order follows the face labels; CSS grid places them Y / X B / A.
     for (const item of ACTIONS) {
       actions.appendChild(this.createButton(item.key, item.label, item.ariaLabel, [item.key], "virtual-pad__action"));
     }
     root.appendChild(actions);
+
+    // Jump and special are deliberately separate from the face cluster so
+    // they remain reachable while a face button is held.
+    const utilities = document.createElement("div");
+    utilities.className = "virtual-pad__utilities";
+    utilities.setAttribute("role", "group");
+    utilities.setAttribute("aria-label", "ジャンプと必殺技");
+    utilities.appendChild(this.createButton("jump", "JUMP", "ジャンプ", ["jump"], "virtual-pad__utility virtual-pad__jump"));
+    utilities.appendChild(this.createButton("special", "SP", "必殺技", ["special"], "virtual-pad__utility virtual-pad__special"));
+    utilities.appendChild(this.createButton("throw", "THROW", "throw", ["throw"], "virtual-pad__utility virtual-pad__throw"));
+    root.appendChild(utilities);
 
     // Pause is a compact system control outside the four-face action cluster.
     const system = document.createElement("div");
@@ -138,15 +203,30 @@ export class TouchInput {
     button.setAttribute("aria-pressed", "false");
     button.setAttribute("aria-disabled", "true");
     button.tabIndex = -1;
-    const down = (event) => this.pressPointer(event, button, actions);
+    const down = (event) => {
+      // Native pointer interaction also emits a click. Mark it briefly so the
+      // click fallback below does not create a duplicate held edge.
+      button.dataset.pointerActivated = "true";
+      if (typeof setTimeout === "function") setTimeout(() => { delete button.dataset.pointerActivated; }, 0);
+      this.pressPointer(event, button, actions);
+    };
     const up = (event) => this.releasePointer(event.pointerId);
     const cancel = () => this.reset();
     const lost = (event) => this.releasePointer(event.pointerId);
+    // Some embedded WebViews expose a click without PointerEvent dispatch.
+    // Treat that as a one-frame pulse so menu A/B and direct mouse clicks are
+    // usable while preserving pointerdown's held semantics in battle.
+    const click = (event) => {
+      if (button.dataset.pointerActivated === "true" || this.destroyed || !this.available || this.mode === TOUCH_MODES.hidden) return;
+      this.onInput?.(event);
+      for (const action of actions) { this.addAction(action); this.removeAction(action); }
+    };
     button.addEventListener("pointerdown", down, { passive: false });
     button.addEventListener("pointerup", up);
     button.addEventListener("pointercancel", cancel);
     button.addEventListener("lostpointercapture", lost);
-    this.bindings.push({ button, down, up, cancel, lost });
+    button.addEventListener("click", click);
+    this.bindings.push({ button, down, up, cancel, lost, click });
     return button;
   }
 
@@ -157,9 +237,14 @@ export class TouchInput {
   }
 
   removeAction(action) {
-    const count = (this.actionCounts.get(action) || 0) - 1;
-    if (count > 0) this.actionCounts.set(action, count);
-    else this.actionCounts.delete(action);
+    const count = this.actionCounts.get(action);
+    if (!count) return;
+    if (count > 1) {
+      this.actionCounts.set(action, count - 1);
+      return;
+    }
+    this.actionCounts.delete(action);
+    this.released.add(action);
   }
 
   setStickActions(actions) {
@@ -171,9 +256,11 @@ export class TouchInput {
 
   pressStick(event) {
     if (this.destroyed || !this.available || this.mode === TOUCH_MODES.hidden) return;
-    event.preventDefault();
-    const pointerId = event.pointerId;
+    this.onInput?.(event);
+    safePreventDefault(event);
+    const pointerId = event.pointerId ?? 0;
     if (this.stickPointerId !== null && this.stickPointerId !== pointerId) this.releaseStick(this.stickPointerId);
+    if (this.pointers.has(pointerId)) this.releasePointer(pointerId);
     this.stickPointerId = pointerId;
     try { this.stick.setPointerCapture(pointerId); } catch { /* capture is optional */ }
     this.moveStick(event);
@@ -181,7 +268,7 @@ export class TouchInput {
 
   moveStick(event) {
     if (this.stickPointerId !== event.pointerId || !this.stick || !this.available) return;
-    event.preventDefault();
+    safePreventDefault(event);
     const rect = this.stick.getBoundingClientRect?.() || { left: 0, top: 0, width: 1, height: 1 };
     const width = Math.max(1, Number(rect.width) || 1);
     const height = Math.max(1, Number(rect.height) || 1);
@@ -208,8 +295,10 @@ export class TouchInput {
 
   pressPointer(event, button, actions) {
     if (this.destroyed || !this.available || this.mode === TOUCH_MODES.hidden) return;
-    event.preventDefault();
-    const pointerId = event.pointerId;
+    this.onInput?.(event);
+    safePreventDefault(event);
+    const pointerId = event.pointerId ?? 0;
+    if (pointerId === this.stickPointerId) this.releaseStick(pointerId);
     if (this.pointers.has(pointerId)) this.releasePointer(pointerId);
     try { button.setPointerCapture(pointerId); } catch { /* capture is optional */ }
     this.pointers.set(pointerId, { button, actions });
@@ -219,9 +308,11 @@ export class TouchInput {
   }
 
   releasePointer(pointerId) {
+    if (pointerId === null || pointerId === undefined) return;
     const state = this.pointers.get(pointerId);
     if (!state) return;
     this.pointers.delete(pointerId);
+    try { if (state.button.hasPointerCapture(pointerId)) state.button.releasePointerCapture(pointerId); } catch { /* already released */ }
     const buttonCount = (this.buttonCounts.get(state.button) || 0) - 1;
     if (buttonCount > 0) this.buttonCounts.set(state.button, buttonCount);
     else {
@@ -232,19 +323,30 @@ export class TouchInput {
   }
 
   getSnapshot() {
-    return { held: new Set(this.actionCounts.keys()), pressed: new Set(this.pressed) };
+    return {
+      held: new Set(this.actionCounts.keys()),
+      pressed: new Set(this.pressed),
+      released: new Set(this.released),
+    };
   }
 
-  clearEdges() { this.pressed.clear(); }
+  clearEdges() {
+    this.pressed.clear();
+    this.released.clear();
+  }
 
   reset() {
     for (const [pointerId, state] of this.pointers) {
       try { if (state.button.hasPointerCapture(pointerId)) state.button.releasePointerCapture(pointerId); } catch { /* already released */ }
     }
+    if (this.stickPointerId !== null) {
+      try { if (this.stick?.hasPointerCapture(this.stickPointerId)) this.stick.releasePointerCapture(this.stickPointerId); } catch { /* already released */ }
+    }
     this.pointers.clear();
     this.buttonCounts.clear();
     this.actionCounts.clear();
     this.pressed.clear();
+    this.released.clear();
     this.stickActions.clear();
     this.stickPointerId = null;
     this.stickVector = { x: 0, y: 0 };
@@ -253,21 +355,40 @@ export class TouchInput {
   }
 
   syncAvailability() {
-    this.available = isTouchAvailable();
+    const win = typeof window !== "undefined" ? window : null;
+    const nav = typeof navigator !== "undefined" ? navigator : null;
+    this.available = isTouchAvailable(win, nav);
+    this.syncViewportMetrics();
     this.updateVisibility();
+    this.syncViewportLock(this.mode === TOUCH_MODES.battle);
   }
 
-  setMode(mode) {
-    const next = mode === TOUCH_MODES.battle || mode === TOUCH_MODES.preview ? mode : TOUCH_MODES.hidden;
-    if (next !== TOUCH_MODES.battle) this.reset();
+  syncViewportMetrics() {
+    const win = typeof window !== "undefined" ? window : null;
+    const viewport = win?.visualViewport;
+    const width = Math.max(0, Number(viewport?.width || win?.innerWidth || 0));
+    const height = Math.max(0, Number(viewport?.height || win?.innerHeight || 0));
+    const orientation = width >= height ? "landscape" : "portrait";
+    this.viewportState = { width, height, orientation };
+    if (this.root) {
+      this.root.dataset.orientation = orientation;
+      this.root.style.setProperty("--viewport-width", `${width}px`);
+      this.root.style.setProperty("--viewport-height", `${height}px`);
+    }
+  }
+
+  setMode(mode, { preserveInput = false } = {}) {
+    const next = mode === TOUCH_MODES.menu || mode === TOUCH_MODES.battle || mode === TOUCH_MODES.preview ? mode : TOUCH_MODES.hidden;
+    if (next !== this.mode && !preserveInput) this.reset();
     this.mode = next;
     if (this.root) this.root.dataset.mode = next;
     this.updateVisibility();
+    this.syncViewportLock(next === TOUCH_MODES.battle);
   }
 
   updateVisibility() {
     if (!this.root) return;
-    const visible = this.available && (this.mode === TOUCH_MODES.battle || this.mode === TOUCH_MODES.preview);
+    const visible = this.available && (this.mode === TOUCH_MODES.menu || this.mode === TOUCH_MODES.battle || this.mode === TOUCH_MODES.preview);
     const interactive = visible;
     this.root.hidden = !visible;
     this.root.setAttribute("aria-hidden", visible ? "false" : "true");
@@ -283,17 +404,61 @@ export class TouchInput {
     if (!interactive) this.reset();
   }
 
+  syncViewportLock(locked) {
+    const target = this.gameRoot;
+    if (!target) return;
+    if (locked) {
+      if (!this.viewportSnapshot) {
+        this.viewportSnapshot = {
+          target,
+          cssText: target.style?.cssText ?? null,
+          inlineStyles: Object.fromEntries(VIEWPORT_STYLE_PROPERTIES.map((property) => [property, target.style?.[property] ?? ""])),
+          className: typeof target.className === "string" ? target.className : null,
+        };
+      }
+      target.classList?.add("game-viewport-lock");
+      if (target.style) {
+        target.style.position = "fixed";
+        target.style.inset = "0";
+        target.style.width = "100%";
+        target.style.height = "100dvh";
+        target.style.maxWidth = "none";
+        target.style.minHeight = "0";
+        target.style.overflow = "hidden";
+        target.style.touchAction = "none";
+        target.style.overscrollBehavior = "none";
+        target.style.userSelect = "none";
+        target.style.webkitUserSelect = "none";
+      }
+      return;
+    }
+    const snapshot = this.viewportSnapshot;
+    if (!snapshot) return;
+    const { target: lockedTarget } = snapshot;
+    if (lockedTarget.style) {
+      if (snapshot.cssText !== null) lockedTarget.style.cssText = snapshot.cssText;
+      else for (const property of VIEWPORT_STYLE_PROPERTIES) lockedTarget.style[property] = snapshot.inlineStyles[property];
+    }
+    if (snapshot.className !== null) lockedTarget.className = snapshot.className;
+    this.viewportSnapshot = null;
+  }
+
   destroy() {
     if (this.destroyed) return;
     this.destroyed = true;
     this.reset();
-    window.removeEventListener("blur", this.onBlur);
-    window.removeEventListener("resize", this.onResize);
-    window.removeEventListener("orientationchange", this.onResize);
-    window.removeEventListener("pointerup", this.onWindowPointerUp, true);
-    window.removeEventListener("pointercancel", this.onWindowPointerCancel, true);
-    document.removeEventListener("visibilitychange", this.onVisibility);
+    this.syncViewportLock(false);
+    if (typeof window !== "undefined") {
+      window.removeEventListener("blur", this.onBlur);
+      window.removeEventListener("resize", this.onResize);
+      window.removeEventListener("orientationchange", this.onResize);
+      window.visualViewport?.removeEventListener?.("resize", this.onVisualViewportResize);
+      window.removeEventListener("pointerup", this.onWindowPointerUp, true);
+      window.removeEventListener("pointercancel", this.onWindowPointerCancel, true);
+    }
+    if (typeof document !== "undefined") document.removeEventListener("visibilitychange", this.onVisibility);
     this.root?.removeEventListener("contextmenu", this.onContextMenu);
+    this.root?.removeEventListener("pointermove", this.onRootPointerMove);
     if (this.stick && this.stickBindings) {
       const { down, move, up, cancel } = this.stickBindings;
       this.stick.removeEventListener("pointerdown", down);
@@ -302,11 +467,12 @@ export class TouchInput {
       this.stick.removeEventListener("pointercancel", cancel);
       this.stick.removeEventListener("lostpointercapture", up);
     }
-    for (const { button, down, up, cancel, lost } of this.bindings) {
+    for (const { button, down, up, cancel, lost, click } of this.bindings) {
       button.removeEventListener("pointerdown", down);
       button.removeEventListener("pointerup", up);
       button.removeEventListener("pointercancel", cancel);
       button.removeEventListener("lostpointercapture", lost);
+      button.removeEventListener("click", click);
     }
     this.bindings = [];
     this.root?.remove();

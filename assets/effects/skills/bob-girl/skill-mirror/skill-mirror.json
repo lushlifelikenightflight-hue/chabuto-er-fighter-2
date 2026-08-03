@@ -1,0 +1,38 @@
+{
+  "id": "skill-mirror",
+  "category": "skill",
+  "frames": [
+    "assets/effects/skills/bob-girl/skill-mirror/skill-mirror-1.png",
+    "assets/effects/skills/bob-girl/skill-mirror/skill-mirror-2.png",
+    "assets/effects/skills/bob-girl/skill-mirror/skill-mirror-3.png",
+    "assets/effects/skills/bob-girl/skill-mirror/skill-mirror-4.png"
+  ],
+  "frameDuration": 12,
+  "loop": false,
+  "cellWidth": 256,
+  "cellHeight": 256,
+  "origin": {
+    "x": 128,
+    "y": 128
+  },
+  "groundPoint": {
+    "x": 128,
+    "y": 128
+  },
+  "qc": {
+    "strict": true,
+    "frameCount": 4,
+    "cellSize": [
+      256,
+      256
+    ],
+    "edgeTouchFrames": [],
+    "sourceEdgeTouchFrames": [],
+    "pasteClampedFrames": [],
+    "emptyFrames": [],
+    "outputSubjectHeightMean": 202.25,
+    "bodyScaleCv": 0.08889242899937087,
+    "anchorXStd": 0.02767958916103465,
+    "anchorYStd": 0.01282747371822071
+  }
+}
