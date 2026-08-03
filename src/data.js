@@ -354,7 +354,19 @@ export const STAGES = Object.freeze([
 
 export const MENU_ITEMS = Object.freeze(["GAME START", "TRAINING MODE", "HOW TO PLAY", "SCORE", "SETTINGS"]);
 export const SETTINGS_ITEMS = Object.freeze(["SOUND", "BGM", "SE", "DEBUG OVERLAY", "RESET DATA", "BACK"]);
-export const TRAINING_SETTINGS_ITEMS = Object.freeze(["START TRAINING", "CPU MOVE", "CPU ATTACK", "BACK"]);
+export const TRAINING_SETTINGS_ITEMS = Object.freeze(["START TRAINING", "CPU FIGHTER", "STAGE", "CPU MOVE", "CPU ATTACK", "BACK"]);
+
+// Only two runtime tracks are currently shipped.  These profiles
+// deliberately give every stage a distinct audible arrangement without
+// introducing an unlicensed external asset: source, rate, gain, and start
+// position are all data-owned and deterministic for the audio controller.
+export const STAGE_BGM_PROFILES = Object.freeze([
+  Object.freeze({ source: "assets/audio/bgm-battle.mp3", playbackRate: 0.92, volume: 0.30, startTime: 0 }),
+  Object.freeze({ source: "assets/audio/bgm-title.mp3", playbackRate: 1.06, volume: 0.20, startTime: 18 }),
+  Object.freeze({ source: "assets/audio/bgm-battle.mp3", playbackRate: 1.13, volume: 0.27, startTime: 36 }),
+  Object.freeze({ source: "assets/audio/bgm-title.mp3", playbackRate: 0.98, volume: 0.23, startTime: 54 }),
+  Object.freeze({ source: "assets/audio/bgm-battle.mp3", playbackRate: 1.02, volume: 0.33, startTime: 72 }),
+]);
 
 export function getOpponentId(stageNumber, selectedId) {
   const stage = STAGES[Math.max(1, Math.min(STAGES.length, stageNumber)) - 1];

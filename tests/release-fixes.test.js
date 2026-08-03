@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
-import { CHARACTERS, STAGES } from "../src/data.js";
+import { CHARACTERS, STAGES, STAGE_BGM_PROFILES } from "../src/data.js";
 import { createFighterState } from "../src/engine.js";
 import { Game, SCREEN, skillStatusTextFor } from "../src/game.js";
 import { getSkillConfig, getSkillHudState } from "../src/skills.js";
@@ -11,6 +11,112 @@ test("held dash loops all three authored running frames", () => {
   const clip = createExpandedAnimationManifest("guitar-boy").dash;
   assert.equal(clip.loop, true);
   assert.deepEqual(clip.frames.map((path) => path.match(/movement-(\d+)\.png$/)?.[1]), ["7", "8", "9"]);
+});
+
+test("supplied combat WAVs are mapped, loud, and playable through the SE toggle", () => {
+  const previousAudio = globalThis.Audio;
+  const played = [];
+  class FakeAudio {
+    constructor(src = "") { this.src = src; this.volume = 0; }
+    cloneNode() { const clone = new FakeAudio(this.src); clone.play = () => { played.push({ src: clone.src, volume: clone.volume }); return Promise.resolve(); }; return clone; }
+    play() { return Promise.resolve(); }
+    pause() {}
+  }
+  globalThis.Audio = FakeAudio;
+  try {
+    const game = new Game(null);
+    game.state.bgmEnabled = false;
+    for (const id of ["light", "strong", "super", "skill", "jump"]) assert.equal(game.playSe(id), true, id);
+    assert.deepEqual(played.map(({ src }) => src), [
+      "assets/audio/se/light-attack.wav", "assets/audio/se/strong-attack.wav", "assets/audio/se/super.wav",
+      "assets/audio/se/skill.wav", "assets/audio/se/jump.wav",
+    ]);
+    assert.ok(played.every(({ volume }) => volume >= 0.9));
+    game.state.seEnabled = false;
+    assert.equal(game.playSe("light"), false);
+  } finally { globalThis.Audio = previousAudio; }
+  for (const name of ["light-attack.wav", "strong-attack.wav", "super.wav", "skill.wav", "jump.wav"]) {
+    assert.equal(fs.existsSync(new URL(`../assets/audio/se/${name}`, import.meta.url)), true, name);
+  }
+});
+
+test("training selections choose the requested enemy and stage", () => {
+  const game = new Game(null);
+  game.state.selectedId = "guitar-boy";
+  game.state.trainingOpponentId = "kazushige";
+  game.state.trainingStage = 4;
+  game.startTraining();
+  assert.equal(game.cpu.id, "kazushige");
+  assert.equal(game.state.stage, 4);
+  game.cycleTrainingOpponent();
+  assert.equal(game.state.trainingOpponentId, "norio");
+  game.cycleTrainingStage();
+  assert.equal(game.state.trainingStage, 5);
+});
+
+test("every stage has a distinct audible BGM profile", () => {
+  assert.equal(STAGE_BGM_PROFILES.length, STAGES.length);
+  assert.equal(new Set(STAGE_BGM_PROFILES.map((profile) => `${profile.source}:${profile.playbackRate}:${profile.volume}:${profile.startTime}`)).size, STAGES.length);
+});
+
+test("a training stage profile seeks even when it reuses the title track", () => {
+  const previousAudio = globalThis.Audio;
+  class FakeAudio {
+    constructor(src = "") { this.src = src; this.currentTime = 0; this.readyState = 1; this.volume = 0; this.playbackRate = 1; }
+    play() { return Promise.resolve(); }
+    pause() {}
+  }
+  globalThis.Audio = FakeAudio;
+  try {
+    const game = new Game(null);
+    game.syncBgm();
+    game.state.trainingStage = 2;
+    game.startTraining();
+    assert.equal(game.bgm.src, STAGE_BGM_PROFILES[1].source);
+    assert.equal(game.bgm.currentTime, STAGE_BGM_PROFILES[1].startTime);
+  } finally { globalThis.Audio = previousAudio; }
+});
+
+test("locomotion rendering keeps its facing stable and Kazushige aura is behind the fighter", () => {
+  const game = new Game(null);
+  const sprite = { complete: true, naturalWidth: 64, naturalHeight: 64, tag: "sprite" };
+  const aura = { complete: true, naturalWidth: 64, naturalHeight: 64, tag: "aura" };
+  game.loadSprite = () => sprite;
+  game.loadEffectFrame = () => ({ image: aura });
+  const calls = [];
+  const ctx = { save() {}, restore() {}, translate() {}, scale(x, y) { calls.push(["scale", x, y]); }, drawImage(image, ...args) { calls.push(["draw", image.tag, ...args]); }, fillText() {}, imageSmoothingEnabled: false, globalAlpha: 1, filter: "none" };
+  const runner = createFighterState("guitar-boy", 100, -1);
+  runner.action = "dash"; runner.actionFrame = 2; runner.locomotionFacing = 1;
+  game.drawFighter(ctx, runner);
+  assert.equal(calls.some((entry) => entry[0] === "scale" && entry[1] === -1), false);
+  calls.length = 0;
+  const kazushige = createFighterState("kazushige", 100, 1);
+  kazushige.buff = { frames: 60 };
+  game.drawFighter(ctx, kazushige);
+  assert.deepEqual(calls.filter((entry) => entry[0] === "draw").map((entry) => entry[1]), ["aura", "sprite"]);
+  assert.equal(calls.find((entry) => entry[0] === "draw" && entry[1] === "aura").at(-2), 224);
+});
+
+test("supers use a smaller VFX and damage, variety, combos, and skills accelerate meter", () => {
+  const game = new Game(null);
+  const specialUser = createFighterState("uncle", 100, 1);
+  game.player = specialUser; game.cpu = createFighterState("toko", 150, -1); specialUser.meter = 100;
+  assert.equal(game.startSpecial(specialUser), true);
+  assert.equal(game.state.vfx.find((entry) => entry.effectId === "super-explosion").scale, 2.3);
+
+  const attacker = createFighterState("guitar-boy", 100, 1);
+  const defender = createFighterState("uncle", 125, -1);
+  game.player = attacker; game.cpu = defender;
+  const move = CHARACTERS[attacker.id].moves.light_attack_neutral;
+  attacker.state = "attacking"; attacker.currentMove = move; attacker.actionFrame = move.startupFrames;
+  attacker.comboHits = 3; attacker.lastMeterMoveId = "different_move";
+  game.handleCombat(attacker, defender);
+  assert.ok(attacker.meter > Number(move.meterGainOnHit || 4));
+  assert.ok(defender.meter > 0);
+  const beforeSkill = attacker.meter;
+  game.activateSkill(attacker, getSkillConfig(attacker.id));
+  assert.ok(attacker.meter > beforeSkill);
+  assert.equal(attacker.specialGauge, attacker.meter);
 });
 
 test("every stage platform resolves to a runtime PNG and layouts are distinct", () => {

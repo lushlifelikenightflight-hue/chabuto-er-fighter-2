@@ -14,7 +14,7 @@ test("every screen keeps menu controls available outside battle and pause is hea
   assert.match(gameSource, /touchMode = touchBattleScreens\.has\(screen\) \? "battle" : "menu"/);
   assert.match(html, /data-header-pause[^>]*disabled[^>]*>PAUSE<\/button>/);
   assert.doesNotMatch(touchSource, /createButton\("pause"/);
-  assert.deepEqual(TRAINING_SETTINGS_ITEMS, ["START TRAINING", "CPU MOVE", "CPU ATTACK", "BACK"]);
+  assert.deepEqual(TRAINING_SETTINGS_ITEMS, ["START TRAINING", "CPU FIGHTER", "STAGE", "CPU MOVE", "CPU ATTACK", "BACK"]);
 });
 
 test("attack wind appears on whiff and a contact burst uses the overlap position", () => {
@@ -276,6 +276,6 @@ test("mobile fighter select remains four columns and attack/hit SE hooks are pre
   const css = fs.readFileSync(new URL("../style.css", import.meta.url), "utf8");
   const source = fs.readFileSync(new URL("../src/game.js", import.meta.url), "utf8");
   assert.match(css, /@media \(max-width: 620px\)[\s\S]*?\.character-grid\s*\{[^}]*repeat\(4,/);
-  assert.match(source, /this\.beep\(strong \? 150 : 360/);
+  assert.match(source, /this\.playSe\(strong \? "strong" : "light"\)/);
   assert.match(source, /move\.id\?\.includes\("strong"\) \? 125 : 240/);
 });
