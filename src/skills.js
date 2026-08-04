@@ -210,7 +210,7 @@ export const SKILL_CONFIGS = Object.freeze({
     chargeRate: 1,
     chargeMax: 100,
     initialGauge: 0,
-    initialAmmo: 16,
+    initialAmmo: 0,
     maxAmmo: 16,
     durationFrames: 480,
     intervalFrames: 30,
@@ -271,7 +271,7 @@ export function getSkillHudState(fighter = {}, configOrId = fighter.id) {
   // enhancement time once active.  Treating it as duration at zero hid the
   // actual charge and made a full first charge look like a failed attempt.
   const ramenActive = type === "ramenBuff" && Number(fighter.buff?.frames || 0) > 0;
-  const mode = config.hudMode || (type === "copy" ? (Number(fighter.copiedSkillUses || fighter.copyCharges || 0) > 0 ? "uses" : "charge") : type === "mirror" || type === "drumBeat" || type === "flash" ? "ammo" : type === "ramenBuff" ? (ramenActive ? "duration" : "charge") : "charge");
+  const mode = config.hudMode || (type === "copy" ? (Number(fighter.copiedSkillUses || fighter.copyCharges || 0) > 0 ? "uses" : "charge") : type === "drumBeat" ? (fighter.norioVolleyActive ? "ammo" : "charge") : type === "mirror" || type === "flash" ? "ammo" : type === "ramenBuff" ? (ramenActive ? "duration" : "charge") : "charge");
   const max = Math.max(0, Number(mode === "duration" ? (config.buffDurationFrames || config.durationFrames || config.chargeMax) : mode === "ammo" || mode === "uses" ? (config.maxAmmo || config.copyCharges || config.copiedSkillUses || config.chargeMax) : config.chargeMax) || 0);
   const resourceValue = type === "copy" ? (fighter.copiedSkillUses ?? fighter.copyCharges ?? fighter.ammo ?? fighter.skillAmmo ?? 0) : (fighter.ammo ?? fighter.skillAmmo ?? 0);
   const value = Math.max(0, Number(mode === "duration" ? (fighter.buff?.frames || 0) : mode === "ammo" || mode === "uses" ? resourceValue : (fighter.skillGauge ?? fighter.skill?.gauge ?? 0)) || 0);

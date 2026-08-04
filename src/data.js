@@ -345,10 +345,10 @@ export const FIGHTER_STATS_DAMAGE = Object.freeze(Object.fromEntries(CHARACTER_I
 })));
 
 export const STAGES = Object.freeze([
-  Object.freeze({ number: 1, id: "toko", name: "トコ戦", opponent: "toko", dialogue: "メンバーサイン付き写真２万８千円になりまーす！", background: "assets/stages/stage-toko.png", platforms: Object.freeze([{ x: 58, w: 82, y: 42, label: "PODIUM", asset: "light-podium" }, { x: 360, w: 62, y: 42, label: "LADDER", asset: "step-ladder" }]) }),
-  Object.freeze({ number: 2, id: "norio", name: "のりお戦", opponent: "norio", dialogue: "始めます。", background: "assets/stages/stage-norio.png", platforms: Object.freeze([{ x: 20, w: 104, y: 70, label: "AMP", asset: "amp" }, { x: 386, w: 66, y: 42, label: "AMP", asset: "amp" }]) }),
-  Object.freeze({ number: 3, id: "kazushige", name: "かずしげ戦", opponent: "kazushige", dialogue: "どうも,かずしげです", background: "assets/stages/stage-kazushige.png", platforms: Object.freeze([{ x: 128, w: 100, y: 70, label: "STALL", asset: "ramen-stand" }, { x: 252, w: 100, y: 70, label: "STALL", asset: "ramen-stand" }]) }),
-  Object.freeze({ number: 4, id: "rusty", name: "らすてぃー戦", opponent: "rusty", dialogue: "今日も一日　フランスパンで二塁打", background: "assets/stages/stage-rusty.png", platforms: Object.freeze([{ x: 62, w: 72, y: 104, label: "LADDER", asset: "step-ladder" }, { x: 212, w: 104, y: 70, label: "AMP", asset: "amp" }]) }),
+  Object.freeze({ number: 1, id: "toko", name: "トコ戦", opponent: "toko", dialogue: "メンバーサイン付き写真２万８千円になりまーす！", background: "assets/stages/stage-toko.png", platforms: Object.freeze([{ x: 58, w: 34, y: 42, label: "PODIUM", asset: "light-podium" }, { x: 384, w: 38, y: 42, label: "LADDER", asset: "step-ladder" }]) }),
+  Object.freeze({ number: 2, id: "norio", name: "のりお戦", opponent: "norio", dialogue: "始めます。", background: "assets/stages/stage-norio.png", platforms: Object.freeze([{ x: 20, w: 81, y: 70, label: "AMP", asset: "amp" }, { x: 404, w: 48, y: 42, label: "AMP", asset: "amp" }]) }),
+  Object.freeze({ number: 3, id: "kazushige", name: "かずしげ戦", opponent: "kazushige", dialogue: "どうも,かずしげです", background: "assets/stages/stage-kazushige.png", platforms: Object.freeze([{ x: 128, w: 91, y: 70, label: "STALL", asset: "ramen-stand" }, { x: 252, w: 91, y: 70, label: "STALL", asset: "ramen-stand" }]) }),
+  Object.freeze({ number: 4, id: "rusty", name: "らすてぃー戦", opponent: "rusty", dialogue: "今日も一日　フランスパンで二塁打", background: "assets/stages/stage-rusty.png", platforms: Object.freeze([{ x: 62, w: 93, y: 104, label: "LADDER", asset: "step-ladder" }, { x: 212, w: 81, y: 70, label: "AMP", asset: "amp" }]) }),
   Object.freeze({ number: 5, id: "mirror", name: "ミラーマッチ", opponent: "mirror", dialogue: "…。", background: "assets/stages/stage-mirror.png", platforms: Object.freeze([]) }),
 ]);
 

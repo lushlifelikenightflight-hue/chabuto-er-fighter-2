@@ -9,7 +9,7 @@ import {
   createProjectile, evaluateStrike, evaluateThrow, fixedStep, getFighterBoxes, projectileIsActive, rankForScore,
   resolvePushboxes, resolveRound, scoreForEvent, stageOpponent,
   canDownFollowup, comboDamageScale, getComboLimit, isDownState, isJustGuardEligible,
-  justGuardWithinWindow, shouldKnockdown,
+  justGuardWithinWindow, shouldKnockdown, WAKEUP_INVULNERABLE_FRAMES,
 } from "./engine.js";
 import { appendHighScore, loadSave, resetSave, saveData } from "./storage.js";
 import { EFFECT_ASSET_MANIFEST, RUNTIME_ANIMATION_ALIASES, getEffectAssetManifest, getSkillAnimationClip } from "./sprite-manifest.js";
@@ -165,7 +165,7 @@ const BACKSTEP_LOCK_FRAMES = 12;
 const GUARD_DASH_FRAMES = 18;
 const GUARD_DASH_COOLDOWN = 18;
 const GUARD_DASH_GUARD_FRAMES = 4;
-const WAKEUP_INVULN_FRAMES = 12;
+const WAKEUP_INVULN_FRAMES = WAKEUP_INVULNERABLE_FRAMES;
 const DOWN_LANDING_FRAMES = 10;
 const DOWN_FOLLOWUP_FRAMES = 45;
 const DOWN_WAKEUP_FRAMES = 60;
@@ -188,8 +188,24 @@ const SE_SOURCES = Object.freeze({
 });
 const BACKWARD_SPEED_MULTIPLIER = 1.85;
 const SUPER_VFX_SCALE = 1.7;
-const SKILL_CHARGE_SPEED_MULTIPLIER = 1.45;
+const SKILL_CHARGE_SPEED_MULTIPLIER = 2.9;
 const KO_PRESENTATION_FRAMES = 72 + 3 * FIXED_HZ;
+const PLATFORM_RENDER_PROFILES = Object.freeze({
+  amp: Object.freeze({ sx: 64, sy: 133, sw: 128, sh: 111 }),
+  "light-podium": Object.freeze({ sx: 66, sy: 89, sw: 123, sh: 155 }),
+  "ramen-stand": Object.freeze({ sx: 31, sy: 96, sw: 193, sh: 148 }),
+  "step-ladder": Object.freeze({ sx: 61, sy: 94, sw: 134, sh: 150 }),
+});
+const SPECIAL_CUTIN_BOUNDS = Object.freeze({
+  "guitar-boy": Object.freeze({ x: 76, y: 91, w: 109, h: 148 }),
+  "green-slime": Object.freeze({ x: 49, y: 99, w: 151, h: 139 }),
+  "bob-girl": Object.freeze({ x: 95, y: 97, w: 71, h: 141 }),
+  uncle: Object.freeze({ x: 96, y: 102, w: 90, h: 136 }),
+  rusty: Object.freeze({ x: 92, y: 132, w: 118, h: 105 }),
+  kazushige: Object.freeze({ x: 38, y: 100, w: 142, h: 139 }),
+  norio: Object.freeze({ x: 91, y: 97, w: 74, h: 140 }),
+  toko: Object.freeze({ x: 94, y: 108, w: 69, h: 129 }),
+});
 
 function byId(id) { return typeof document === "undefined" ? null : document.getElementById(id); }
 function text(value) { return String(value ?? ""); }
@@ -1012,7 +1028,7 @@ export class Game {
       defender.facing = -attacker.facing; defender.state = "grabbed"; defender.action = "thrown";
       if (!attacker.throwReleased && attacker.actionFrame >= move.startupFrames + move.activeFrames + 6) {
         attacker.throwReleased = true;
-        const damage = applyDamage(defender, Number(move.damage || 0) * Number(attacker.buff?.attackScale || 1), { knockbackX: 6, knockbackY: 3, hitstunFrames: move.hitstunFrames });
+        const damage = applyDamage(defender, Number(move.damage || 0) * Number(attacker.buff?.attackScale || 1), { knockbackX: move.knockbackX, knockbackY: move.knockbackY, hitstunFrames: move.hitstunFrames });
         defender.thrownBy = null;
         this.launchKnockdown(defender, move);
         attacker.throwTarget = null;
@@ -1149,6 +1165,9 @@ export class Game {
       return;
     }
     if (fighter.state === "knockback") {
+      fighter.x += Number(fighter.vx || 0);
+      fighter.vx *= 0.94;
+      fighter.x = clamp(fighter.x, STAGE_BOUNDS.left, STAGE_BOUNDS.right);
       this.advanceAir(fighter, input, stats);
       if (fighter.grounded) this.beginKnockdownLanding(fighter);
       return;
@@ -1362,6 +1381,12 @@ export class Game {
 
   applyMoveMotion(fighter, move) {
     if (!move) return;
+    const momentum = Number(fighter.attackMomentumX || 0);
+    if (Math.abs(momentum) > 0.05) {
+      fighter.x += momentum;
+      fighter.attackMomentumX = momentum * (fighter.grounded ? 0.84 : 0.97);
+      fighter.vx = fighter.attackMomentumX;
+    } else fighter.attackMomentumX = 0;
     if (move.kind === "special" && move.movement) fighter.x += fighter.facing * move.movement;
     if (move.id === "forward_light" && move.movement && fighter.actionFrame <= move.startupFrames + move.activeFrames) fighter.x += fighter.facing * move.movement;
     fighter.x = clamp(fighter.x, STAGE_BOUNDS.left, STAGE_BOUNDS.right);
@@ -1396,6 +1421,7 @@ export class Game {
       fighter.currentMove = { ...base, id: variantId, comboIndex: fighter.comboHits || 0, comboActive, downFollowup, hitbox: base?.hitbox ? { ...base.hitbox } : null };
     } else fighter.currentMove = downFollowup ? { ...base, downFollowup } : base;
     if (!fighter.currentMove) return false;
+    fighter.attackMomentumX = Number(fighter.vx || 0);
     fighter.action = key;
     fighter.state = "attacking";
     fighter.actionFrame = 0;
@@ -1499,7 +1525,7 @@ export class Game {
       const rate = Number(config.chargeRate || 0) * Number(CHARACTERS[fighter.id].stats.skillChargeRate || 1) * SKILL_CHARGE_SPEED_MULTIPLIER;
       fighter.skillGauge = clamp((fighter.skillGauge || 0) + rate, 0, Number(config.chargeMax || 100)); fighter.skill.gauge = fighter.skillGauge; fighter.gauge.skill = fighter.skillGauge;
       const requiresFullCharge = config.type === "copy" || config.type === "dogSummon" || config.type === "ramenBuff";
-      const autoAtFull = config.type === "drumBeat" || config.type === "ramenBuff";
+      const autoAtFull = rate > 0;
       if ((autoAtFull && fighter.skillGauge >= Number(config.chargeMax || 100)) || (released && (!requiresFullCharge || fighter.skillGauge >= Number(config.chargeMax || 100)))) { fighter.skillPhase = "skillActive"; fighter.skillState = "skillActive"; fighter.skill.phase = "skillActive"; fighter.state = "skillActive"; fighter.action = "skill_active"; fighter.skillActionFrame = 0; }
       else if (released && requiresFullCharge) { fighter.skillPhase = "skillUnavailable"; fighter.skillState = "skillUnavailable"; fighter.skill.phase = "skillUnavailable"; fighter.skillCharging = false; fighter.skillActivated = false; fighter.skillCancelled = true; fighter.state = fighter.grounded ? "idle" : "jumping"; fighter.action = fighter.state; fighter.skill.gauge = fighter.skillGauge; fighter.gauge.skill = fighter.skillGauge; }
       else return;
@@ -1594,9 +1620,13 @@ export class Game {
       const activation = Number(fighter.norioActivationCount || 0) + 1;
       const previous = Array.isArray(fighter.norioLastPositions) ? fighter.norioLastPositions : [];
       const positions = [];
+      const shotCount = Number(config.snareCount || 16);
+      fighter.skillAmmo = shotCount; fighter.ammo = shotCount;
+      fighter.skillGauge = Number(config.chargeMax || 100); fighter.skill.gauge = fighter.skillGauge; fighter.gauge.skill = fighter.skillGauge;
+      fighter.norioVolleyActive = true;
       const span = Math.max(1, STAGE_BOUNDS.right - STAGE_BOUNDS.left - 40);
       const validPosition = (candidate) => positions.every((value) => Math.abs(value - candidate) >= 18) && previous.every((value) => Math.abs(value - candidate) >= 18);
-      for (let i = 0; i < (config.snareCount || 16); i += 1) {
+      for (let i = 0; i < shotCount; i += 1) {
         let x = STAGE_BOUNDS.left + 20 + random() * span;
         if (!validPosition(x)) {
           const fallback = STAGE_BOUNDS.left + 20 + ((i * 97 + activation * 53) % span);
@@ -1607,7 +1637,6 @@ export class Game {
         this.spawnSkillEntity({ owner, type: "snareMarker", x, targetX: x, y: 88, delay: i * (config.intervalFrames || 30), duration: (config.durationFrames || 480) - i * (config.intervalFrames || 30), damage: 36, w: 0, h: 0, marker: true, scale: 0.48, effectId: config.effectId, spawnVfx: false });
       }
       fighter.norioActivationCount = activation; fighter.norioLastPositions = positions;
-      if (resourceMode === "native") { fighter.skillAmmo = Math.max(0, (fighter.skillAmmo || config.initialAmmo || 16) - 1); fighter.ammo = fighter.skillAmmo; }
     } else if (type === "flash") {
       if (fighter.flashReloadFrames == null) fighter.flashReloadFrames = 0;
       if (resourceMode === "native" && (fighter.skillAmmo || fighter.ammo || 0) <= 0) { fighter.flashReloadFrames = 0; fighter.flashReloading = false; fighter.skillPhase = "skillUnavailable"; fighter.skillState = "skillUnavailable"; fighter.skill.phase = "skillUnavailable"; fighter.skillActivated = false; return; }
@@ -1684,7 +1713,7 @@ export class Game {
 
   startThrow(fighter) {
     if (!fighter || fighter.hp <= 0 || fighter.downed || fighter.wakeupTimer > 0) return false;
-    fighter.currentMove = { id: "throw", kind: "throw", startupFrames: 5, activeFrames: 3, recoveryFrames: 22, damage: Number(CHARACTERS[fighter.id].stats.throwDamage || 150), hitstunFrames: 30, scoreValue: 400, hitbox: null, causesKnockdown: true, hardKnockdown: false, throw: true };
+    fighter.currentMove = { id: "throw", kind: "throw", startupFrames: 5, activeFrames: 3, recoveryFrames: 22, damage: Number(CHARACTERS[fighter.id].stats.throwDamage || 150), hitstunFrames: 30, knockbackX: 4.5, knockbackY: 4.2, scoreValue: 400, hitbox: null, causesKnockdown: true, hardKnockdown: false, throw: true };
     fighter.state = "throwing";
     fighter.attackInstanceId = Number(fighter.attackInstanceId || 0) + 1;
     fighter.currentAttackId = `${fighter.id}:throw:${fighter.attackInstanceId}`;
@@ -1810,7 +1839,7 @@ export class Game {
       if (entity.delay > 0) { entity.delay -= 1; continue; }
       if (entity.type === "dogMarker") {
         if (entity.age < Number(entity.markerFrames || 20)) continue;
-        entity.type = "fallingDog"; entity.age = 0; entity.frameOffset = 96; entity.y = 180; entity.w = 72; entity.h = 72; entity.duration = 114; entity.vy = -10; entity.graceFrames = 18; entity.spawnedDrop = true; this.spawnVfx("skill-dog-summon", entity); continue;
+        entity.type = "fallingDog"; entity.age = 0; entity.frameOffset = 96; entity.y = 240; entity.w = 72; entity.h = 72; entity.duration = 120; entity.vy = -10; entity.graceFrames = 18; entity.spawnedDrop = true; this.spawnVfx("skill-dog-summon", entity); continue;
       }
       if (entity.type === "fallingDog") {
         if (entity.age <= Number(entity.graceFrames || 0)) continue;
@@ -1820,6 +1849,15 @@ export class Game {
       }
       if (entity.type === "snareMarker") {
         entity.type = "snareImpact"; entity.age = 0; entity.w = 34; entity.h = 30; entity.duration = 18; entity.hitTargets = new Set();
+        const ownerFighter = entity.owner === "player" ? this.player : this.cpu;
+        if (ownerFighter?.id === "norio") {
+          const config = getSkillConfig("norio");
+          const remaining = Math.max(0, Number(ownerFighter.skillAmmo || ownerFighter.ammo || 0) - 1);
+          ownerFighter.skillAmmo = remaining; ownerFighter.ammo = remaining;
+          ownerFighter.skillGauge = Number(config?.chargeMax || 100) * remaining / Math.max(1, Number(config?.snareCount || 16));
+          ownerFighter.skill.gauge = ownerFighter.skillGauge; ownerFighter.gauge.skill = ownerFighter.skillGauge;
+          ownerFighter.norioVolleyActive = remaining > 0;
+        }
         this.spawnVfx("skill-drum-beat", entity, { x: 0, y: 0, scale: 0.48 });
       }
       entity.x += Number(entity.vx || 0); entity.y = Math.max(0, Number(entity.y || 0) + Number(entity.vy || 0));
@@ -2319,8 +2357,10 @@ export class Game {
     for (const platform of this.stagePlatforms()) {
       const image = this.loadPlatform(platform.asset);
       const top = STAGE_BOUNDS.floor - platform.y;
+      const profile = PLATFORM_RENDER_PROFILES[platform.asset];
       ctx.save();
-      if (imageReady(image)) ctx.drawImage(image, platform.x, top, platform.w, platform.y);
+      if (imageReady(image) && profile) ctx.drawImage(image, profile.sx, profile.sy, profile.sw, profile.sh, platform.x, top, platform.w, platform.y);
+      else if (imageReady(image)) ctx.drawImage(image, platform.x, top, platform.w, platform.y);
       else {
         ctx.fillStyle = "rgba(14,20,33,.86)"; ctx.fillRect(platform.x, top, platform.w, 5);
         ctx.strokeStyle = "#d7b35e"; ctx.strokeRect(platform.x, top, platform.w, 5);
@@ -2374,9 +2414,11 @@ export class Game {
       if (imageReady(image)) {
         const sourceW = Number(image.naturalWidth || 256);
         const sourceH = Number(image.naturalHeight || 256);
-        const cropW = sourceW * 0.58;
-        const cropH = sourceH * 0.58;
-        ctx.drawImage(image, (sourceW - cropW) * 0.5, sourceH * 0.04, cropW, cropH, x + 8, 58, 100, 92);
+        const bounds = SPECIAL_CUTIN_BOUNDS[fighter.id] || { x: 0, y: 0, w: sourceW, h: sourceH };
+        const cropH = Math.min(sourceH - bounds.y, bounds.h * 0.62);
+        const cropW = Math.min(sourceW, cropH * (112 / 104));
+        const cropX = clamp(bounds.x + bounds.w * 0.5 - cropW * 0.5, 0, sourceW - cropW);
+        ctx.drawImage(image, cropX, bounds.y, cropW, cropH, x + 2, 56, 112, 104);
       }
       ctx.fillStyle = "rgba(8,5,19,.82)"; ctx.fillRect(x + 2, 136, 112, 24);
       ctx.fillStyle = "#fff7c7"; ctx.font = "bold 7px monospace"; ctx.textAlign = "center";
@@ -2395,13 +2437,6 @@ export class Game {
     const y = placement.baselineY;
     const locomotion = ["dash", "backstep", "walk_backward"].includes(selection.name);
     const renderFacing = locomotion && fighter.locomotionFacing ? fighter.locomotionFacing : fighter.facing;
-    const locomotionClip = character?.animation?.[selection.name];
-    const locomotionFrameIndex = Math.floor(Math.max(0, selection.frame) / Math.max(1, Number(locomotionClip?.frameDuration || 1))) % Math.max(1, locomotionClip?.frames?.length || 1);
-    // movement-10 is authored in the opposite source direction from
-    // movement-9. Correct only that source frame; renderFacing still controls
-    // which side of the opponent the fighter faces.
-    const sourceFacingCorrection = ["dash", "backstep"].includes(selection.name) && locomotionFrameIndex === 1 ? -1 : 1;
-    const spriteFacing = renderFacing * sourceFacingCorrection;
     if (fighter.id === "kazushige" && fighter.buff?.frames > 0) {
       const aura = this.loadEffectFrame("attack-heavy", this.frame);
       if (imageReady(aura?.image)) {
@@ -2411,7 +2446,7 @@ export class Game {
         ctx.filter = "brightness(0) contrast(2) drop-shadow(0 0 7px #3e0f56)";
         ctx.translate(x, y);
         if (renderFacing < 0) ctx.scale(-1, 1);
-        ctx.drawImage(aura.image, -112, -222, 224, 224);
+        ctx.drawImage(aura.image, -160, -320, 320, 320);
         ctx.restore();
       }
     }
@@ -2421,7 +2456,7 @@ export class Game {
     if (fighter.color === 2) ctx.filter = "hue-rotate(180deg) saturate(0.95)";
     if (imageReady(image)) {
       ctx.translate(x, y);
-      if (spriteFacing < 0) ctx.scale(-1, 1);
+      if (renderFacing < 0) ctx.scale(-1, 1);
       ctx.drawImage(image, placement.drawX, placement.drawY, placement.width, placement.height);
     }
     ctx.restore();

@@ -281,3 +281,66 @@ test("mobile fighter select remains four columns and attack/hit SE hooks are pre
   assert.match(source, /this\.playSe\(strong \? "strong" : "light"\)/);
   assert.match(source, /move\.id\?\.includes\("strong"\) \? 125 : 240/);
 });
+
+test("ground and air attacks preserve incoming movement momentum", () => {
+  const game = new Game(null);
+  const ground = createFighterState("guitar-boy", 100, 1);
+  game.player = ground; game.cpu = createFighterState("toko", 420, -1);
+  ground.vx = 4;
+  assert.equal(game.startAttack(ground, { lightPressed: true }), true);
+  const groundX = ground.x;
+  game.updateFighter(ground, {}, true);
+  assert.ok(ground.x > groundX);
+  assert.ok(ground.attackMomentumX > 0);
+
+  const air = createFighterState("guitar-boy", 100, 1);
+  game.player = air;
+  air.grounded = false; air.y = 40; air.vy = 3; air.vx = 2;
+  assert.equal(game.startAttack(air, { lightPressed: true }), true);
+  const airX = air.x;
+  game.updateFighter(air, {}, true);
+  assert.ok(air.x > airX);
+  assert.ok(air.y > 40);
+});
+
+test("Norio charges from zero, auto-starts 16 shots, and drains one gauge share per shot", () => {
+  const game = new Game(null);
+  const norio = createFighterState("norio", 100, 1);
+  game.player = norio; game.cpu = createFighterState("toko", 420, -1);
+  const config = getSkillConfig("norio");
+  assert.equal(getSkillHudState(norio, config).mode, "charge");
+  game.activateSkill(norio, config);
+  assert.equal(norio.skillAmmo, 16);
+  assert.equal(norio.skillGauge, 100);
+  assert.equal(getSkillHudState(norio, config).mode, "ammo");
+  game.updateSkillEntities();
+  assert.equal(norio.skillAmmo, 15);
+  assert.equal(norio.skillGauge, 93.75);
+  for (let i = 0; i < 520 && norio.norioVolleyActive; i += 1) game.updateSkillEntities();
+  assert.equal(norio.skillAmmo, 0);
+  assert.equal(norio.skillGauge, 0);
+  assert.equal(norio.norioVolleyActive, false);
+  assert.equal(getSkillHudState(norio, config).mode, "charge");
+});
+
+test("throw release sends the defender backward into airborne knockdown", () => {
+  const game = new Game(null);
+  const attacker = createFighterState("uncle", 120, 1);
+  const defender = createFighterState("toko", 145, -1);
+  game.player = attacker; game.cpu = defender;
+  assert.equal(game.startThrow(attacker), true);
+  attacker.throwTarget = defender; defender.thrownBy = attacker;
+  attacker.actionFrame = attacker.currentMove.startupFrames + attacker.currentMove.activeFrames + 6;
+  game.updateThrowSequence();
+  assert.equal(defender.state, "knockback");
+  assert.equal(defender.grounded, false);
+  assert.ok(defender.vx > 0);
+  assert.ok(defender.vy >= 4.2);
+});
+
+test("platforms crop transparent padding, cut-ins fill their frame, and locomotion has no per-frame flip", () => {
+  const source = fs.readFileSync(new URL("../src/game.js", import.meta.url), "utf8");
+  assert.match(source, /drawImage\(image, profile\.sx, profile\.sy, profile\.sw, profile\.sh, platform\.x, top, platform\.w, platform\.y\)/);
+  assert.match(source, /ctx\.drawImage\(image, cropX, bounds\.y, cropW, cropH, x \+ 2, 56, 112, 104\)/);
+  assert.doesNotMatch(source, /sourceFacingCorrection|spriteFacing/);
+});

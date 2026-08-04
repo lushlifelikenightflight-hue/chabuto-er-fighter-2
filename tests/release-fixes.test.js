@@ -108,7 +108,7 @@ test("locomotion rendering keeps its facing stable and Kazushige aura is behind 
   kazushige.buff = { frames: 60 };
   game.drawFighter(ctx, kazushige);
   assert.deepEqual(calls.filter((entry) => entry[0] === "draw").map((entry) => entry[1]), ["aura", "sprite"]);
-  assert.equal(calls.find((entry) => entry[0] === "draw" && entry[1] === "aura").at(-2), 224);
+  assert.equal(calls.find((entry) => entry[0] === "draw" && entry[1] === "aura").at(-2), 320);
 });
 
 test("supers use a smaller VFX and damage, variety, combos, and skills accelerate meter", () => {
@@ -144,8 +144,8 @@ test("every stage platform resolves to a runtime PNG and layouts are distinct", 
   }
   assert.equal(layouts.size, STAGES.length);
   assert.deepEqual(STAGES.map((stage) => stage.platforms.map(({ asset, x, y }) => [asset, x, y])), [
-    [["light-podium", 58, 42], ["step-ladder", 360, 42]],
-    [["amp", 20, 70], ["amp", 386, 42]],
+    [["light-podium", 58, 42], ["step-ladder", 384, 42]],
+    [["amp", 20, 70], ["amp", 404, 42]],
     [["ramen-stand", 128, 70], ["ramen-stand", 252, 70]],
     [["step-ladder", 62, 104], ["amp", 212, 70]],
     [],

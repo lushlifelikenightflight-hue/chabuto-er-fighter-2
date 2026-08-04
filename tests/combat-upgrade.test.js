@@ -51,24 +51,24 @@ test("down landing, one follow-up, and wakeup invulnerability are bounded", () =
   assert.equal(defender.state, "wakeup");
   for (let i = 0; i < 20; i += 1) game.updateFighter(defender, blank(), false);
   assert.equal(defender.state, "wakeupInvulnerable");
-  assert.equal(defender.wakeupInvulnerableFrames, 12);
+  assert.equal(defender.wakeupInvulnerableFrames, 42);
 });
 
-test("wakeup invulnerability keeps light/heavy attacks locked until its 12f expiry", () => {
+test("wakeup invulnerability keeps light/heavy attacks locked for the extra 0.5 seconds", () => {
   const game = new Game(null);
   const fighter = createFighterState("guitar-boy", 100, 1);
   game.player = fighter; game.cpu = createFighterState("rusty", 140, -1);
   game.startWakeupInvulnerable(fighter);
-  assert.equal(fighter.wakeupInvulnerableFrames, 12);
-  assert.equal(fighter.invulnerableFrames, 12);
+  assert.equal(fighter.wakeupInvulnerableFrames, 42);
+  assert.equal(fighter.invulnerableFrames, 42);
   assert.equal(game.startAttack(fighter, { ...blank(), lightPressed: true }), false);
   assert.equal(game.startAttack(fighter, { ...blank(), strongPressed: true }), false);
-  assert.equal(fighter.wakeupInvulnerableFrames, 12);
+  assert.equal(fighter.wakeupInvulnerableFrames, 42);
   game.updateFighter(fighter, blank(), true);
-  assert.equal(fighter.wakeupInvulnerableFrames, 11);
-  assert.equal(fighter.invulnerableFrames, 11);
+  assert.equal(fighter.wakeupInvulnerableFrames, 41);
+  assert.equal(fighter.invulnerableFrames, 41);
   assert.equal(game.startAttack(fighter, { ...blank(), lightPressed: true }), false);
-  for (let i = 0; i < 11; i += 1) game.updateFighter(fighter, blank(), true);
+  for (let i = 0; i < 41; i += 1) game.updateFighter(fighter, blank(), true);
   assert.equal(fighter.wakeupInvulnerableFrames, 0);
   assert.equal(fighter.invulnerableFrames, 0);
   assert.equal(fighter.wakeupInvulnerable, false);
@@ -295,7 +295,7 @@ test("dog has marker/falling/impact phases and only impact deals hard knockdown"
   game.player = rusty; game.cpu = target; game.activateSkill(rusty, getSkillConfig("rusty"));
   const dog = game.skillEntities[0]; assert.equal(dog.type, "dogMarker"); assert.equal(dog.damage, 0); assert.equal(dog.targetX, target.x);
   for (let i = 0; i < 21; i += 1) game.updateSkillEntities(); assert.equal(game.skillEntities[0].type, "fallingDog");
-  const before = target.hp; for (let i = 0; i < 40; i += 1) game.updateSkillEntities(); assert.equal(game.skillEntities[0].type, "dogImpact");
+  const before = target.hp; for (let i = 0; i < 70 && game.skillEntities[0]?.type !== "dogImpact"; i += 1) game.updateSkillEntities(); assert.equal(game.skillEntities[0].type, "dogImpact");
   assert.ok(target.hp < before); assert.equal(target.state, "knockback"); assert.equal(target.grounded, false);
   for (let i = 0; i < 90 && !target.downed; i += 1) game.updateFighter(target, {}, false);
   assert.equal(target.downed, true);
@@ -325,15 +325,15 @@ test("rusty dog summon uses a charge HUD, requires full B charge, and resets aft
   assert.equal(game.skillEntities.some((entry) => entry.type === "dogMarker"), false);
   assert.equal(game.startSkill(rusty, { skill: true, skillPressed: true }), true);
   let guard = 0;
-  while (rusty.skillGauge < config.chargeMax && guard < 320) {
+  while (!game.skillEntities.some((entry) => entry.type === "dogMarker") && guard < 320) {
     game.updateFighter(rusty, { skill: true }, true);
     guard += 1;
   }
-  assert.equal(rusty.skillGauge, config.chargeMax);
+  assert.ok(guard < 320);
+  assert.equal(rusty.skillGauge, 0);
   hud = getSkillHudState(rusty, config);
-  assert.equal(hud.ready, true);
+  assert.equal(hud.ready, false);
   assert.equal(hud.disabled, true);
-  game.updateFighter(rusty, { skill: false, skillReleased: true }, true);
   assert.equal(game.skillEntities.some((entry) => entry.type === "dogMarker"), true);
   assert.equal(rusty.skillGauge, 0);
   assert.equal(rusty.skill.gauge, 0);

@@ -37,7 +37,7 @@ export const DOWN_CONFIG = Object.freeze({
   followupWindowFrames: 45,
   autoWakeupStartFrames: 60,
   wakeupFrames: 20,
-  wakeupInvulnerableFrames: 12,
+  wakeupInvulnerableFrames: 42,
   hardWakeupFrames: 30,
 });
 
