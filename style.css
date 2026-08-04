@@ -47,6 +47,7 @@ body { display: grid; place-items: center; min-height: 100svh; overflow: auto; }
 .title-logo { display: block; width: min(92%, 590px); max-height: 58%; object-fit: contain; }
 #panel p { margin: 0; color: #9de8ff; font-size: clamp(9px, 1.8vw, 13px); }
 #panel pre { max-width: 38em; margin: 3px 0; color: #f8f3d5; font: 700 clamp(9px, 1.6vw, 12px)/1.5 monospace; white-space: pre-wrap; }
+#panel[data-screen="howToPlay"] pre { width: min(100%, 38em); text-align: left; }
 #panel button { min-width: 176px; padding: 7px 14px; border: 2px solid #cf8e27; border-radius: 3px; background: #211a10; color: #fff8dc; font: 800 12px/1.2 monospace; cursor: pointer; }
 #panel button:hover, #panel button:focus-visible, #panel button.selected { border-color: #67defb; background: #18354b; outline: none; box-shadow: 0 0 0 2px rgba(103,222,251,.24); }
 .action-button-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; width: min(100%, 370px); }
@@ -100,8 +101,8 @@ body { display: grid; place-items: center; min-height: 100svh; overflow: auto; }
 .virtual-pad__stick { position: relative; flex: 0 0 clamp(104px, 27vw, 148px); width: clamp(104px, 27vw, 148px); aspect-ratio: 1; border: 2px solid rgba(168,131,61,.95); border-radius: 50%; background: radial-gradient(circle at 38% 32%, rgba(90,116,151,.85), rgba(14,22,38,.94) 70%); box-shadow: inset 0 5px 10px rgba(0,0,0,.55), 0 3px 0 rgba(0,0,0,.4); pointer-events: auto; touch-action: none; }
 .virtual-pad__stick::before { content: ""; position: absolute; inset: 13%; border: 1px solid rgba(224,205,146,.36); border-radius: 50%; pointer-events: none; }
 .virtual-pad__stick-knob { position: absolute; top: 50%; left: 50%; width: 42%; aspect-ratio: 1; border: 2px solid #d8c988; border-radius: 50%; background: radial-gradient(circle at 35% 28%, #8ca5c4, #26364f 67%, #111b2e); box-shadow: 0 5px 8px rgba(0,0,0,.62), inset 0 2px 3px rgba(255,255,255,.22); transform: translate(-50%, -50%); pointer-events: none; }
-.virtual-pad__stick[aria-pressed="true"] { border-color: #e9fbff; box-shadow: inset 0 5px 10px rgba(0,0,0,.55), 0 0 0 3px rgba(103,222,251,.72), 0 0 18px rgba(103,222,251,.9); }
-.virtual-pad__stick[aria-pressed="true"] .virtual-pad__stick-knob { filter: brightness(1.65); border-color: #fff4a8; box-shadow: 0 2px 4px rgba(0,0,0,.7), 0 0 14px rgba(255,229,110,.95), inset 0 0 0 3px rgba(255,255,255,.38); }
+.virtual-pad__stick[aria-pressed="true"], .virtual-pad__stick.is-pressed { border-color: #e9fbff; box-shadow: inset 0 5px 10px rgba(0,0,0,.55), 0 0 0 3px rgba(103,222,251,.72), 0 0 18px rgba(103,222,251,.9); }
+.virtual-pad__stick[aria-pressed="true"] .virtual-pad__stick-knob, .virtual-pad__stick.is-pressed .virtual-pad__stick-knob { filter: brightness(1.65); border-color: #fff4a8; box-shadow: 0 2px 4px rgba(0,0,0,.7), 0 0 14px rgba(255,229,110,.95), inset 0 0 0 3px rgba(255,255,255,.38); }
 .virtual-pad__actions {
   display: grid;
   grid-template-columns: repeat(3, clamp(64px, 14vw, 84px));

@@ -346,6 +346,19 @@ export class TouchInput {
     if (this.stickKnob) this.stickKnob.style.transform = "translate(-50%, -50%)";
   }
 
+  // Keyboard/gamepad play still uses the same visual controller as touch.
+  // This is deliberately visual-only: it never adds held input or edges.
+  setExternalVisualActions(actions = []) {
+    const active = new Set(actions);
+    for (const { button } of this.bindings) {
+      const mapped = String(button.dataset.actions || "").split(/\s+/).filter(Boolean);
+      button.classList.toggle("is-pressed", mapped.some((action) => active.has(action)));
+    }
+    const moving = ["left", "right", "up", "down"].some((action) => active.has(action));
+    this.stick?.classList.toggle("is-pressed", moving);
+    if (this.stick && this.stickPointerId === null) this.stick.setAttribute("aria-pressed", moving ? "true" : "false");
+  }
+
   syncAvailability() {
     const win = typeof window !== "undefined" ? window : null;
     const nav = typeof navigator !== "undefined" ? navigator : null;

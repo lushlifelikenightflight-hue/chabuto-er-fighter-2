@@ -366,3 +366,104 @@ test("CPU approaches reach, makes space, observes, jumps, and attacks only insid
   assert.equal(plan(100, 160, 0.95).action, "strong");
   assert.equal(new Game(null).inputForPlan({ action: "observe" }).lightPressed, false);
 });
+
+test("throw counter stays active for an extra half second and follows backward facing", () => {
+  const game = new Game(null);
+  game.state.screen = "battle";
+  game.player.facing = -1;
+  game.keys.add("arrowright"); game.keys.add("l"); game.justKeys.add("arrowright"); game.justKeys.add("l");
+  assert.equal(game.readInput().throwPressed, true);
+  assert.equal(game.startThrow(game.player), true);
+  assert.equal(game.player.currentMove.activeFrames, 33);
+});
+
+test("keyboard input mirrors held controls onto the visual pad", () => {
+  const game = new Game(null);
+  let visual = [];
+  game.touchInput = { getSnapshot: () => ({}), setExternalVisualActions: (actions) => { visual = actions; } };
+  game.keys.add("arrowleft"); game.keys.add("j"); game.keys.add("i");
+  game.readInput();
+  assert.equal(visual.includes("left"), true);
+  assert.equal(visual.includes("a"), true);
+  assert.equal(visual.includes("special"), true);
+});
+
+test("Norio drum impacts use the widened authored hitbox scale", () => {
+  const game = new Game(null);
+  const norio = createFighterState("norio", 40, 1);
+  game.player = norio; game.cpu = createFighterState("guitar-boy", 450, -1); game.random = () => 0.5;
+  game.activateSkill(norio, getSkillConfig("norio"));
+  const first = game.skillEntities[0];
+  assert.ok(first.hitboxScale > 1);
+  first.delay = 0; game.updateSkillEntities();
+  assert.equal(first.type, "snareImpact");
+  assert.ok(first.w > 34 && first.h > 30);
+});
+
+test("Toko auto-fires or completes film reload while B remains held", () => {
+  const game = new Game(null);
+  const toko = createFighterState("toko", 100, 1);
+  game.player = toko; game.cpu = createFighterState("guitar-boy", 420, -1);
+  toko.skillAmmo = 1; toko.ammo = 1;
+  assert.equal(game.startSkill(toko, { skill: true, skillPressed: true }), true);
+  for (let i = 0; i < 100 && !game.skillEntities.some((entry) => entry.type === "flash"); i += 1) game.updateFighter(toko, { skill: true }, true);
+  assert.equal(game.skillEntities.some((entry) => entry.type === "flash"), true);
+  const reload = createFighterState("toko", 100, 1); game.player = reload; reload.skillAmmo = 0; reload.ammo = 0;
+  assert.equal(game.startSkill(reload, { skill: true, skillPressed: true }), true);
+  for (let i = 0; i < 100 && reload.skillAmmo < 3; i += 1) game.updateFighter(reload, { skill: true }, true);
+  assert.equal(reload.skillAmmo, 3);
+});
+
+test("Bob charges three mirrors, taps one quickly, and reflected damage knocks down", () => {
+  const game = new Game(null);
+  const bob = createFighterState("bob-girl", 100, 1);
+  game.player = bob; game.cpu = createFighterState("uncle", 135, -1);
+  assert.equal(game.startSkill(bob, { skill: true, skillPressed: true }), true);
+  for (let i = 0; i < 180 && bob.skillAmmo < 3; i += 1) game.updateFighter(bob, { skill: true }, true);
+  assert.equal(bob.skillAmmo, 3);
+  assert.equal(bob.skillPhase, "skillUnavailable");
+  assert.equal(game.startSkill(bob, { skill: true, skillPressed: true }), true);
+  let activeSeen = false;
+  for (let i = 0; i < 12; i += 1) { game.updateFighter(bob, { skill: false, skillReleased: i === 0 }, true); activeSeen ||= bob.mirrorActiveFrames > 0; }
+  assert.equal(activeSeen, true);
+});
+
+test("skill and special just guards show JUST GUARD while ordinary skill guard blocks", () => {
+  const makeEntityGame = (freshGuard) => {
+    const game = new Game(null); game.frame = 100;
+    game.player = createFighterState("uncle", 100, 1); game.cpu = createFighterState("toko", 130, -1);
+    game.cpu.guardHeld = true; game.cpu.guardStartedFrame = freshGuard ? 100 : 80; game.cpu.state = "guarding";
+    game.skillEntities = [{ active: true, type: "tackle", owner: "player", x: 130, y: 0, vx: 0, vy: 0, w: 100, h: 120, duration: 20, age: 0, delay: 0, damage: 160, unblockable: true, hitTargets: new Set() }];
+    return game;
+  };
+  const just = makeEntityGame(true); const justHp = just.cpu.hp; just.updateSkillEntities();
+  assert.equal(just.cpu.hp, justHp); assert.equal(just.state.combatNotice.text, "JUST GUARD");
+  const normal = makeEntityGame(false); const normalHp = normal.cpu.hp; normal.updateSkillEntities();
+  assert.equal(normal.cpu.hp, normalHp); assert.equal(normal.state.combatNotice.text, "GUARD");
+});
+
+test("a downed attack input is buffered into the matching crouch attack after recovery", () => {
+  const game = new Game(null);
+  const fighter = createFighterState("guitar-boy", 100, 1); game.player = fighter; game.cpu = createFighterState("toko", 300, -1);
+  fighter.state = "downed"; fighter.downed = true; fighter.downedFrames = 20;
+  game.updateFighter(fighter, { strongPressed: true }, true);
+  assert.equal(fighter.downAttackBuffer, "strong");
+  fighter.state = "wakeupInvulnerable"; fighter.downed = false; fighter.wakeupInvulnerable = true; fighter.wakeupInvulnerableFrames = 1;
+  game.updateFighter(fighter, {}, true);
+  assert.equal(fighter.state, "attacking");
+  assert.equal(fighter.currentMove.id, "strong_attack_crouch");
+});
+
+test("Rusty dog uses one bounded runtime image and starts its impact effect on contact", () => {
+  const game = new Game(null);
+  const rusty = createFighterState("rusty", 100, 1); game.player = rusty; game.cpu = createFighterState("toko", 300, -1);
+  game.activateSkill(rusty, getSkillConfig("rusty"));
+  assert.equal(game.skillEntities.length, 1);
+  assert.equal(game.skillEntities[0].renderWidth, 96);
+  assert.equal(game.state.vfx.some((effect) => effect.effectId === "skill-dog-summon"), false);
+  const dog = game.skillEntities[0]; dog.delay = 0; dog.age = 20; game.updateSkillEntities();
+  assert.equal(dog.type, "fallingDog"); assert.equal(dog.renderWidth, 128);
+  dog.graceFrames = 0; dog.y = 1; dog.vy = -10; game.updateSkillEntities();
+  assert.equal(dog.type, "dogImpact");
+  assert.equal(game.state.vfx.some((effect) => effect.effectId === "hit-burst"), true);
+});

@@ -82,9 +82,9 @@ test("knockdown threshold and recovery helpers follow normal versus hard down ru
   assert.equal(canDownFollowup(downed), false);
 });
 
-test("just guard eligibility excludes unblockables and throws", () => {
+test("just guard eligibility includes unblockable specials but excludes throws", () => {
   assert.equal(isJustGuardEligible(CHARACTERS["guitar-boy"].moves.light), true);
-  assert.equal(isJustGuardEligible(CHARACTERS["guitar-boy"].special), false);
+  assert.equal(isJustGuardEligible(CHARACTERS["guitar-boy"].special), true);
   assert.equal(isJustGuardEligible({ kind: "throw" }), false);
   assert.ok(JUST_GUARD_CONFIG.attackerRecoilFrames >= 10 && JUST_GUARD_CONFIG.attackerRecoilFrames <= 14);
 });

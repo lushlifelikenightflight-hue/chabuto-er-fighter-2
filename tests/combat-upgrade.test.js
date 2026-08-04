@@ -10,7 +10,7 @@ import { effectForMove } from "../src/vfx.js";
 
 const blank = () => ({ left: false, right: false, up: false, down: false, light: false, strong: false, guard: false, skill: false, special: false, throwHeld: false, throwPressed: false, skillPressed: false, specialPressed: false, jumpPressed: false, jumpReleased: false, leftPressed: false, rightPressed: false, upPressed: false, downPressed: false, lightPressed: false, strongPressed: false, guardPressed: false });
 
-test("canonical face mapping and the left plus guard throw edge are source-independent", () => {
+test("canonical face mapping and the backward plus guard throw edge are source-independent", () => {
   const game = new Game(null);
   game.state.screen = SCREEN.battle;
   game.player.facing = 1;
@@ -24,7 +24,7 @@ test("canonical face mapping and the left plus guard throw edge are source-indep
   assert.equal(game.readInput().throwPressed, false);
   game.keys.clear(); game.justKeys.clear(); game.throwChordHeld = false; game.player.facing = -1;
   game.keys.add("arrowright"); game.justKeys.add("arrowright"); game.keys.add("l"); game.justKeys.add("l");
-  assert.equal(game.readInput().throwHeld, false);
+  assert.equal(game.readInput().throwHeld, true);
   game.keys.clear(); game.throwChordHeld = false;
   game.keys.add("j"); game.keys.add("k"); game.justKeys.add("j"); game.justKeys.add("k");
   const oldChord = game.readInput();
@@ -369,9 +369,9 @@ test("tackle cooldown rejects start and norio markers become capped impacts", ()
   const hp = target.hp; game.updateSkillEntities(); assert.equal(target.norioHits, 3); assert.equal(hp - target.hp >= 3, true);
 });
 
-test("CPU round carry and mirror consume only after a successful reflection", () => {
+test("CPU round carry and a stocked mirror consume only after a successful reflection", () => {
   const game = new Game(null); game.state.mode = "arcade"; game.state.screen = SCREEN.battle; game.player = createFighterState("guitar-boy", 100, 1); game.cpu = createFighterState("bob-girl", 140, -1); game.player.meter = 12; game.cpu.meter = 34; game.captureRoundCarry(); game.beginRound(); assert.equal(game.cpu.meter, 34);
-  const mirror = createFighterState("bob-girl", 100, 1); const attacker = createFighterState("kazushige", 120, -1); game.player = mirror; game.cpu = attacker; game.activateSkill(mirror, getSkillConfig("bob-girl")); assert.equal(mirror.skillAmmo, 1); mirror.mirrorActiveFrames = 2; attacker.state = "attacking"; attacker.currentMove = CHARACTERS.kazushige.special; attacker.actionFrame = attacker.currentMove.startupFrames; game.handleCombat(attacker, mirror); assert.equal(mirror.skillAmmo, 0);
+  const mirror = createFighterState("bob-girl", 100, 1); const attacker = createFighterState("kazushige", 120, -1); game.player = mirror; game.cpu = attacker; mirror.skillAmmo = 3; mirror.ammo = 3; game.activateSkill(mirror, getSkillConfig("bob-girl")); assert.equal(mirror.skillAmmo, 3); mirror.mirrorActiveFrames = 2; attacker.state = "attacking"; attacker.currentMove = CHARACTERS.kazushige.special; attacker.actionFrame = attacker.currentMove.startupFrames; game.handleCombat(attacker, mirror); assert.equal(mirror.skillAmmo, 2); assert.equal(game.skillEntities[0].damage, attacker.currentMove.damage * 1.25); assert.equal(game.skillEntities[0].causesKnockdown, true);
 });
 
 test("virtual pad action buttons stay within the 64–84 px clamp", () => {

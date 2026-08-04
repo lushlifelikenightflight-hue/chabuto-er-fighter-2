@@ -120,12 +120,12 @@ export const SKILL_CONFIGS = Object.freeze({
     type: "mirror",
     trigger: "hold",
     releaseActivates: false,
-    chargeRate: 0,
-    chargeMax: 1,
-    initialGauge: 1,
-    initialAmmo: 1,
-    maxAmmo: 1,
-    phase: phase(5, 0, 2, 14),
+    chargeRate: 1,
+    chargeMax: 100,
+    initialGauge: 0,
+    initialAmmo: 0,
+    maxAmmo: 3,
+    phase: phase(3, 0, 10, 8),
     interruption: Object.freeze(["hit", "throw", "down", "knockdown", "special", "ko"]),
     reflectable: Object.freeze(["projectile", "energy", "linearSpecial"]),
     nonReflectable: Object.freeze(["throw", "tackle", "groundAttack", "overheadDrop", "downFollowup", "summon", "normalStrike"]),
@@ -216,6 +216,7 @@ export const SKILL_CONFIGS = Object.freeze({
     intervalFrames: 30,
     snareCount: 16,
     perTargetHitLimit: 3,
+    hitboxScale: 1.18,
     phase: phase(8, 0, 12, 24),
     interruption: Object.freeze(["hit", "throw", "down", "knockdown", "ko"]),
     effectId: "skill-drum-beat",
@@ -226,8 +227,8 @@ export const SKILL_CONFIGS = Object.freeze({
     skillId: "flash",
     name: "フラッシュ撮影",
     type: "flash",
-    trigger: "hold-release",
-    releaseActivates: true,
+    trigger: "hold",
+    releaseActivates: false,
     chargeRate: 0,
     chargeMax: 3,
     initialGauge: 3,
@@ -271,7 +272,7 @@ export function getSkillHudState(fighter = {}, configOrId = fighter.id) {
   // enhancement time once active.  Treating it as duration at zero hid the
   // actual charge and made a full first charge look like a failed attempt.
   const ramenActive = type === "ramenBuff" && Number(fighter.buff?.frames || 0) > 0;
-  const mode = config.hudMode || (type === "copy" ? (Number(fighter.copiedSkillUses || fighter.copyCharges || 0) > 0 ? "uses" : "charge") : type === "drumBeat" ? (fighter.norioVolleyActive ? "ammo" : "charge") : type === "mirror" || type === "flash" ? "ammo" : type === "ramenBuff" ? (ramenActive ? "duration" : "charge") : "charge");
+  const mode = config.hudMode || (type === "copy" ? (Number(fighter.copiedSkillUses || fighter.copyCharges || 0) > 0 ? "uses" : "charge") : type === "drumBeat" ? (fighter.norioVolleyActive ? "ammo" : "charge") : type === "mirror" ? (Number(fighter.skillAmmo || fighter.ammo || 0) > 0 ? "ammo" : "charge") : type === "flash" ? "ammo" : type === "ramenBuff" ? (ramenActive ? "duration" : "charge") : "charge");
   const max = Math.max(0, Number(mode === "duration" ? (config.buffDurationFrames || config.durationFrames || config.chargeMax) : mode === "ammo" || mode === "uses" ? (config.maxAmmo || config.copyCharges || config.copiedSkillUses || config.chargeMax) : config.chargeMax) || 0);
   const resourceValue = type === "copy" ? (fighter.copiedSkillUses ?? fighter.copyCharges ?? fighter.ammo ?? fighter.skillAmmo ?? 0) : (fighter.ammo ?? fighter.skillAmmo ?? 0);
   const value = Math.max(0, Number(mode === "duration" ? (fighter.buff?.frames || 0) : mode === "ammo" || mode === "uses" ? resourceValue : (fighter.skillGauge ?? fighter.skill?.gauge ?? 0)) || 0);
@@ -320,7 +321,6 @@ export function canStartSkill(fighter = {}, configOrId = fighter.id) {
   if (current !== "skillUnavailable" && current !== "skillRecovery") return false;
   if (fighter.state === "special" || String(fighter.action || "").startsWith("special")) return false;
   if (config.initialAmmo > 0 && Number(fighter.ammo ?? fighter.skillAmmo ?? config.initialAmmo) <= 0 && config.type !== "flash") return false;
-  if (config.type === "mirror" && Number(fighter.skillGauge ?? fighter.gauge?.skill ?? config.initialGauge) <= 0) return false;
   if (config.type === "slimeShot" && Number(fighter.slimeCooldown || 0) > 0) return false;
   if (config.type === "ramenBuff" && Number(fighter.buff?.frames || 0) > 0) return false;
   if (config.type === "drumBeat" && Array.isArray(fighter.skillEntities) && fighter.skillEntities.some((entry) => entry.active && ["snareMarker", "snareImpact"].includes(entry.type))) return false;

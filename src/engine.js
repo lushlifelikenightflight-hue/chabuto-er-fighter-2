@@ -119,7 +119,7 @@ export function canDownFollowup(fighter = {}, frame = null) {
 export const canFollowup = canDownFollowup;
 
 export function isJustGuardEligible(move = {}) {
-  if (!move || move.unblockable === true || move.justGuardable === false) return false;
+  if (!move) return false;
   if (["throw", "commandThrow"].includes(move.kind) || move.isThrow === true || move.counterOnly === true) return false;
   return true;
 }
@@ -388,6 +388,7 @@ export function createFighterState(id, x, facing = 1) {
     downStartedFrame: -1,
     hardKnockdown: false,
     downFollowupUsed: false,
+    downAttackBuffer: null,
     followupUsed: false,
     followupCount: 0,
     followupMove: null,

@@ -611,9 +611,11 @@ export class Game {
     const yPressed = pressed("l", "c") || gamepad.yPressed || touchPressed("y");
     const bPressed = pressed("b") || gamepad.bPressed || touchPressed("b");
     const bReleased = released("b") || gamepad.bReleased || touchReleased("b");
+    const backwardHeld = Number(this.player?.facing || 1) >= 0 ? left : right;
+    const backwardPressed = Number(this.player?.facing || 1) >= 0 ? leftPressed : rightPressed;
     const previousThrowHeld = this.throwChordHeld;
-    const throwHeld = battleScreen && left && yHeld;
-    const throwPressed = throwHeld && (leftPressed || yPressed) && !previousThrowHeld;
+    const throwHeld = battleScreen && backwardHeld && yHeld;
+    const throwPressed = throwHeld && (backwardPressed || yPressed) && !previousThrowHeld;
     const throwReleased = previousThrowHeld && !throwHeld;
     this.throwChordHeld = throwHeld;
     let light = aHeld && !throwHeld;
@@ -635,6 +637,11 @@ export class Game {
     const confirm = pressed("enter", " ") || gamepad.confirmPressed || (!battleScreen && touchPressed("a"));
     const cancel = keyboardCancel || menuCancel;
     const pause = (battleScreen && keyboardCancel) || touchPressed("pause");
+    this.touchInput?.setExternalVisualActions?.([
+      left && "left", right && "right", up && "up", down && "down",
+      aHeld && "a", bHeld && "b", xHeld && "x", yHeld && "y",
+      jumpHeld && "jump", special && "special",
+    ].filter(Boolean));
     return {
       left, right, up, down, light, strong, guard, skill, special,
       a: aHeld, b: bHeld, x: xHeld, y: yHeld,
@@ -1138,7 +1145,12 @@ export class Game {
     fighter.wakeupInvulnerableFrames = Math.max(0, Number(fighter.wakeupInvulnerableFrames) - 1);
     if (fighter.state === "wakeupInvulnerable") {
       fighter.wakeupInvulnerable = fighter.wakeupInvulnerableFrames > 0;
-      if (fighter.wakeupInvulnerableFrames <= 0) { fighter.state = "idle"; fighter.wakeupState = "idle"; fighter.actionFrame = 0; }
+      if (fighter.wakeupInvulnerableFrames <= 0) {
+        fighter.state = "idle"; fighter.wakeupState = "idle"; fighter.actionFrame = 0;
+        const buffered = fighter.downAttackBuffer;
+        fighter.downAttackBuffer = null;
+        if (buffered && this.startAttack(fighter, { down: true, lightPressed: buffered === "light", strongPressed: buffered === "strong" })) return;
+      }
       else { fighter.boxProfile = "standing"; fighter.action = "wakeup"; fighter.actionFrame += 1; return; }
     }
     if (fighter.stunFrames > 0) {
@@ -1160,11 +1172,13 @@ export class Game {
       return;
     }
     if (fighter.state === "knockdownLanding") {
+      if (input.lightPressed || input.strongPressed) fighter.downAttackBuffer = input.strongPressed ? "strong" : "light";
       fighter.boxProfile = "down"; fighter.action = "knockdown"; fighter.downedFrames += 1; fighter.actionFrame += 1;
       if (fighter.downedFrames >= DOWN_LANDING_FRAMES) { fighter.state = "downed"; fighter.action = "down_idle"; fighter.actionFrame = 0; }
       return;
     }
     if (fighter.state === "downed" || fighter.state === "groundHit" || fighter.state === "knockdown") {
+      if (input.lightPressed || input.strongPressed) fighter.downAttackBuffer = input.strongPressed ? "strong" : "light";
       fighter.downed = true; fighter.boxProfile = "down"; fighter.action = fighter.downedFrames < 10 ? "knockdown" : "down_idle";
       fighter.downedFrames += 1; fighter.downTimer = fighter.downedFrames; fighter.actionFrame += 1;
       const autoWake = fighter.hardKnockdown ? DOWN_HARD_WAKEUP_FRAMES : DOWN_WAKEUP_FRAMES;
@@ -1435,9 +1449,10 @@ export class Game {
     if (config.type === "drumBeat" && this.skillEntities.some((entry) => entry.active && entry.owner === owner && ["snareMarker", "snareImpact"].includes(entry.type))) return false;
     fighter.skillPhase = "skillStartup"; fighter.skillState = "skillStartup"; fighter.skill.phase = "skillStartup";
     fighter.skillCopiedUse = config.type === "copy" && Number(fighter.copiedSkillUses || 0) > 0;
+    fighter.skillUsingStock = config.type === "mirror" && Number(fighter.skillAmmo || fighter.ammo || 0) > 0;
     // A copied skill is a stocked use, not another charge attempt.  B starts
     // its normal startup immediately even when the button is only tapped.
-    const holdRequired = config.type !== "ramenBuff" && !fighter.skillCopiedUse && input.skillHoldRequired !== false && (input.skillHoldRequired === true || input.skillPressed === true);
+    const holdRequired = config.type !== "ramenBuff" && !fighter.skillCopiedUse && !fighter.skillUsingStock && input.skillHoldRequired !== false && (input.skillHoldRequired === true || input.skillPressed === true);
     fighter.skillCharging = false; fighter.skillActive = false; fighter.skillActivated = false; fighter.skillInterrupted = false; fighter.skillInterruptionReason = null; fighter.skillRecoveryFrames = 0; fighter.skillActionFrame = 0; fighter.skillHoldFrames = 0; fighter.skillHoldThresholdFrames = SKILL_HOLD_THRESHOLD_FRAMES; fighter.skillHoldActive = !holdRequired; fighter.skillHoldRequired = holdRequired; fighter.skillCancelled = false; fighter.skillHeld = true; fighter.skillStartFrame = this.frame; fighter.action = "skill_start"; fighter.state = "skillStartup"; fighter.actionFrame = 0; fighter.hitRegistry.clear();
     fighter.skillConfig = config;
     // Stocked copy uses are already paid for by the original full charge.
@@ -1454,7 +1469,7 @@ export class Game {
     }
     // Flash's authored body/shot is rendered by its moving skill entity. Do
     // not seed a second static VFX record during the hold phase.
-    if (config.type !== "flash") {
+    if (config.type !== "flash" && config.type !== "dogSummon") {
       const midBodyEffect = config.type === "ramenBuff" || config.type === "drumBeat";
       this.spawnVfx(config.effectId, fighter, { x: 0, y: midBodyEffect ? 84 : 0, scale: config.type === "drumBeat" ? 0.48 : undefined });
     }
@@ -1504,14 +1519,21 @@ export class Game {
       if (released && fighter.flashReloading) { fighter.flashReloadFrames = 0; fighter.flashReloading = false; fighter.skillPhase = "skillUnavailable"; fighter.skillState = "skillUnavailable"; fighter.skill.phase = "skillUnavailable"; fighter.skillActivated = false; fighter.state = fighter.grounded ? "idle" : "jumping"; fighter.action = fighter.state; return; }
     }
     if (fighter.skillPhase === "skillStartup" && fighter.skillActionFrame >= (config.phase?.startupFrames || 1)) {
-      const needsCharge = config.trigger === "hold-release" || (config.type === "copy" && !fighter.skillCopiedUse) || (config.trigger === "hold" && Number(config.chargeRate || 0) > 0);
+      const needsCharge = config.trigger === "hold-release" || (config.type === "copy" && !fighter.skillCopiedUse) || (config.trigger === "hold" && Number(config.chargeRate || 0) > 0 && !fighter.skillUsingStock);
       fighter.skillPhase = needsCharge && !released ? "skillCharging" : "skillActive";
       fighter.skillState = fighter.skillPhase; fighter.skill.phase = fighter.skillPhase; fighter.state = fighter.skillPhase; fighter.action = fighter.skillPhase;
     }
     if (fighter.skillPhase === "skillCharging") {
       const rate = Number(config.chargeRate || 0) * Number(CHARACTERS[fighter.id].stats.skillChargeRate || 1) * SKILL_CHARGE_SPEED_MULTIPLIER;
       fighter.skillGauge = clamp((fighter.skillGauge || 0) + rate, 0, Number(config.chargeMax || 100)); fighter.skill.gauge = fighter.skillGauge; fighter.gauge.skill = fighter.skillGauge;
-      const requiresFullCharge = config.type === "copy" || config.type === "dogSummon" || config.type === "ramenBuff";
+      if (config.type === "mirror" && fighter.skillGauge >= Number(config.chargeMax || 100)) {
+        fighter.skillAmmo = Number(config.maxAmmo || 3); fighter.ammo = fighter.skillAmmo; fighter.skillGauge = 0; fighter.skill.gauge = 0; fighter.gauge.skill = 0;
+        fighter.skillPhase = "skillUnavailable"; fighter.skillState = "skillUnavailable"; fighter.skill.phase = "skillUnavailable"; fighter.skillCharging = false; fighter.skillActive = false; fighter.skillActivated = false; fighter.skillConfig = null; fighter.skillUsingStock = false;
+        fighter.state = fighter.grounded ? "idle" : "jumping"; fighter.action = fighter.grounded ? "idle" : "jump_fall"; fighter.actionFrame = 0;
+        this.showCombatNotice("MIRROR ×3", "skill", 0, fighter);
+        return;
+      }
+      const requiresFullCharge = config.type === "copy" || config.type === "dogSummon" || config.type === "ramenBuff" || config.type === "mirror";
       const autoAtFull = rate > 0;
       if ((autoAtFull && fighter.skillGauge >= Number(config.chargeMax || 100)) || (released && (!requiresFullCharge || fighter.skillGauge >= Number(config.chargeMax || 100)))) { fighter.skillPhase = "skillActive"; fighter.skillState = "skillActive"; fighter.skill.phase = "skillActive"; fighter.state = "skillActive"; fighter.action = "skill_active"; fighter.skillActionFrame = 0; }
       else if (released && requiresFullCharge) { fighter.skillPhase = "skillUnavailable"; fighter.skillState = "skillUnavailable"; fighter.skill.phase = "skillUnavailable"; fighter.skillCharging = false; fighter.skillActivated = false; fighter.skillCancelled = true; fighter.state = fighter.grounded ? "idle" : "jumping"; fighter.action = fighter.state; fighter.skill.gauge = fighter.skillGauge; fighter.gauge.skill = fighter.skillGauge; }
@@ -1529,7 +1551,7 @@ export class Game {
         fighter.state = fighter.grounded ? "idle" : "jumping"; fighter.action = fighter.state === "idle" ? "idle" : "jump_fall"; fighter.actionFrame = 0;
         return;
       }
-      if (config.type === "mirror" && input.skill && fighter.mirrorActiveFrames > 0) return;
+      if (config.type === "mirror" && fighter.mirrorActiveFrames > 0) fighter.mirrorActiveFrames -= 1;
       if (config.type === "flash" && fighter.flashReloading) return;
       if (fighter.skillActionFrame >= (config.phase?.activeFrames || 1)) { fighter.skillPhase = "skillRecovery"; fighter.skillState = "skillRecovery"; fighter.skill.phase = "skillRecovery"; fighter.skillRecoveryFrames = config.phase?.recoveryFrames || 1; fighter.state = "skillRecovery"; fighter.action = "skill_recovery"; fighter.skillActionFrame = 0; }
       return;
@@ -1540,7 +1562,7 @@ export class Game {
         fighter.skillPhase = "skillUnavailable"; fighter.skillState = "skillUnavailable"; fighter.skill.phase = "skillUnavailable";
         fighter.skillActive = false; fighter.skillCharging = false; fighter.skillActivated = false; fighter.skillConfig = null;
         fighter.skillHeld = false; fighter.skillHoldRequired = false; fighter.skillHoldActive = false; fighter.skillHoldFrames = 0; fighter.skillActionFrame = 0;
-        fighter.skillCopiedUse = false; fighter.skillCancelled = false; fighter.skillInterrupted = false;
+        fighter.skillCopiedUse = false; fighter.skillUsingStock = false; fighter.skillCancelled = false; fighter.skillInterrupted = false;
         fighter.state = fighter.grounded ? "idle" : "jumping"; fighter.action = fighter.state === "idle" ? "idle" : "jump_fall"; fighter.actionFrame = 0;
       }
     }
@@ -1595,7 +1617,7 @@ export class Game {
     } else if (type === "dogSummon") {
       this.skillEntities = Array.isArray(this.skillEntities) ? this.skillEntities : [];
       if (this.skillEntities.some((entry) => entry.owner === owner && ["dogMarker", "fallingDog", "dogImpact"].includes(entry.type) && entry.active)) return;
-      this.spawnSkillEntity({ owner, type: "dogMarker", x: opponent?.x || fighter.x + fighter.facing * 90, targetX: opponent?.x || fighter.x + fighter.facing * 90, y: 0, delay: 20, duration: 116, damage: 0, w: 0, h: 0, guardable: true, effectId: config.effectId });
+      this.spawnSkillEntity({ owner, type: "dogMarker", x: opponent?.x || fighter.x + fighter.facing * 90, targetX: opponent?.x || fighter.x + fighter.facing * 90, y: 0, delay: 20, duration: 116, damage: 0, w: 0, h: 0, renderWidth: 96, renderHeight: 96, guardable: true, effectId: config.effectId, spawnVfx: false });
       if (resourceMode === "native") { fighter.skillGauge = 0; fighter.skill.gauge = 0; fighter.gauge.skill = 0; }
     } else if (type === "ramenBuff") {
       const durationFrames = Number(config.buffDurationFrames || 600);
@@ -1621,7 +1643,7 @@ export class Game {
           if (!validPosition(x)) x = STAGE_BOUNDS.left + 20 + ((i * 31 + activation * 17) % span);
         }
         x = clamp(x, STAGE_BOUNDS.left + 20, STAGE_BOUNDS.right - 20); positions.push(x);
-        this.spawnSkillEntity({ owner, type: "snareMarker", x, targetX: x, y: 88, delay: i * (config.intervalFrames || 30), duration: (config.durationFrames || 480) - i * (config.intervalFrames || 30), damage: 36, w: 0, h: 0, marker: true, scale: 0.48, effectId: config.effectId, spawnVfx: false });
+        this.spawnSkillEntity({ owner, type: "snareMarker", x, targetX: x, y: 88, delay: i * (config.intervalFrames || 30), duration: (config.durationFrames || 480) - i * (config.intervalFrames || 30), damage: 36, w: 0, h: 0, marker: true, hitboxScale: Number(config.hitboxScale || 1), scale: 0.48, effectId: config.effectId, spawnVfx: false });
       }
       fighter.norioActivationCount = activation; fighter.norioLastPositions = positions;
     } else if (type === "flash") {
@@ -1700,7 +1722,7 @@ export class Game {
 
   startThrow(fighter) {
     if (!fighter || fighter.hp <= 0 || fighter.downed || fighter.wakeupTimer > 0) return false;
-    fighter.currentMove = { id: "throw", kind: "throw", startupFrames: 5, activeFrames: 3, recoveryFrames: 22, damage: Number(CHARACTERS[fighter.id].stats.throwDamage || 150), hitstunFrames: 30, knockbackX: 4.5, knockbackY: 4.2, scoreValue: 400, hitbox: null, causesKnockdown: true, hardKnockdown: false, throw: true };
+    fighter.currentMove = { id: "throw", kind: "throw", startupFrames: 5, activeFrames: 33, recoveryFrames: 22, damage: Number(CHARACTERS[fighter.id].stats.throwDamage || 150), hitstunFrames: 30, knockbackX: 4.5, knockbackY: 4.2, scoreValue: 400, hitbox: null, causesKnockdown: true, hardKnockdown: false, throw: true };
     fighter.state = "throwing";
     fighter.attackInstanceId = Number(fighter.attackInstanceId || 0) + 1;
     fighter.currentAttackId = `${fighter.id}:throw:${fighter.attackInstanceId}`;
@@ -1826,16 +1848,17 @@ export class Game {
       if (entity.delay > 0) { entity.delay -= 1; continue; }
       if (entity.type === "dogMarker") {
         if (entity.age < Number(entity.markerFrames || 20)) continue;
-        entity.type = "fallingDog"; entity.age = 0; entity.frameOffset = 96; entity.y = 240; entity.w = 72; entity.h = 72; entity.duration = 120; entity.vy = -10; entity.graceFrames = 18; entity.spawnedDrop = true; this.spawnVfx("skill-dog-summon", entity); continue;
+        entity.type = "fallingDog"; entity.age = 0; entity.frameOffset = 96; entity.y = 240; entity.w = 72; entity.h = 72; entity.renderWidth = 128; entity.renderHeight = 128; entity.duration = 120; entity.vy = -10; entity.graceFrames = 18; entity.spawnedDrop = true; continue;
       }
       if (entity.type === "fallingDog") {
         if (entity.age <= Number(entity.graceFrames || 0)) continue;
         entity.y += Number(entity.vy || -10);
-        if (entity.y <= 0) { entity.type = "dogImpact"; entity.age = 0; entity.frameOffset = 192; entity.y = 0; entity.w = 90; entity.h = 80; entity.damage = 220; entity.duration = 96; entity.guardable = true; entity.causesKnockdown = true; entity.hardKnockdown = true; entity.ownerHit = false; }
+        if (entity.y <= 0) { entity.type = "dogImpact"; entity.age = 0; entity.frameOffset = 192; entity.y = 0; entity.w = 90; entity.h = 80; entity.renderWidth = 128; entity.renderHeight = 128; entity.damage = 220; entity.duration = 96; entity.guardable = true; entity.causesKnockdown = true; entity.hardKnockdown = true; entity.ownerHit = false; this.spawnVfx("hit-burst", { x: entity.x, y: 36 }, { scale: 0.85 }); }
         else continue;
       }
       if (entity.type === "snareMarker") {
-        entity.type = "snareImpact"; entity.age = 0; entity.w = 34; entity.h = 30; entity.duration = 18; entity.hitTargets = new Set();
+        const scale = Number(entity.hitboxScale || 1);
+        entity.type = "snareImpact"; entity.age = 0; entity.w = 34 * scale; entity.h = 30 * scale; entity.duration = 18; entity.hitTargets = new Set();
         const ownerFighter = entity.owner === "player" ? this.player : this.cpu;
         if (ownerFighter?.id === "norio") {
           const config = getSkillConfig("norio");
@@ -1875,15 +1898,20 @@ export class Game {
           if (count >= 3) { entity.active = false; continue; }
           defender.norioHits = count + 1; entity.hitTargets.add(defender.id);
         }
-        const move = { id: entity.type, kind: "skill", damage: entity.damage || 0, hitLevel: entity.hitLevel || "mid", unblockable: entity.unblockable === true, causesKnockdown: entity.causesKnockdown, hardKnockdown: entity.hardKnockdown, knockdownValue: entity.knockdownValue || 0, chipDamage: entity.chipDamage || 0, justGuardable: entity.justGuardable !== false, guardable: entity.guardable !== false, hitstunFrames: entity.hitstunFrames || 28, blockstunFrames: entity.blockstunFrames || 8, knockbackX: entity.knockbackX || 3, knockbackY: entity.knockbackY || 1 };
+        const move = { id: entity.type, kind: "skill", damage: entity.damage || 0, hitLevel: entity.hitLevel || "mid", unblockable: entity.unblockable === true, causesKnockdown: entity.causesKnockdown, hardKnockdown: entity.hardKnockdown, knockdownValue: entity.knockdownValue || 0, chipDamage: entity.chipDamage || 0, justGuardable: true, guardable: true, hitstunFrames: entity.hitstunFrames || 28, blockstunFrames: entity.blockstunFrames || 8, knockbackX: entity.knockbackX || 3, knockbackY: entity.knockbackY || 1 };
         const guardStart = defender.guardStartedFrame;
-        const justGuard = defender.guardHeld && move.justGuardable && !move.unblockable && Number.isFinite(guardStart) && this.frame - guardStart <= JUST_GUARD_WINDOW;
-        const blocked = defender.guardHeld && move.guardable && !move.unblockable;
+        const justGuard = defender.guardHeld && Number.isFinite(guardStart) && this.frame - guardStart <= JUST_GUARD_WINDOW && defender.justGuardConsumedFrame !== guardStart;
+        const blocked = defender.guardHeld;
         const contactPoint = { x: Math.max(hitbox.x, Math.min(defender.x, hitbox.x + hitbox.w)), y: Math.max(hitbox.y, Math.min(defender.y + 82, hitbox.y + hitbox.h)) };
+        if (justGuard) {
+          defender.justGuardConsumedFrame = guardStart; entity.hit = true; entity.active = false;
+          this.addSpecialMeter(defender, 10); attacker.stunFrames = 12; defender.stunFrames = 3; this.state.hitstopFrames = JUST_GUARD_HITSTOP;
+          this.spawnVfx("just-guard-ring", defender); this.showCombatNotice("JUST GUARD", "guard", 0, defender); this.beep(880, 0.08, "triangle");
+          continue;
+        }
         if (entity.type === "flash") {
           entity.hit = true; entity.active = false;
           this.spawnVfx("skill-flash", contactPoint, { x: 0, y: 0, scale: 1, facing: entity.facing || attacker.facing });
-          if (justGuard) { this.addSpecialMeter(defender, 10); attacker.stunFrames = 12; defender.stunFrames = 3; this.state.hitstopFrames = JUST_GUARD_HITSTOP; this.spawnVfx("just-guard-ring", defender); continue; }
           if (blocked) { this.onHit(attacker, defender, move, true, false, 0); this.spawnVfx("guard-spark", defender); continue; }
           defender.flashComboHit = true; defender.flashStunned = true; defender.flashStunFrames = Math.min(180, Number(entity.maxHitstopFrames || 180)); defender.state = "hitstun"; defender.action = "hit_light"; defender.stunFrames = defender.flashStunFrames; this.onHit(attacker, defender, move, false, false, 0); continue;
         }
@@ -1959,13 +1987,14 @@ export class Game {
       if (defender.mirrorResourceMode !== "copied") {
         defender.skillAmmo = Math.max(0, Number(defender.skillAmmo || defender.ammo || 1) - 1);
         defender.ammo = defender.skillAmmo;
-        defender.skillGauge = defender.skillAmmo > 0 ? 1 : 0;
+        const mirrorConfig = getSkillConfig("bob-girl");
+        defender.skillGauge = Number(mirrorConfig?.chargeMax || 100) * defender.skillAmmo / Math.max(1, Number(mirrorConfig?.maxAmmo || 3));
         defender.skill.gauge = defender.skillGauge;
       }
       defender.mirrorResourceMode = null;
       attacker.hitRegistry.add(`mirror:${defender.id}`);
       this.spawnVfx("skill-mirror", defender);
-      this.spawnSkillEntity({ owner: defender === this.player ? "player" : "cpu", type: "reflected", x: defender.x + defender.facing * 38, y: defender.y + 70, vx: defender.facing * 5, damage: move.damage, w: move.hitboxWidth || 48, h: move.hitboxHeight || 24, duration: 90, effectId: "skill-mirror" });
+      this.spawnSkillEntity({ owner: defender === this.player ? "player" : "cpu", type: "reflected", x: defender.x + defender.facing * 38, y: defender.y + 70, vx: defender.facing * 5, damage: Number(move.damage || 0) * 1.25, w: move.hitboxWidth || 48, h: move.hitboxHeight || 24, duration: 90, causesKnockdown: true, hardKnockdown: false, guardable: true, justGuardable: true, effectId: "skill-mirror" });
       return;
     }
     // Projectile specials resolve only through the projectile collision path.
@@ -1976,7 +2005,7 @@ export class Game {
     if (!(attacker.alreadyHitTargets instanceof Set)) attacker.alreadyHitTargets = new Set();
     attacker.alreadyHitTargets.add(defender.id);
     const guardDashGuard = defender.guardDashActive && defender.guardDashFrames <= GUARD_DASH_GUARD_FRAMES;
-    const guardWasJustPressed = defender.guardHeld && Number.isFinite(defender.guardStartedFrame) && this.frame - defender.guardStartedFrame <= JUST_GUARD_WINDOW && result.guardLevelOk && !result.unblockable;
+    const guardWasJustPressed = defender.guardHeld && Number.isFinite(defender.guardStartedFrame) && this.frame - defender.guardStartedFrame <= JUST_GUARD_WINDOW && result.guardLevelOk;
     const justGuard = guardWasJustPressed && isJustGuardEligible(move) && defender.justGuardConsumedFrame !== defender.guardStartedFrame;
     if (justGuard) {
       defender.justGuardConsumedFrame = defender.guardStartedFrame;
@@ -1993,7 +2022,7 @@ export class Game {
       defender.hitstopFrames = JUST_GUARD_HITSTOP;
       this.state.hitstopFrames = JUST_GUARD_HITSTOP;
       this.spawnVfx("just-guard-ring", defender);
-      this.showCombatNotice("GUARD", "guard", 0, defender);
+      this.showCombatNotice("JUST GUARD", "guard", 0, defender);
       this.beep(880, 0.08, "triangle");
       return;
     }
@@ -2103,9 +2132,25 @@ export class Game {
       const hitbox = { x: projectile.x, y: projectile.y, w: projectile.w, h: projectile.h, type: "projectileHitbox" };
       const targetBoxes = getFighterBoxes(target).hurtboxes;
       if (!projectile.hit && targetBoxes.some((part) => part && part.x < hitbox.x + hitbox.w && part.x + part.w > hitbox.x && part.y < hitbox.y + hitbox.h && part.y + part.h > hitbox.y)) {
+        if (target.mirrorActiveFrames > 0) {
+          target.mirrorActiveFrames = 0; target.mirrorHolding = false;
+          target.skillAmmo = Math.max(0, Number(target.skillAmmo || target.ammo || 1) - 1); target.ammo = target.skillAmmo;
+          const mirrorConfig = getSkillConfig("bob-girl");
+          target.skillGauge = Number(mirrorConfig?.chargeMax || 100) * target.skillAmmo / Math.max(1, Number(mirrorConfig?.maxAmmo || 3)); target.skill.gauge = target.skillGauge;
+          projectile.owner = target === this.player ? "player" : "cpu"; projectile.vx *= -1; projectile.facing = projectile.vx < 0 ? -1 : 1; projectile.damage = Number(projectile.damage || 0) * 1.25; projectile.x += projectile.vx * 2;
+          this.spawnVfx("skill-mirror", target); this.showCombatNotice("MIRROR", "skill", 0, target);
+          continue;
+        }
         projectile.hit = true;
         const attacker = projectile.owner === "player" ? this.player : this.cpu;
         attacker.hitRegistry.add(`projectile:${target.id}`);
+        const guardStart = target.guardStartedFrame;
+        const justGuard = target.guardHeld && Number.isFinite(guardStart) && this.frame - guardStart <= JUST_GUARD_WINDOW && target.justGuardConsumedFrame !== guardStart;
+        if (justGuard) {
+          target.justGuardConsumedFrame = guardStart; this.addSpecialMeter(target, 10); attacker.stunFrames = 12; target.stunFrames = 3; this.state.hitstopFrames = JUST_GUARD_HITSTOP;
+          this.spawnVfx("just-guard-ring", target); this.showCombatNotice("JUST GUARD", "guard", 0, target); this.beep(880, 0.08, "triangle");
+          continue;
+        }
         const buffScale = Number(attacker.buff?.attackScale || 1);
         const damage = applyDamage(target, Number(projectile.damage || 0) * buffScale, { hitstunFrames: 32, knockbackX: 4, knockbackY: 2 });
         this.showCombatNotice(`HIT ${Math.round(Number(damage) || 0)}`, "hit", damage, target);
@@ -2505,7 +2550,7 @@ export class Game {
       ctx.font = "bold 9px monospace";
       ctx.fillText(`TRAINING  DAMAGE ${Math.round(this.state.trainingDamage || 0)}`, 240, 64, 200);
       ctx.font = "bold 7px monospace";
-      ctx.fillText("COMMAND: →+A  DOWN+A/X  ←+Y THROW  B SKILL  SP SPECIAL", 240, 75, 220);
+      ctx.fillText("COMMAND: →+A  DOWN+A/X  BACK+Y THROW  B SKILL  SP SPECIAL", 240, 75, 220);
     }
     const notice = this.state.combatNotice;
     if (notice?.frames > 0 && notice.text) {
@@ -2604,9 +2649,9 @@ export class Game {
       buttonRow([{ label: "FIGHT", onClick: () => this.state.mode === "training" ? this.setScreen(SCREEN.trainingSettings) : this.startMatch() }, { label: "BACK", onClick: () => this.setScreen(SCREEN.characterSelect) }]);
     } else if (screen === SCREEN.howToPlay) {
       heading("HOW TO PLAY", "現在の操作と技相性");
-      this.hintText("A 弱攻撃 / X 強攻撃 / Y ガード / B長押し 固有スキル / ←+Y 投げ / JUMP ジャンプ / SP 必殺技");
+      this.hintText("A 弱攻撃 / X 強攻撃 / Y ガード / B長押し 固有スキル / 後ろ+Y 投げ / JUMP ジャンプ / SP 必殺技");
       const p = document.createElement("pre");
-      p.textContent = "スティック・A/D・←/→  移動\nスティック上・W・↑・JUMP  ジャンプ（空中でもう1回で二段ジャンプ）\nスティック下・S・↓  しゃがみ／下段ガード\nA・J  弱攻撃　　→+A・→+J  キャラクター固有通常技\nX・K  強攻撃　　Y・L  ガード／ジャストガード\n←+Y・L  投げ（左方向とガードを同時入力）\nB長押し  キャラクター固有スキル（チャージは次回へ持越し）\nSP・I  必殺技（必殺ゲージ100で発動）\n相性：ガード ＞ 弱・強攻撃 ＞ 投げ ＞ ガード\nPAUSE・ESC  ポーズ／再開";
+      p.textContent = "スティック・A/D・←/→  移動\nスティック上・W・↑・JUMP  ジャンプ（空中でもう1回で二段ジャンプ）\nスティック下・S・↓  しゃがみ／下段ガード\nA・J  弱攻撃　　→+A・→+J  キャラクター固有通常技\nX・K  強攻撃　　Y・L  ガード／ジャストガード（必殺技・固有スキルにも有効）\n後ろ方向+Y・L  投げ（右向きは←、左向きは→とガードを同時入力）\nB長押し  キャラクター固有スキル（チャージは次回へ持越し）\nSP・I  必殺技（必殺ゲージ100で発動）\n相性：ガード ＞ 弱・強攻撃 ＞ 投げ ＞ ガード\nPAUSE・ESC  ポーズ／再開";
       this.panel.appendChild(p);
       button("BACK", () => this.setScreen(SCREEN.menu));
     } else if (screen === SCREEN.stageIntro) {

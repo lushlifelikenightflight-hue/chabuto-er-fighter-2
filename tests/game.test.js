@@ -157,7 +157,7 @@ test("the faster jump arc preserves approximately the authored height", () => {
   assert.ok(apex >= 88 && apex <= 102, `unexpected apex ${apex}`);
 });
 
-test("left plus guard throws regardless of facing and A+X remains normal input", () => {
+test("backward plus guard follows facing and A+X remains normal input", () => {
   const game = new Game(null);
   game.state.screen = SCREEN.battle;
   game.player.facing = 1;
@@ -167,7 +167,7 @@ test("left plus guard throws regardless of facing and A+X remains normal input",
   assert.equal(input.throwPressed, true);
   assert.equal(input.guard, false);
   game.keys.clear(); game.justKeys.clear(); game.throwChordHeld = false; game.player.facing = -1;
-  game.keys.add("arrowleft"); game.keys.add("l"); game.justKeys.add("arrowleft"); game.justKeys.add("l");
+  game.keys.add("arrowright"); game.keys.add("l"); game.justKeys.add("arrowright"); game.justKeys.add("l");
   assert.equal(game.readInput().throwPressed, true);
   game.keys.clear(); game.justKeys.clear(); game.throwChordHeld = false;
   game.keys.add("j"); game.keys.add("k"); game.justKeys.add("j"); game.justKeys.add("k");
@@ -290,7 +290,7 @@ test("combat transitions select just guard, throw, hit, and down-idle visuals", 
   guardDefender.action = "guard_high";
   game.handleCombat(guardAttacker, guardDefender);
   assert.equal(guardDefender.visualAction, "just_guard");
-  assert.equal(game.state.combatNotice.text, "GUARD");
+  assert.equal(game.state.combatNotice.text, "JUST GUARD");
 
   const downed = createFighterState("uncle", 125, -1);
   downed.state = "downed";

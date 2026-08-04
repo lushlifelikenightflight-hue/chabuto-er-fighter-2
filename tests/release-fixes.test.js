@@ -158,7 +158,7 @@ test("every stage platform resolves to a runtime PNG and layouts are distinct", 
   assert.deepEqual(STAGES.map((stage) => stage.platforms.map(({ asset, x, y }) => [asset, x, y])), [
     [["light-podium", 58, 42], ["step-ladder", 384, 42]],
     [["amp", 20, 70], ["amp", 404, 42]],
-    [["ramen-stand", 128, 70], ["ramen-stand", 252, 70]],
+    [["ramen-stand", 96, 116], ["ramen-stand", 252, 116]],
     [["step-ladder", 62, 104], ["amp", 212, 70]],
     [],
   ]);
