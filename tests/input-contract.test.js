@@ -17,7 +17,7 @@ test("face layout and dedicated mobile controls follow the input contract", () =
   assert.match(touchSource, /createButton\("special",\s*"SP"/);
   assert.doesNotMatch(touchSource, /createButton\("pause"/);
   assert.match(html, /data-header-pause[^>]*>PAUSE<\/button>/);
-  assert.match(touchSource, /createButton\("throw"/);
+  assert.doesNotMatch(touchSource, /createButton\("throw"/);
   assert.match(html, /<main id="game" data-game-root/);
   assert.doesNotMatch(html, /<footer\b/i);
 });
@@ -43,17 +43,22 @@ test("screen transitions preserve the originating edge and audio Promise does no
   }
 });
 
-test("touch throw edge, viewport orientation, pause placement, and production debug guard are explicit", () => {
+test("touch left plus guard edge, pressed visuals, pause placement, and production debug guard are explicit", () => {
   const game = new Game(null);
   game.state.screen = SCREEN.battle;
-  game.touchInput = { getSnapshot: () => ({ held: new Set(["throw"]), pressed: new Set(["throw"]) }) };
+  game.player.facing = 1;
+  game.touchInput = { getSnapshot: () => ({ held: new Set(["left", "y"]), pressed: new Set(["left", "y"]) }) };
   assert.equal(game.readInput().throwPressed, true);
   assert.equal(debugBuildEnabled(), false);
   assert.equal(resolveDebugFlag({ debug: true }), false);
   assert.match(touchSource, /visualViewport/);
   assert.match(touchSource, /dataset\.orientation/);
+  assert.match(touchSource, /stick\?\.setAttribute\("aria-pressed", "true"\)/);
+  assert.match(touchSource, /classList\.add\("is-pressed"\)/);
   assert.match(css, /\.header-pause\s*\{/);
-  assert.match(css, /\.virtual-pad__throw/);
+  assert.match(css, /\.virtual-pad__stick\[aria-pressed="true"\]/);
+  assert.match(css, /button\.is-pressed/);
+  assert.doesNotMatch(css, /\.virtual-pad__throw/);
   assert.doesNotMatch(touchSource, /createButton\("pause"/);
 });
 

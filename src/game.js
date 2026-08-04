@@ -270,7 +270,6 @@ export class Game {
     this.padHeld = new Set();
     this.padJust = new Set();
     this.padReleased = new Set();
-    this.inputEdgeFrames = new Map();
     this.lastDirection = 0;
     this.lastDirectionFrame = -999;
     this.frame = 0;
@@ -611,24 +610,12 @@ export class Game {
     const xPressed = pressed("k", "x") || gamepad.xPressed || touchPressed("x");
     const yPressed = pressed("l", "c") || gamepad.yPressed || touchPressed("y");
     const bPressed = pressed("b") || gamepad.bPressed || touchPressed("b");
-    const aReleased = released("j", "z") || gamepad.aReleased || touchReleased("a");
-    const xReleased = released("k", "x") || gamepad.xReleased || touchReleased("x");
-    const yReleased = released("l", "c") || gamepad.yReleased || touchReleased("y");
     const bReleased = released("b") || gamepad.bReleased || touchReleased("b");
-    const dedicatedThrowHeld = touchHeld("throw");
-    const dedicatedThrowPressed = touchPressed("throw");
-    const dedicatedThrowReleased = touchReleased("throw");
-    const edgeFrame = (name, edge) => {
-      if (edge) this.inputEdgeFrames.set(name, this.frame);
-      return this.inputEdgeFrames.get(name);
-    };
-    const aEdgeFrame = edgeFrame("a", aPressed);
-    const xEdgeFrame = edgeFrame("x", xPressed);
-    const throwHeld = dedicatedThrowHeld || (aHeld && xHeld);
-    const throwWithinWindow = Number.isFinite(aEdgeFrame) && Number.isFinite(xEdgeFrame) && Math.abs(aEdgeFrame - xEdgeFrame) <= 8;
-    const throwPressed = dedicatedThrowPressed || (throwHeld && throwWithinWindow && !this.throwChordHeld);
+    const previousThrowHeld = this.throwChordHeld;
+    const throwHeld = battleScreen && left && yHeld;
+    const throwPressed = throwHeld && (leftPressed || yPressed) && !previousThrowHeld;
+    const throwReleased = previousThrowHeld && !throwHeld;
     this.throwChordHeld = throwHeld;
-    if (!throwHeld) this.throwChordHeld = false;
     let light = aHeld && !throwHeld;
     let strong = xHeld && !throwHeld;
     const guard = yHeld && !throwHeld;
@@ -653,7 +640,7 @@ export class Game {
       a: aHeld, b: bHeld, x: xHeld, y: yHeld,
       jump: jumpHeld, jumpPressed: jump, jumpReleased, specialPressed, specialReleased,
       skillPressed, skillReleased: bReleased,
-      throwHeld, throwPressed, throwReleased: dedicatedThrowReleased || (aReleased || xReleased), counterThrow: false,
+      throwHeld, throwPressed, throwReleased, counterThrow: false,
       leftPressed, rightPressed, upPressed, upReleased, downPressed,
       lightPressed, strongPressed, guardPressed,
       confirm, cancel, pause, start: confirm,
@@ -2446,7 +2433,11 @@ export class Game {
         ctx.filter = "brightness(0) contrast(2) drop-shadow(0 0 7px #3e0f56)";
         ctx.translate(x, y);
         if (renderFacing < 0) ctx.scale(-1, 1);
-        ctx.drawImage(aura.image, -160, -320, 320, 320);
+        const auraRatio = 204 / 171;
+        const horizontalHalfSpace = Math.max(1, Math.min(x, INTERNAL_WIDTH - x) - 2);
+        const auraHeight = Math.min(240, Math.max(1, y - 4), (horizontalHalfSpace * 2) / auraRatio);
+        const auraWidth = auraHeight * (204 / 171);
+        ctx.drawImage(aura.image, 26, 42, 204, 171, -auraWidth * 0.5, -auraHeight, auraWidth, auraHeight);
         ctx.restore();
       }
     }
@@ -2514,7 +2505,7 @@ export class Game {
       ctx.font = "bold 9px monospace";
       ctx.fillText(`TRAINING  DAMAGE ${Math.round(this.state.trainingDamage || 0)}`, 240, 64, 200);
       ctx.font = "bold 7px monospace";
-      ctx.fillText("COMMAND: →+A  DOWN+A/X  UP+A/X  B SKILL  SP SPECIAL", 240, 75, 200);
+      ctx.fillText("COMMAND: →+A  DOWN+A/X  ←+Y THROW  B SKILL  SP SPECIAL", 240, 75, 220);
     }
     const notice = this.state.combatNotice;
     if (notice?.frames > 0 && notice.text) {
@@ -2613,9 +2604,9 @@ export class Game {
       buttonRow([{ label: "FIGHT", onClick: () => this.state.mode === "training" ? this.setScreen(SCREEN.trainingSettings) : this.startMatch() }, { label: "BACK", onClick: () => this.setScreen(SCREEN.characterSelect) }]);
     } else if (screen === SCREEN.howToPlay) {
       heading("HOW TO PLAY", "現在の操作と技相性");
-      this.hintText("A 弱攻撃 / X 強攻撃 / Y ガード / B長押し 固有スキル / A+X 投げ / JUMP ジャンプ / SP 必殺技");
+      this.hintText("A 弱攻撃 / X 強攻撃 / Y ガード / B長押し 固有スキル / ←+Y 投げ / JUMP ジャンプ / SP 必殺技");
       const p = document.createElement("pre");
-      p.textContent = "スティック・A/D・←/→  移動\nスティック上・W・↑・JUMP  ジャンプ（空中でもう1回で二段ジャンプ）\nスティック下・S・↓  しゃがみ／下段ガード\nA・J  弱攻撃　　→+A・→+J  キャラクター固有通常技\nX・K  強攻撃　　Y・L  ガード／ジャストガード\nA+X  投げ（ガード中の相手に有効）\nB長押し  キャラクター固有スキル（チャージは次回へ持越し）\nSP・I  必殺技（必殺ゲージ100で発動）\n相性：ガード ＞ 弱・強攻撃 ＞ 投げ ＞ ガード\nPAUSE・ESC  ポーズ／再開";
+      p.textContent = "スティック・A/D・←/→  移動\nスティック上・W・↑・JUMP  ジャンプ（空中でもう1回で二段ジャンプ）\nスティック下・S・↓  しゃがみ／下段ガード\nA・J  弱攻撃　　→+A・→+J  キャラクター固有通常技\nX・K  強攻撃　　Y・L  ガード／ジャストガード\n←+Y・L  投げ（左方向とガードを同時入力）\nB長押し  キャラクター固有スキル（チャージは次回へ持越し）\nSP・I  必殺技（必殺ゲージ100で発動）\n相性：ガード ＞ 弱・強攻撃 ＞ 投げ ＞ ガード\nPAUSE・ESC  ポーズ／再開";
       this.panel.appendChild(p);
       button("BACK", () => this.setScreen(SCREEN.menu));
     } else if (screen === SCREEN.stageIntro) {

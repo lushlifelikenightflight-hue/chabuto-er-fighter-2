@@ -10,17 +10,26 @@ import { effectForMove } from "../src/vfx.js";
 
 const blank = () => ({ left: false, right: false, up: false, down: false, light: false, strong: false, guard: false, skill: false, special: false, throwHeld: false, throwPressed: false, skillPressed: false, specialPressed: false, jumpPressed: false, jumpReleased: false, leftPressed: false, rightPressed: false, upPressed: false, downPressed: false, lightPressed: false, strongPressed: false, guardPressed: false });
 
-test("canonical face mapping and the single A+X chord edge are source-independent", () => {
+test("canonical face mapping and the left plus guard throw edge are source-independent", () => {
   const game = new Game(null);
   game.state.screen = SCREEN.battle;
-  game.keys.add("j"); game.justKeys.add("j");
-  assert.equal(game.readInput().light, true);
-  game.justKeys.clear(); game.keys.add("k"); game.justKeys.add("k");
+  game.player.facing = 1;
+  game.keys.add("arrowleft"); game.justKeys.add("arrowleft");
+  game.keys.add("l"); game.justKeys.add("l");
   const chord = game.readInput();
   assert.equal(chord.throwHeld, true);
   assert.equal(chord.throwPressed, true);
+  assert.equal(chord.guard, false);
   game.justKeys.clear();
   assert.equal(game.readInput().throwPressed, false);
+  game.keys.clear(); game.justKeys.clear(); game.throwChordHeld = false; game.player.facing = -1;
+  game.keys.add("arrowright"); game.justKeys.add("arrowright"); game.keys.add("l"); game.justKeys.add("l");
+  assert.equal(game.readInput().throwHeld, false);
+  game.keys.clear(); game.throwChordHeld = false;
+  game.keys.add("j"); game.keys.add("k"); game.justKeys.add("j"); game.justKeys.add("k");
+  const oldChord = game.readInput();
+  assert.equal(oldChord.throwHeld, false);
+  assert.equal(oldChord.throwPressed, false);
 });
 
 test("B is skill-only and never aliases a normal attack", () => {
@@ -390,7 +399,7 @@ test("copied Toko flash executes while Guitar resources and reload remain unchan
 });
 
 test("CPU skill plan emits one press, holds across replans, then one release and effect", () => {
-  const cpu = createFighterState("toko", 100, 1); const opponent = createFighterState("guitar-boy", 130, -1); const plan = aiPlan({ self: cpu, opponent, difficulty: "normal", nowFrame: 0, random: () => 0.1 });
+  const cpu = createFighterState("toko", 100, 1); const opponent = createFighterState("guitar-boy", 130, -1); const plan = aiPlan({ self: cpu, opponent, difficulty: "normal", nowFrame: 0, random: () => 0.52 });
   assert.equal(plan.action, "skill"); const game = new Game(null); game.player = opponent; game.cpu = cpu; game.state.screen = SCREEN.battle;
   const first = game.inputForPlan(plan); const held = game.inputForPlan(plan); assert.equal(first.skillPressed, true); assert.equal(held.skillPressed, false); assert.equal(held.skill, true);
   const releasePlan = { ...plan, released: true }; const release = game.inputForPlan(releasePlan); assert.equal(release.skillReleased, true); assert.equal(game.inputForPlan(releasePlan).skillReleased, false);

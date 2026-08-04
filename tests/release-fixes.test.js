@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
-import { CHARACTERS, STAGES, STAGE_BGM_PROFILES } from "../src/data.js";
+import { CHARACTERS, INTERNAL_WIDTH, STAGES, STAGE_BGM_PROFILES, STAGE_BOUNDS } from "../src/data.js";
 import { createFighterState } from "../src/engine.js";
 import { Game, SCREEN, skillStatusTextFor } from "../src/game.js";
 import { getSkillConfig, getSkillHudState } from "../src/skills.js";
@@ -108,7 +108,19 @@ test("locomotion rendering keeps its facing stable and Kazushige aura is behind 
   kazushige.buff = { frames: 60 };
   game.drawFighter(ctx, kazushige);
   assert.deepEqual(calls.filter((entry) => entry[0] === "draw").map((entry) => entry[1]), ["aura", "sprite"]);
-  assert.equal(calls.find((entry) => entry[0] === "draw" && entry[1] === "aura").at(-2), 320);
+  const auraDraw = calls.find((entry) => entry[0] === "draw" && entry[1] === "aura");
+  assert.deepEqual(auraDraw.slice(2, 6), [26, 42, 204, 171]);
+  assert.ok(auraDraw.at(-1) <= 240);
+  assert.equal(auraDraw.at(-3) + auraDraw.at(-1), 0);
+  assert.ok(Math.abs(auraDraw.at(-2) / auraDraw.at(-1) - 204 / 171) < 0.001);
+  for (const edgeX of [STAGE_BOUNDS.left, STAGE_BOUNDS.right]) {
+    calls.length = 0;
+    kazushige.x = edgeX;
+    game.drawFighter(ctx, kazushige);
+    const edgeAura = calls.find((entry) => entry[0] === "draw" && entry[1] === "aura");
+    assert.ok(edgeX + edgeAura.at(-4) >= 0);
+    assert.ok(edgeX + edgeAura.at(-4) + edgeAura.at(-2) <= INTERNAL_WIDTH);
+  }
 });
 
 test("supers use a smaller VFX and damage, variety, combos, and skills accelerate meter", () => {
@@ -265,10 +277,14 @@ test("special cut-ins reserve side lanes while score and training HUD stay cente
   };
   game.drawBattle(ctx);
   assert.equal(rectangles.some(([x, y, w, h]) => x === 16 && y === 54 && w === 116 && h === 108), true);
-  for (const prefix of ["000000", "TRAINING", "COMMAND:"]) {
+  for (const prefix of ["000000", "TRAINING"]) {
     const label = labels.find(([value]) => String(value).startsWith(prefix));
     assert.ok(label, prefix);
     assert.equal(label[1], 240);
     assert.equal(label[3], 200);
   }
+  const command = labels.find(([value]) => String(value).startsWith("COMMAND:"));
+  assert.ok(command);
+  assert.equal(command[1], 240);
+  assert.equal(command[3], 220);
 });

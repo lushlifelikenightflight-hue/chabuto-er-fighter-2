@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 import { CHARACTERS, NORMAL_ATTACK_REACH_MULTIPLIER, TRAINING_SETTINGS_ITEMS } from "../src/data.js";
-import { createFighterState, evaluateStrike, evaluateThrow, getFighterBoxes } from "../src/engine.js";
+import { aiPlan, createFighterState, evaluateStrike, evaluateThrow, getFighterBoxes } from "../src/engine.js";
 import { Game, animationNameFor } from "../src/game.js";
 import { canStartSkill, getSkillConfig, getSkillHudState } from "../src/skills.js";
 import { getEffectAssetManifest } from "../src/sprite-manifest.js";
@@ -343,4 +343,26 @@ test("platforms crop transparent padding, cut-ins fill their frame, and locomoti
   assert.match(source, /drawImage\(image, profile\.sx, profile\.sy, profile\.sw, profile\.sh, platform\.x, top, platform\.w, platform\.y\)/);
   assert.match(source, /ctx\.drawImage\(image, cropX, bounds\.y, cropW, cropH, x \+ 2, 56, 112, 104\)/);
   assert.doesNotMatch(source, /sourceFacingCorrection|spriteFacing/);
+});
+
+test("CPU approaches reach, makes space, observes, jumps, and attacks only inside reach", () => {
+  const plan = (selfX, opponentX, roll) => {
+    const self = createFighterState("toko", selfX, 1);
+    const opponent = createFighterState("guitar-boy", opponentX, -1);
+    return aiPlan({ self, opponent, difficulty: "normal", nowFrame: 0, random: () => roll });
+  };
+  const far = plan(100, 360, 0.9);
+  assert.equal(far.action, "walk");
+  assert.equal(far.direction, 1);
+  assert.equal(far.reason, "approach-reach");
+
+  const close = plan(100, 110, 0.2);
+  assert.equal(close.action, "walk");
+  assert.equal(close.direction, -1);
+  assert.equal(close.reason, "make-space");
+
+  assert.equal(plan(100, 160, 0.1).action, "observe");
+  assert.equal(plan(100, 160, 0.34).action, "jump");
+  assert.equal(plan(100, 160, 0.95).action, "strong");
+  assert.equal(new Game(null).inputForPlan({ action: "observe" }).lightPressed, false);
 });

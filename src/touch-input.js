@@ -133,6 +133,7 @@ export class TouchInput {
     stick.className = "virtual-pad__stick";
     stick.setAttribute("role", "application");
     stick.setAttribute("aria-label", "スティック: 移動、しゃがむ、ジャンプ");
+    stick.setAttribute("aria-pressed", "false");
     stick.setAttribute("aria-disabled", "true");
     stick.tabIndex = -1;
     const knob = document.createElement("span");
@@ -172,7 +173,6 @@ export class TouchInput {
     utilities.setAttribute("aria-label", "ジャンプと必殺技");
     utilities.appendChild(this.createButton("jump", "JUMP", "ジャンプ", ["jump"], "virtual-pad__utility virtual-pad__jump"));
     utilities.appendChild(this.createButton("special", "SP", "必殺技", ["special"], "virtual-pad__utility virtual-pad__special"));
-    utilities.appendChild(this.createButton("throw", "THROW", "throw", ["throw"], "virtual-pad__utility virtual-pad__throw"));
     root.appendChild(utilities);
 
     this.container.appendChild(root);
@@ -206,6 +206,8 @@ export class TouchInput {
     const click = (event) => {
       if (button.dataset.pointerActivated === "true" || this.destroyed || !this.available || this.mode === TOUCH_MODES.hidden) return;
       this.onInput?.(event);
+      button.classList.add("is-pressed");
+      if (typeof setTimeout === "function") setTimeout(() => button.classList.remove("is-pressed"), 120);
       for (const action of actions) { this.addAction(action); this.removeAction(action); }
     };
     button.addEventListener("pointerdown", down, { passive: false });
@@ -249,6 +251,7 @@ export class TouchInput {
     if (this.stickPointerId !== null && this.stickPointerId !== pointerId) this.releaseStick(this.stickPointerId);
     if (this.pointers.has(pointerId)) this.releasePointer(pointerId);
     this.stickPointerId = pointerId;
+    this.stick?.setAttribute("aria-pressed", "true");
     try { this.stick.setPointerCapture(pointerId); } catch { /* capture is optional */ }
     this.moveStick(event);
   }
@@ -275,6 +278,7 @@ export class TouchInput {
     if (pointerId === null || pointerId === undefined || pointerId !== this.stickPointerId) return;
     try { if (this.stick?.hasPointerCapture(pointerId)) this.stick.releasePointerCapture(pointerId); } catch { /* already released */ }
     this.stickPointerId = null;
+    this.stick?.setAttribute("aria-pressed", "false");
     this.stickVector = { x: 0, y: 0 };
     this.setStickActions([]);
     if (this.stickKnob) this.stickKnob.style.transform = "translate(-50%, -50%)";
@@ -338,6 +342,7 @@ export class TouchInput {
     this.stickPointerId = null;
     this.stickVector = { x: 0, y: 0 };
     for (const { button } of this.bindings) button.setAttribute("aria-pressed", "false");
+    this.stick?.setAttribute("aria-pressed", "false");
     if (this.stickKnob) this.stickKnob.style.transform = "translate(-50%, -50%)";
   }
 

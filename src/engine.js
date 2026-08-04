@@ -597,27 +597,37 @@ export function aiPlan({ self, opponent, difficulty = "normal", nowFrame = 0, ra
   memory.thinkAt = nowFrame + level.reactionFrames;
   const distance = Math.abs(self.x - opponent.x);
   const noise = (random() - 0.5) * level.error * 2;
-  const threshold = self.id === opponent.id ? 38 : (CHARACTERS[self.id]?.cpu.preferredDistance || 48);
-  if (distance > threshold + noise * 20) memory.planned = { action: "walk", direction: facingFor(self.x, opponent.x), issuedAt: nowFrame };
-  else if (distance < threshold * 0.55 && random() > 0.66) memory.planned = { action: "walk", direction: -facingFor(self.x, opponent.x), issuedAt: nowFrame };
-  else if (opponent.state === "jumping" && CHARACTERS[self.id]?.cpu.antiAir) memory.planned = { action: "guard", low: false, justGuard: random() < level.justGuardRate, issuedAt: nowFrame };
-  else if (opponent.state === "crouching" && random() < level.guardRate) memory.planned = { action: "guard_low", justGuard: random() < level.justGuardRate, issuedAt: nowFrame };
-  else if (random() < level.guardRate && ["attacking", "special"].includes(opponent.state)) memory.planned = { action: random() < 0.55 ? "guard" : "guard_low", justGuard: random() < level.justGuardRate, issuedAt: nowFrame };
-  else if (random() < 0.11 && self.grounded && opponent.state === "attacking") memory.planned = { action: "jump", issuedAt: nowFrame };
+  const character = CHARACTERS[self.id] || {};
+  const preferred = self.id === opponent.id ? 38 : Number(character.cpu?.preferredDistance || 48);
+  const normalReach = Math.max(
+    Number(character.moves?.light_attack_neutral?.hitboxWidth || character.moves?.light_attack_neutral?.hitbox?.w || 0),
+    Number(character.moves?.strong_attack_neutral?.hitboxWidth || character.moves?.strong_attack_neutral?.hitbox?.w || 0),
+    preferred,
+  );
+  const attackReach = Math.max(preferred, normalReach + 12);
+  const spacingTarget = Math.min(attackReach * 0.82, preferred + 12);
+  const closeEdge = spacingTarget * 0.58;
+  const tacticRoll = random();
+  const toward = facingFor(self.x, opponent.x);
+  if (distance > attackReach + noise * 12) memory.planned = { action: "walk", direction: toward, reason: "approach-reach", issuedAt: nowFrame };
+  else if (distance < closeEdge && tacticRoll < 0.34) memory.planned = { action: "walk", direction: -toward, reason: "make-space", issuedAt: nowFrame };
+  else if (opponent.state === "jumping" && character.cpu?.antiAir) memory.planned = { action: tacticRoll < 0.45 && self.grounded ? "jump" : "guard", low: false, justGuard: random() < level.justGuardRate, issuedAt: nowFrame };
+  else if (["attacking", "special"].includes(opponent.state) && tacticRoll < Math.max(0.24, level.guardRate)) memory.planned = { action: tacticRoll < 0.1 && self.grounded ? "jump" : random() < 0.55 ? "guard" : "guard_low", justGuard: random() < level.justGuardRate, issuedAt: nowFrame };
   else {
     const skill = getSkillConfig(self.id);
     const phase = self.skillPhase || self.skillState || "skillUnavailable";
     const ammo = Number(self.ammo ?? self.skillAmmo ?? skill?.initialAmmo ?? 0);
     const legalSkill = Boolean(skill && !self.downed && !self.flashStunned && ["skillUnavailable", "skillRecovery"].includes(phase) && (skill.initialAmmo <= 0 || ammo > 0 || skill.type === "flash"));
-    if (legalSkill && random() < 0.18) {
+    if (tacticRoll < 0.16) memory.planned = { action: "observe", reason: "watch-spacing", issuedAt: nowFrame };
+    else if (tacticRoll < 0.28) memory.planned = { action: "walk", direction: distance < spacingTarget ? -toward : toward, reason: "hold-spacing", issuedAt: nowFrame };
+    else if (tacticRoll < 0.39 && self.grounded) memory.planned = { action: "jump", reason: "change-level", issuedAt: nowFrame };
+    else if (tacticRoll < 0.49) memory.planned = { action: opponent.state === "crouching" ? "guard_low" : "guard", justGuard: random() < level.justGuardRate, issuedAt: nowFrame };
+    else if (legalSkill && tacticRoll < 0.61) {
       const holdFrames = skill.type === "flash" && ammo <= 0 ? Number(skill.filmReloadFrames || 36) : skill.trigger === "hold-release" ? Math.max(1, Number(skill.chargeMax || 1)) : Math.max(1, Number(skill.phase?.activeFrames || 1));
       memory.planned = { action: "skill", issuedAt: nowFrame, releaseAt: nowFrame + holdFrames, released: false };
-    } else if (random() < 0.12 && self.meter >= MAX_METER) memory.planned = { action: "special", issuedAt: nowFrame };
-    else if (random() < (CHARACTERS[self.id]?.cpu.throwBias ? 0.24 : 0.11)) memory.planned = { action: "throw", issuedAt: nowFrame };
-    else {
-      const roll = random();
-      memory.planned = { action: roll < 0.42 ? "light" : roll < 0.76 ? "strong" : roll < 0.9 ? "jump" : "guard", issuedAt: nowFrame };
-    }
+    } else if (tacticRoll < 0.69 && self.meter >= MAX_METER) memory.planned = { action: "special", issuedAt: nowFrame };
+    else if (distance <= Math.min(52, attackReach) && tacticRoll < (character.cpu?.throwBias ? 0.8 : 0.74)) memory.planned = { action: "throw", issuedAt: nowFrame };
+    else memory.planned = { action: tacticRoll < 0.88 ? "light" : "strong", reason: "in-reach", issuedAt: nowFrame };
   }
   return memory.planned;
 }
