@@ -354,7 +354,7 @@ test("KO presentation slows the result transition and freezes the timer", () => 
   assert.equal(game.state.screen, SCREEN.battle);
   assert.equal(game.cpu.state, "defeat");
   assert.equal(game.player.state, "victory");
-  for (let i = 0; i < 20; i += 1) game.tickBattle({});
+  for (let i = 0; i < 240; i += 1) game.tickBattle({});
   assert.equal(game.state.screen, SCREEN.battle);
   assert.equal(game.state.timerFrames, timer);
   while (game.state.screen === SCREEN.battle) game.tickBattle({});

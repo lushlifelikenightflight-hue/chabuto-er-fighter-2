@@ -72,12 +72,11 @@
     "dash": {
       "group": "movement",
       "frames": [
-        "assets/sprites/rusty/actions/movement/movement-7.png",
-        "assets/sprites/rusty/actions/movement/movement-8.png",
-        "assets/sprites/rusty/actions/movement/movement-9.png"
+        "assets/sprites/rusty/actions/movement/movement-9.png",
+        "assets/sprites/rusty/actions/movement/movement-10.png"
       ],
-      "frameDuration": 3,
-      "loop": false,
+      "frameDuration": 4,
+      "loop": true,
       "origin": {
         "x": 128,
         "y": 233
@@ -90,12 +89,11 @@
     "backstep": {
       "group": "movement",
       "frames": [
-        "assets/sprites/rusty/actions/movement/movement-10.png",
-        "assets/sprites/rusty/actions/movement/movement-11.png",
-        "assets/sprites/rusty/actions/movement/movement-12.png"
+        "assets/sprites/rusty/actions/movement/movement-9.png",
+        "assets/sprites/rusty/actions/movement/movement-10.png"
       ],
       "frameDuration": 4,
-      "loop": false,
+      "loop": true,
       "origin": {
         "x": 128,
         "y": 233

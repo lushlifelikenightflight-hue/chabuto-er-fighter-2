@@ -187,7 +187,9 @@ const SE_SOURCES = Object.freeze({
   jump: "assets/audio/se/jump.wav",
 });
 const BACKWARD_SPEED_MULTIPLIER = 1.85;
-const SUPER_VFX_SCALE = 2.3;
+const SUPER_VFX_SCALE = 1.7;
+const SKILL_CHARGE_SPEED_MULTIPLIER = 1.45;
+const KO_PRESENTATION_FRAMES = 72 + 3 * FIXED_HZ;
 
 function byId(id) { return typeof document === "undefined" ? null : document.getElementById(id); }
 function text(value) { return String(value ?? ""); }
@@ -872,6 +874,8 @@ export class Game {
     this.state.timerFrames = ROUND_TIME_SECONDS * FIXED_HZ;
     this.state.battleFrames = 0;
     this.state.koFrames = 0;
+    this.state.specialCinematic = null;
+    this.state.combatNotice = { text: "", kind: "", damage: 0, x: 240, y: 120, frames: 0 };
     this.projectiles = [];
     this.skillEntities = [];
     this.state.skillEntities = [];
@@ -947,7 +951,7 @@ export class Game {
         advanceVisualSequence(this.player);
         advanceVisualSequence(this.cpu);
       }
-      if (this.state.koFrames >= 72) this.finishRound();
+      if (this.state.koFrames >= KO_PRESENTATION_FRAMES) this.finishRound();
       return;
     }
     if (!training) this.state.timerFrames = Math.max(0, this.state.timerFrames - 1);
@@ -1324,7 +1328,7 @@ export class Game {
 
   beginKnockdownLanding(fighter, hard = fighter.hardKnockdown) {
     fighter.state = "knockdownLanding"; fighter.action = "knockdown"; fighter.actionFrame = 0; fighter.downed = true; fighter.downedFrames = 0; fighter.downTimer = 0; fighter.downStartedFrame = this.frame; fighter.hardKnockdown = Boolean(hard); fighter.followupAvailable = true; fighter.followupReserved = false; fighter.downFollowupUsed = false; fighter.followupUsed = false; fighter.followupCount = 0; fighter.boxProfile = "down"; fighter.grounded = true; fighter.y = 0;
-    this.spawnVfx("down-impact", fighter, { x: 0, y: 24 });
+    this.spawnVfx("down-impact", fighter, { x: 0, y: 32, scale: 0.78, layer: "behind" });
   }
 
   launchKnockdown(fighter, move = {}) {
@@ -1492,7 +1496,7 @@ export class Game {
       fighter.skillState = fighter.skillPhase; fighter.skill.phase = fighter.skillPhase; fighter.state = fighter.skillPhase; fighter.action = fighter.skillPhase;
     }
     if (fighter.skillPhase === "skillCharging") {
-      const rate = Number(config.chargeRate || 0) * Number(CHARACTERS[fighter.id].stats.skillChargeRate || 1);
+      const rate = Number(config.chargeRate || 0) * Number(CHARACTERS[fighter.id].stats.skillChargeRate || 1) * SKILL_CHARGE_SPEED_MULTIPLIER;
       fighter.skillGauge = clamp((fighter.skillGauge || 0) + rate, 0, Number(config.chargeMax || 100)); fighter.skill.gauge = fighter.skillGauge; fighter.gauge.skill = fighter.skillGauge;
       const requiresFullCharge = config.type === "copy" || config.type === "dogSummon" || config.type === "ramenBuff";
       const autoAtFull = config.type === "drumBeat" || config.type === "ramenBuff";
@@ -1634,12 +1638,12 @@ export class Game {
     // always presents the cinematic freeze before committing the move.
     if (this.state.screen !== SCREEN.battle) return this.commitSpecial(fighter, move);
     this.state.specialCinematic = { fighter, move, frames: 32 };
-    this.playSe("super");
     return true;
   }
 
   commitSpecial(fighter, move) {
     if (!fighter || fighter.hp <= 0 || !move) return false;
+    this.playSe("super");
     fighter.currentMove = move;
     fighter.state = "attacking";
     fighter.attackInstanceId = Number(fighter.attackInstanceId || 0) + 1;
@@ -1740,6 +1744,7 @@ export class Game {
       // caller deliberately supplies a shorter/longer duration.
       frames: Number(hasExplicitDuration ? overrides.frames : Math.max(Number(descriptor.durationFrames || 1), allFramesDuration)),
       age: 0, owner: overrides.owner || fighterOrPoint?.id || null, hitbox: null,
+      layer: overrides.layer === "behind" ? "behind" : "front",
     };
     this.state.vfx = Array.isArray(this.state.vfx) ? this.state.vfx : [];
     this.state.vfx.push(record); this.state.effects = this.state.vfx;
@@ -2102,6 +2107,7 @@ export class Game {
     const outcome = resolveRound(this.player, this.cpu, remaining);
     this.state.result = outcome.result;
     this.state.koFrames = 0;
+    this.state.combatNotice = { text: "", kind: "", damage: 0, x: 240, y: 120, frames: 0 };
     this.projectiles = [];
     this.player.hitRegistry.clear();
     this.cpu.hitRegistry.clear();
@@ -2283,18 +2289,47 @@ export class Game {
     this.renderPanel();
   }
 
+  drawVfxEffect(ctx, effect) {
+    const alpha = clamp((effect.frames || 0) / 12, 0, 1);
+    const asset = this.loadEffectFrame(effect.effectId, effect.age || 0);
+    ctx.save(); ctx.globalAlpha = alpha;
+    if (imageReady(asset?.image)) {
+      const manifest = asset.manifest;
+      const width = Number(manifest.cellWidth || 256) * Number(effect.scale || 1);
+      const height = Number(manifest.cellHeight || 256) * Number(effect.scale || 1);
+      const origin = manifest.origin || { x: width * 0.5, y: height * 0.5 };
+      const source = this.tintedEffectFrame(asset, effect.tint);
+      if (effect.tipAnchored) {
+        ctx.translate(Number(effect.x || 0), INTERNAL_HEIGHT - Number(effect.y || 0));
+        if (Number(effect.facing || 1) < 0) ctx.scale(-1, 1);
+        ctx.drawImage(source, -width, -Number(origin.y || 0) * Number(effect.scale || 1), width, height);
+      } else {
+        ctx.translate(Number(effect.x || 0), 0);
+        if (Number(effect.facing || 1) < 0) ctx.scale(-1, 1);
+        ctx.drawImage(source, -Number(origin.x || 0) * Number(effect.scale || 1), INTERNAL_HEIGHT - Number(effect.y || 0) - Number(origin.y || 0) * Number(effect.scale || 1), width, height);
+      }
+    } else {
+      ctx.strokeStyle = effect.effectId?.includes("guard") ? "#7de7ff" : "#ffe37b"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(effect.x || 0, INTERNAL_HEIGHT - (effect.y || 0), Math.max(4, 10 * (effect.scale || 1)), 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   drawBattle(ctx) {
     for (const platform of this.stagePlatforms()) {
       const image = this.loadPlatform(platform.asset);
       const top = STAGE_BOUNDS.floor - platform.y;
       ctx.save();
-      if (imageReady(image)) ctx.drawImage(image, platform.x, top - Math.max(20, platform.y * 0.42), platform.w, Math.max(24, platform.y * 0.42 + 5));
+      if (imageReady(image)) ctx.drawImage(image, platform.x, top, platform.w, platform.y);
       else {
         ctx.fillStyle = "rgba(14,20,33,.86)"; ctx.fillRect(platform.x, top, platform.w, 5);
         ctx.strokeStyle = "#d7b35e"; ctx.strokeRect(platform.x, top, platform.w, 5);
         ctx.fillStyle = "#f4d887"; ctx.font = "6px monospace"; ctx.fillText(platform.label, platform.x + 3, top - 3);
       }
       ctx.restore();
+    }
+    for (const effect of this.state.vfx || []) {
+      if (effect.layer === "behind") this.drawVfxEffect(ctx, effect);
     }
     this.drawFighter(ctx, this.player);
     this.drawFighter(ctx, this.cpu);
@@ -2324,29 +2359,7 @@ export class Game {
       ctx.restore();
     }
     for (const effect of this.state.vfx || []) {
-      const alpha = clamp((effect.frames || 0) / 12, 0, 1);
-      const asset = this.loadEffectFrame(effect.effectId, effect.age || 0);
-      ctx.save(); ctx.globalAlpha = alpha;
-      if (imageReady(asset?.image)) {
-        const manifest = asset.manifest;
-        const width = Number(manifest.cellWidth || 256) * Number(effect.scale || 1);
-        const height = Number(manifest.cellHeight || 256) * Number(effect.scale || 1);
-        const origin = manifest.origin || { x: width * 0.5, y: height * 0.5 };
-        const source = this.tintedEffectFrame(asset, effect.tint);
-        if (effect.tipAnchored) {
-          ctx.translate(Number(effect.x || 0), INTERNAL_HEIGHT - Number(effect.y || 0));
-          if (Number(effect.facing || 1) < 0) ctx.scale(-1, 1);
-          ctx.drawImage(source, -width, -Number(origin.y || 0) * Number(effect.scale || 1), width, height);
-        } else {
-          ctx.translate(Number(effect.x || 0), 0);
-          if (Number(effect.facing || 1) < 0) ctx.scale(-1, 1);
-          ctx.drawImage(source, -Number(origin.x || 0) * Number(effect.scale || 1), INTERNAL_HEIGHT - Number(effect.y || 0) - Number(origin.y || 0) * Number(effect.scale || 1), width, height);
-        }
-      } else {
-        ctx.strokeStyle = effect.effectId?.includes("guard") ? "#7de7ff" : "#ffe37b"; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(effect.x || 0, INTERNAL_HEIGHT - (effect.y || 0), Math.max(4, 10 * (effect.scale || 1)), 0, Math.PI * 2); ctx.stroke();
-      }
-      ctx.restore();
+      if (effect.layer !== "behind") this.drawVfxEffect(ctx, effect);
     }
     this.drawHud(ctx);
     const cinematic = this.state.specialCinematic;
@@ -2355,14 +2368,20 @@ export class Game {
       const image = this.loadSprite(fighter.id, "special", 0);
       const isPlayer = fighter === this.player;
       const x = isPlayer ? 16 : 348;
-      const textX = isPlayer ? x + 48 : x + 62;
       ctx.save();
-      ctx.fillStyle = "rgba(8,5,19,.86)"; ctx.fillRect(x, 54, 116, 54);
-      ctx.strokeStyle = CHARACTERS[fighter.id]?.stats?.tint || "#ffe56e"; ctx.strokeRect(x, 54, 116, 54);
-      if (imageReady(image)) ctx.drawImage(image, x + (isPlayer ? 2 : 70), 58, 44, 44);
-      ctx.fillStyle = "#fff7c7"; ctx.font = "bold 7px monospace"; ctx.textAlign = isPlayer ? "left" : "right";
-      ctx.fillText(CHARACTERS[fighter.id]?.name || "FIGHTER", textX, 69, 64);
-      ctx.fillText(CHARACTERS[fighter.id]?.special?.name || "SPECIAL", textX, 82, 64);
+      ctx.fillStyle = "rgba(8,5,19,.88)"; ctx.fillRect(x, 54, 116, 108);
+      ctx.strokeStyle = CHARACTERS[fighter.id]?.stats?.tint || "#ffe56e"; ctx.strokeRect(x, 54, 116, 108);
+      if (imageReady(image)) {
+        const sourceW = Number(image.naturalWidth || 256);
+        const sourceH = Number(image.naturalHeight || 256);
+        const cropW = sourceW * 0.58;
+        const cropH = sourceH * 0.58;
+        ctx.drawImage(image, (sourceW - cropW) * 0.5, sourceH * 0.04, cropW, cropH, x + 8, 58, 100, 92);
+      }
+      ctx.fillStyle = "rgba(8,5,19,.82)"; ctx.fillRect(x + 2, 136, 112, 24);
+      ctx.fillStyle = "#fff7c7"; ctx.font = "bold 7px monospace"; ctx.textAlign = "center";
+      ctx.fillText(CHARACTERS[fighter.id]?.name || "FIGHTER", x + 58, 145, 106);
+      ctx.fillText(CHARACTERS[fighter.id]?.special?.name || "SPECIAL", x + 58, 156, 106);
       ctx.restore();
     }
   }
@@ -2376,6 +2395,13 @@ export class Game {
     const y = placement.baselineY;
     const locomotion = ["dash", "backstep", "walk_backward"].includes(selection.name);
     const renderFacing = locomotion && fighter.locomotionFacing ? fighter.locomotionFacing : fighter.facing;
+    const locomotionClip = character?.animation?.[selection.name];
+    const locomotionFrameIndex = Math.floor(Math.max(0, selection.frame) / Math.max(1, Number(locomotionClip?.frameDuration || 1))) % Math.max(1, locomotionClip?.frames?.length || 1);
+    // movement-10 is authored in the opposite source direction from
+    // movement-9. Correct only that source frame; renderFacing still controls
+    // which side of the opponent the fighter faces.
+    const sourceFacingCorrection = ["dash", "backstep"].includes(selection.name) && locomotionFrameIndex === 1 ? -1 : 1;
+    const spriteFacing = renderFacing * sourceFacingCorrection;
     if (fighter.id === "kazushige" && fighter.buff?.frames > 0) {
       const aura = this.loadEffectFrame("attack-heavy", this.frame);
       if (imageReady(aura?.image)) {
@@ -2395,7 +2421,7 @@ export class Game {
     if (fighter.color === 2) ctx.filter = "hue-rotate(180deg) saturate(0.95)";
     if (imageReady(image)) {
       ctx.translate(x, y);
-      if (renderFacing < 0) ctx.scale(-1, 1);
+      if (spriteFacing < 0) ctx.scale(-1, 1);
       ctx.drawImage(image, placement.drawX, placement.drawY, placement.width, placement.height);
     }
     ctx.restore();

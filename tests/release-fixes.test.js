@@ -7,10 +7,10 @@ import { Game, SCREEN, skillStatusTextFor } from "../src/game.js";
 import { getSkillConfig, getSkillHudState } from "../src/skills.js";
 import { createExpandedAnimationManifest, getEffectAssetManifest } from "../src/sprite-manifest.js";
 
-test("held dash loops all three authored running frames", () => {
+test("held dash alternates the two authored leg phases without standing frames", () => {
   const clip = createExpandedAnimationManifest("guitar-boy").dash;
   assert.equal(clip.loop, true);
-  assert.deepEqual(clip.frames.map((path) => path.match(/movement-(\d+)\.png$/)?.[1]), ["7", "8", "9"]);
+  assert.deepEqual(clip.frames.map((path) => path.match(/movement-(\d+)\.png$/)?.[1]), ["9", "10"]);
 });
 
 test("supplied combat WAVs are mapped, loud, and playable through the SE toggle", () => {
@@ -38,6 +38,20 @@ test("supplied combat WAVs are mapped, loud, and playable through the SE toggle"
   for (const name of ["light-attack.wav", "strong-attack.wav", "super.wav", "skill.wav", "jump.wav"]) {
     assert.equal(fs.existsSync(new URL(`../assets/audio/se/${name}`, import.meta.url)), true, name);
   }
+});
+
+test("special SE waits for the cinematic to finish", () => {
+  const game = new Game(null);
+  game.state.screen = SCREEN.battle;
+  game.player.meter = 100;
+  const played = [];
+  game.playSe = (id) => { played.push(id); return true; };
+  assert.equal(game.startSpecial(game.player), true);
+  assert.deepEqual(played, []);
+  for (let frame = 0; frame < 31; frame += 1) game.tickBattle({});
+  assert.deepEqual(played, []);
+  game.tickBattle({});
+  assert.deepEqual(played, ["super"]);
 });
 
 test("training selections choose the requested enemy and stage", () => {
@@ -102,7 +116,7 @@ test("supers use a smaller VFX and damage, variety, combos, and skills accelerat
   const specialUser = createFighterState("uncle", 100, 1);
   game.player = specialUser; game.cpu = createFighterState("toko", 150, -1); specialUser.meter = 100;
   assert.equal(game.startSpecial(specialUser), true);
-  assert.equal(game.state.vfx.find((entry) => entry.effectId === "super-explosion").scale, 2.3);
+  assert.equal(game.state.vfx.find((entry) => entry.effectId === "super-explosion").scale, 1.7);
 
   const attacker = createFighterState("guitar-boy", 100, 1);
   const defender = createFighterState("uncle", 125, -1);
@@ -122,13 +136,20 @@ test("supers use a smaller VFX and damage, variety, combos, and skills accelerat
 test("every stage platform resolves to a runtime PNG and layouts are distinct", () => {
   const layouts = new Set();
   for (const stage of STAGES) {
-    assert.ok(stage.platforms.length >= 2);
+    assert.equal(stage.platforms.length, stage.number === 5 ? 0 : 2);
     layouts.add(stage.platforms.map(({ x, y, w, asset }) => `${x}:${y}:${w}:${asset}`).join("|"));
     for (const platform of stage.platforms) {
       assert.equal(fs.existsSync(new URL(`../assets/platforms/${platform.asset}.png`, import.meta.url)), true, `${stage.id}:${platform.asset}`);
     }
   }
   assert.equal(layouts.size, STAGES.length);
+  assert.deepEqual(STAGES.map((stage) => stage.platforms.map(({ asset, x, y }) => [asset, x, y])), [
+    [["light-podium", 58, 42], ["step-ladder", 360, 42]],
+    [["amp", 20, 70], ["amp", 386, 42]],
+    [["ramen-stand", 128, 70], ["ramen-stand", 252, 70]],
+    [["step-ladder", 62, 104], ["amp", 212, 70]],
+    [],
+  ]);
 });
 
 test("Kazushige activates on the first full charge and exposes charge then duration HUD", () => {
@@ -243,7 +264,7 @@ test("special cut-ins reserve side lanes while score and training HUD stay cente
     fillText(...args) { labels.push(args); },
   };
   game.drawBattle(ctx);
-  assert.equal(rectangles.some(([x, y, w, h]) => x === 16 && y === 54 && w === 116 && h === 54), true);
+  assert.equal(rectangles.some(([x, y, w, h]) => x === 16 && y === 54 && w === 116 && h === 108), true);
   for (const prefix of ["000000", "TRAINING", "COMMAND:"]) {
     const label = labels.find(([value]) => String(value).startsWith(prefix));
     assert.ok(label, prefix);

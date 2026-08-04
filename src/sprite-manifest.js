@@ -176,8 +176,10 @@ const GROUPS = Object.freeze({
   idle: ["idle", 1, 4, 10, true],
   walk_forward: ["movement", 1, 3, 5, true],
   walk_backward: ["movement", 4, 3, 6, true],
-  dash: ["movement", 7, 3, 3, true],
-  backstep: ["movement", 10, 3, 4, false],
+  // Frames 11/12 are settled standing poses.  The two airborne strides at
+  // 9/10 are the authored left/right leg phases used for held locomotion.
+  dash: ["movement", 9, 2, 4, true],
+  backstep: ["movement", 9, 2, 4, true],
   crouch_start: ["crouch", 1, 2, 4, false],
   // The held crouch pose is a settled keyframe, not a looping animation.
   // Keeping the clip non-looping lets the runtime clamp to one stable frame
