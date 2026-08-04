@@ -361,11 +361,11 @@ export const TRAINING_SETTINGS_ITEMS = Object.freeze(["START TRAINING", "CPU FIG
 // introducing an unlicensed external asset: source, rate, gain, and start
 // position are all data-owned and deterministic for the audio controller.
 export const STAGE_BGM_PROFILES = Object.freeze([
-  Object.freeze({ source: "assets/audio/bgm-battle.mp3", playbackRate: 0.92, volume: 0.30, startTime: 0 }),
-  Object.freeze({ source: "assets/audio/bgm-title.mp3", playbackRate: 1.06, volume: 0.20, startTime: 18 }),
-  Object.freeze({ source: "assets/audio/bgm-battle.mp3", playbackRate: 1.13, volume: 0.27, startTime: 36 }),
+  Object.freeze({ source: "assets/audio/bgm-toko.mp3", playbackRate: 1, volume: 0.32, startTime: 0 }),
+  Object.freeze({ source: "assets/audio/bgm-norio.mp3", playbackRate: 1, volume: 0.30, startTime: 0 }),
+  Object.freeze({ source: "assets/audio/bgm-kazushige.mp3", playbackRate: 1, volume: 0.30, startTime: 0 }),
   Object.freeze({ source: "assets/audio/bgm-title.mp3", playbackRate: 0.98, volume: 0.23, startTime: 54 }),
-  Object.freeze({ source: "assets/audio/bgm-battle.mp3", playbackRate: 1.02, volume: 0.33, startTime: 72 }),
+  Object.freeze({ source: "assets/audio/bgm-mirror.mp3", playbackRate: 1, volume: 0.30, startTime: 0 }),
 ]);
 
 export function getOpponentId(stageNumber, selectedId) {

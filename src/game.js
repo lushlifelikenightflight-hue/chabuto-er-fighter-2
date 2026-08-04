@@ -190,6 +190,11 @@ const BACKWARD_SPEED_MULTIPLIER = 1.85;
 const SUPER_VFX_SCALE = 1.7;
 const SKILL_CHARGE_SPEED_MULTIPLIER = 2.9;
 const KO_PRESENTATION_FRAMES = 72 + 3 * FIXED_HZ;
+const RAIN_STAGE_IDS = new Set(["toko", "rusty", "mirror"]);
+const RAIN_CYCLE_FRAMES = 540;
+const RAIN_ACTIVE_START = 180;
+const RAIN_ACTIVE_END = 360;
+const RAIN_SLIP_DASH_FRAMES = 90;
 const PLATFORM_RENDER_PROFILES = Object.freeze({
   amp: Object.freeze({ sx: 64, sy: 133, sw: 128, sh: 111 }),
   "light-podium": Object.freeze({ sx: 66, sy: 89, sw: 123, sh: 155 }),
@@ -325,6 +330,7 @@ export class Game {
       result: "",
       stageResult: "",
       koFrames: 0,
+      weather: { type: "clear", active: false, cycleFrame: 0 },
       screenFrames: 0,
       debug: resolveDebugFlag(this.save),
       sound: this.save.sound !== false,
@@ -884,6 +890,7 @@ export class Game {
     this.state.timerFrames = ROUND_TIME_SECONDS * FIXED_HZ;
     this.state.battleFrames = 0;
     this.state.koFrames = 0;
+    this.state.weather = { type: "clear", active: false, cycleFrame: 0 };
     this.state.specialCinematic = null;
     this.state.combatNotice = { text: "", kind: "", damage: 0, x: 240, y: 120, frames: 0 };
     this.projectiles = [];
@@ -909,6 +916,7 @@ export class Game {
     this.state.timerFrames = Number.POSITIVE_INFINITY;
     this.state.stageFrame = 0;
     this.state.battleFrames = 0;
+    this.state.weather = { type: "clear", active: false, cycleFrame: 0 };
     this.projectiles = [];
     this.skillEntities = [];
     this.state.skillEntities = [];
@@ -967,6 +975,7 @@ export class Game {
     if (!training) this.state.timerFrames = Math.max(0, this.state.timerFrames - 1);
     this.state.stageFrame += 1;
     this.state.battleFrames = Number(this.state.battleFrames || 0) + 1;
+    this.updateWeather();
     this.state.comboTimer = Math.max(0, this.state.comboTimer - 1);
     if (this.state.comboTimer === 0) {
       this.state.combo = 0;
@@ -1010,6 +1019,26 @@ export class Game {
     setVisualSequence(loser, [{ name: "knockdown", duration: 12 }, { name: "defeat", duration: 36 }]);
     setVisualSequence(winner, [{ name: "victory", duration: 48 }]);
     this.showCombatNotice("K.O.", "ko", 0, loser);
+  }
+
+  updateWeather() {
+    const stage = STAGES[Math.max(0, Number(this.state.stage || 1) - 1)];
+    const supportsRain = RAIN_STAGE_IDS.has(stage?.id);
+    const cycleFrame = Number(this.state.battleFrames || 0) % RAIN_CYCLE_FRAMES;
+    const active = supportsRain && cycleFrame >= RAIN_ACTIVE_START && cycleFrame < RAIN_ACTIVE_END;
+    this.state.weather = { type: active ? "rain" : "clear", active, cycleFrame };
+    for (const fighter of [this.player, this.cpu]) {
+      if (!fighter) continue;
+      fighter.rainDashFrames = active && fighter.grounded && fighter.action === "dash"
+        ? Number(fighter.rainDashFrames || 0) + 1
+        : 0;
+      if (fighter.rainDashFrames >= RAIN_SLIP_DASH_FRAMES && !fighter.downed && fighter.state !== "knockback") {
+        fighter.rainDashFrames = 0;
+        fighter.vx = fighter.facing * -2.5;
+        this.launchKnockdown(fighter, { knockbackY: 4.2, hardKnockdown: false });
+        this.showCombatNotice("SLIP!", "slip", 0, fighter);
+      }
+    }
   }
 
   updateThrowSequence() {
@@ -1100,6 +1129,17 @@ export class Game {
     input = input || {};
     const character = CHARACTERS[fighter.id];
     const stats = character.stats || {};
+    // Interruptions used to leave this latch true after the phase had already
+    // returned to unavailable, causing every later B press in the round to
+    // fail canStartSkill().  Normalize only that stale terminal state; down,
+    // KO, resources, cooldowns, and an actually active skill remain locked.
+    if (fighter.skillPhase === "skillUnavailable" && fighter.skillInterrupted) {
+      fighter.skillInterrupted = false; fighter.skillInterruptionReason = null;
+      fighter.skillCancelled = false; fighter.skillHeld = false;
+      fighter.skillHoldActive = false; fighter.skillHoldFrames = 0;
+      fighter.skillRecoveryFrames = 0; fighter.skillConfig = null;
+      if (fighter.skill) { fighter.skill.interrupted = false; fighter.skill.interruptionReason = null; fighter.skill.recoveryFrames = 0; }
+    }
     if (fighter.comboBuffer) {
       fighter.comboBuffer.frames = Math.max(0, Number(fighter.comboBuffer.frames || 0) - 1);
       if (fighter.comboBuffer.frames <= 0) fighter.comboBuffer = null;
@@ -1200,6 +1240,9 @@ export class Game {
       fighter.x = clamp(fighter.x, STAGE_BOUNDS.left, STAGE_BOUNDS.right);
       return;
     }
+    // B has its own resource/cooldown contract and deliberately interrupts
+    // ordinary attacks, combo recovery, and special animation recovery.
+    if (input.skillPressed && this.startSkill(fighter, input)) return;
     if (fighter.skillPhase && fighter.skillPhase !== "skillUnavailable") {
       this.updateSkill(fighter, input, isPlayer);
       return;
@@ -1268,7 +1311,6 @@ export class Game {
     const moveLocked = ACTION_LOCK_STATES.has(fighter.state);
     const forward = direction === fighter.facing;
     if (!moveLocked && input.throwPressed && !fighter.downed && !fighter.flashStunned) this.startThrow(fighter);
-    else if (!moveLocked && input.skillPressed) this.startSkill(fighter, input);
     else if (!moveLocked && input.specialPressed && !fighter.downed && !fighter.flashStunned) this.startSpecial(fighter);
     else if (!moveLocked && (input.lightPressed || input.strongPressed)) this.startAttack(fighter, input);
     else if (!moveLocked && fighter.grounded && input.guard && forward && input.guardPressed && fighter.guardDashCooldown <= 0) this.startGuardDash(fighter);
@@ -1443,6 +1485,25 @@ export class Game {
   }
 
   startSkill(fighter, input = {}) {
+    // A hit/throw interruption can finish on the same frame that the skill
+    // returns to the terminal unavailable phase.  Treat that combination as
+    // a completed interruption so the next B press is never locked out for
+    // the rest of the round.
+    if (fighter?.skillPhase === "skillUnavailable" && fighter.skillInterrupted) {
+      fighter.skillInterrupted = false;
+      fighter.skillInterruptionReason = null;
+      fighter.skillCancelled = false;
+      fighter.skillHeld = false;
+      fighter.skillHoldActive = false;
+      fighter.skillHoldFrames = 0;
+      fighter.skillRecoveryFrames = 0;
+      fighter.skillConfig = null;
+      if (fighter.skill) {
+        fighter.skill.interrupted = false;
+        fighter.skill.interruptionReason = null;
+        fighter.skill.recoveryFrames = 0;
+      }
+    }
     const config = getSkillConfig(fighter?.id);
     if (!config || !fighter || fighter.hp <= 0 || fighter.flashStunned || (config.type === "tackle" && Number(fighter.tackleCooldown || 0) > 0) || !canStartSkill(fighter, config)) return false;
     const owner = fighter === this.player ? "player" : "cpu";
@@ -1453,6 +1514,16 @@ export class Game {
     // A copied skill is a stocked use, not another charge attempt.  B starts
     // its normal startup immediately even when the button is only tapped.
     const holdRequired = config.type !== "ramenBuff" && !fighter.skillCopiedUse && !fighter.skillUsingStock && input.skillHoldRequired !== false && (input.skillHoldRequired === true || input.skillPressed === true);
+    // B owns its cooldown contract and may cancel an ordinary move.  Remove
+    // every pending part of the old move so it cannot hit after the fighter
+    // has visibly entered the skill startup.
+    fighter.currentMove = null;
+    fighter.pendingProjectile = null;
+    fighter.projectileSpawned = false;
+    fighter.comboBuffer = null;
+    fighter.attackVfxSpawned = false;
+    fighter.hitRegistry?.clear?.();
+    fighter.alreadyHitTargets?.clear?.();
     fighter.skillCharging = false; fighter.skillActive = false; fighter.skillActivated = false; fighter.skillInterrupted = false; fighter.skillInterruptionReason = null; fighter.skillRecoveryFrames = 0; fighter.skillActionFrame = 0; fighter.skillHoldFrames = 0; fighter.skillHoldThresholdFrames = SKILL_HOLD_THRESHOLD_FRAMES; fighter.skillHoldActive = !holdRequired; fighter.skillHoldRequired = holdRequired; fighter.skillCancelled = false; fighter.skillHeld = true; fighter.skillStartFrame = this.frame; fighter.action = "skill_start"; fighter.state = "skillStartup"; fighter.actionFrame = 0; fighter.hitRegistry.clear();
     fighter.skillConfig = config;
     // Stocked copy uses are already paid for by the original full charge.
@@ -1471,7 +1542,7 @@ export class Game {
     // not seed a second static VFX record during the hold phase.
     if (config.type !== "flash" && config.type !== "dogSummon") {
       const midBodyEffect = config.type === "ramenBuff" || config.type === "drumBeat";
-      this.spawnVfx(config.effectId, fighter, { x: 0, y: midBodyEffect ? 84 : 0, scale: config.type === "drumBeat" ? 0.48 : undefined });
+      this.spawnVfx(config.effectId, fighter, { x: 0, y: config.type === "mirror" ? 82 : midBodyEffect ? 84 : 0, scale: config.type === "drumBeat" ? 0.48 : undefined });
     }
     return true;
   }
@@ -1617,7 +1688,7 @@ export class Game {
     } else if (type === "dogSummon") {
       this.skillEntities = Array.isArray(this.skillEntities) ? this.skillEntities : [];
       if (this.skillEntities.some((entry) => entry.owner === owner && ["dogMarker", "fallingDog", "dogImpact"].includes(entry.type) && entry.active)) return;
-      this.spawnSkillEntity({ owner, type: "dogMarker", x: opponent?.x || fighter.x + fighter.facing * 90, targetX: opponent?.x || fighter.x + fighter.facing * 90, y: 0, delay: 20, duration: 116, damage: 0, w: 0, h: 0, renderWidth: 96, renderHeight: 96, guardable: true, effectId: config.effectId, spawnVfx: false });
+      this.spawnSkillEntity({ owner, type: "dogMarker", x: opponent?.x || fighter.x + fighter.facing * 90, targetX: opponent?.x || fighter.x + fighter.facing * 90, y: 0, delay: 20, duration: 116, damage: 0, w: 0, h: 0, renderWidth: 192, renderHeight: 192, guardable: true, effectId: config.effectId, spawnVfx: false });
       if (resourceMode === "native") { fighter.skillGauge = 0; fighter.skill.gauge = 0; fighter.gauge.skill = 0; }
     } else if (type === "ramenBuff") {
       const durationFrames = Number(config.buffDurationFrames || 600);
@@ -1848,12 +1919,12 @@ export class Game {
       if (entity.delay > 0) { entity.delay -= 1; continue; }
       if (entity.type === "dogMarker") {
         if (entity.age < Number(entity.markerFrames || 20)) continue;
-        entity.type = "fallingDog"; entity.age = 0; entity.frameOffset = 96; entity.y = 240; entity.w = 72; entity.h = 72; entity.renderWidth = 128; entity.renderHeight = 128; entity.duration = 120; entity.vy = -10; entity.graceFrames = 18; entity.spawnedDrop = true; continue;
+        entity.type = "fallingDog"; entity.age = 0; entity.frameOffset = 96; entity.y = 240; entity.w = 72; entity.h = 72; entity.renderWidth = 256; entity.renderHeight = 256; entity.duration = 120; entity.vy = -10; entity.graceFrames = 18; entity.spawnedDrop = true; continue;
       }
       if (entity.type === "fallingDog") {
         if (entity.age <= Number(entity.graceFrames || 0)) continue;
         entity.y += Number(entity.vy || -10);
-        if (entity.y <= 0) { entity.type = "dogImpact"; entity.age = 0; entity.frameOffset = 192; entity.y = 0; entity.w = 90; entity.h = 80; entity.renderWidth = 128; entity.renderHeight = 128; entity.damage = 220; entity.duration = 96; entity.guardable = true; entity.causesKnockdown = true; entity.hardKnockdown = true; entity.ownerHit = false; this.spawnVfx("hit-burst", { x: entity.x, y: 36 }, { scale: 0.85 }); }
+        if (entity.y <= 0) { entity.type = "dogImpact"; entity.age = 0; entity.frameOffset = 192; entity.y = 0; entity.w = 90; entity.h = 80; entity.renderWidth = 256; entity.renderHeight = 256; entity.damage = 220; entity.duration = 96; entity.guardable = true; entity.causesKnockdown = true; entity.hardKnockdown = true; entity.ownerHit = false; this.spawnVfx("hit-burst", { x: entity.x, y: 36 }, { scale: 0.85 }); }
         else continue;
       }
       if (entity.type === "snareMarker") {
@@ -2081,9 +2152,10 @@ export class Game {
   }
 
   showCombatNotice(textValue, kind, damage = 0, defender = null) {
-    const x = Number(defender?.x) || 240;
-    const y = STAGE_BOUNDS.floor - (Number(defender?.y) || 0) - 104;
-    this.state.combatNotice = { text: textValue, kind, damage: Number(damage) || 0, x, y, frames: 42 };
+    const isKo = kind === "ko";
+    const x = isKo ? INTERNAL_WIDTH * 0.5 : Number(defender?.x) || INTERNAL_WIDTH * 0.5;
+    const y = isKo ? INTERNAL_HEIGHT * 0.5 : STAGE_BOUNDS.floor - (Number(defender?.y) || 0) - 104;
+    this.state.combatNotice = { text: textValue, kind, damage: Number(damage) || 0, x, y, frames: isKo ? KO_PRESENTATION_FRAMES : 42 };
     if (kind === "guard") this.beep(180, 0.035);
   }
 
@@ -2403,6 +2475,7 @@ export class Game {
     for (const effect of this.state.vfx || []) {
       if (effect.layer === "behind") this.drawVfxEffect(ctx, effect);
     }
+    this.drawWeather(ctx);
     this.drawFighter(ctx, this.player);
     this.drawFighter(ctx, this.cpu);
     for (const projectile of this.projectiles) {
@@ -2420,10 +2493,14 @@ export class Game {
         const manifest = asset.manifest;
         const width = Number(entity.renderWidth || manifest.cellWidth || entity.w || 16);
         const height = Number(entity.renderHeight || manifest.cellHeight || entity.h || 16);
-        const origin = manifest.origin || { x: width * 0.5, y: height * 0.5 };
+        const baseWidth = Math.max(1, Number(manifest.cellWidth || width));
+        const baseHeight = Math.max(1, Number(manifest.cellHeight || height));
+        const origin = manifest.origin || { x: baseWidth * 0.5, y: baseHeight * 0.5 };
+        const originX = Number(origin.x || 0) * width / baseWidth;
+        const originY = Number(origin.y || 0) * height / baseHeight;
         ctx.translate(Number(entity.x || 0), 0);
         if (Number(entity.facing || 1) < 0) ctx.scale(-1, 1);
-        ctx.drawImage(asset.image, -Number(origin.x || 0), INTERNAL_HEIGHT - Number(entity.y || 0) - Number(origin.y || 0), width, height);
+        ctx.drawImage(asset.image, -originX, INTERNAL_HEIGHT - Number(entity.y || 0) - originY, width, height);
       } else {
         ctx.fillStyle = entity.type === "flash" ? "#ffffff" : entity.type === "snare" || entity.type === "snareImpact" ? "#cf87ff" : entity.type === "dogMarker" ? "#b9e7ff" : "#7ee787";
         ctx.fillRect((entity.x || 0) - (entity.w || 16) * 0.5, INTERNAL_HEIGHT - (entity.y || 0) - (entity.h || 16), entity.w || 16, entity.h || 16);
@@ -2458,6 +2535,20 @@ export class Game {
       ctx.fillText(CHARACTERS[fighter.id]?.special?.name || "SPECIAL", x + 58, 156, 106);
       ctx.restore();
     }
+  }
+
+  drawWeather(ctx) {
+    if (this.state.weather?.type !== "rain" || !this.state.weather.active) return;
+    ctx.save();
+    ctx.strokeStyle = "rgba(180,220,255,.52)";
+    ctx.lineWidth = 1;
+    const drift = Number(this.frame || 0) % 24;
+    for (let index = 0; index < 42; index += 1) {
+      const x = (index * 37 + drift * 5) % INTERNAL_WIDTH;
+      const y = (index * 53 + drift * 9) % INTERNAL_HEIGHT;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 3, y + 9); ctx.stroke();
+    }
+    ctx.restore();
   }
 
   drawFighter(ctx, fighter) {
@@ -2556,12 +2647,15 @@ export class Game {
     if (notice?.frames > 0 && notice.text) {
       ctx.save();
       ctx.textAlign = "center";
-      ctx.font = "900 15px monospace";
-      ctx.lineWidth = 3;
+      const isKo = notice.kind === "ko";
+      ctx.font = isKo ? "900 48px monospace" : "900 15px monospace";
+      ctx.lineWidth = isKo ? 6 : 3;
       ctx.strokeStyle = "rgba(5,7,15,.9)";
-      ctx.fillStyle = notice.kind === "guard" ? "#7de7ff" : "#ffda66";
-      ctx.strokeText(notice.text, clamp(notice.x, 38, INTERNAL_WIDTH - 38), clamp(notice.y, 62, STAGE_BOUNDS.floor - 20));
-      ctx.fillText(notice.text, clamp(notice.x, 38, INTERNAL_WIDTH - 38), clamp(notice.y, 62, STAGE_BOUNDS.floor - 20));
+      ctx.fillStyle = notice.kind === "guard" ? "#7de7ff" : notice.kind === "slip" ? "#b6e8ff" : "#ffda66";
+      const noticeX = isKo ? INTERNAL_WIDTH * 0.5 : clamp(notice.x, 38, INTERNAL_WIDTH - 38);
+      const noticeY = isKo ? INTERNAL_HEIGHT * 0.5 : clamp(notice.y, 62, STAGE_BOUNDS.floor - 20);
+      ctx.strokeText(notice.text, noticeX, noticeY);
+      ctx.fillText(notice.text, noticeX, noticeY);
       ctx.restore();
     }
     ctx.textAlign = "right";

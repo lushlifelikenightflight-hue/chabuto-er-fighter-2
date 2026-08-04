@@ -459,10 +459,10 @@ test("Rusty dog uses one bounded runtime image and starts its impact effect on c
   const rusty = createFighterState("rusty", 100, 1); game.player = rusty; game.cpu = createFighterState("toko", 300, -1);
   game.activateSkill(rusty, getSkillConfig("rusty"));
   assert.equal(game.skillEntities.length, 1);
-  assert.equal(game.skillEntities[0].renderWidth, 96);
+  assert.equal(game.skillEntities[0].renderWidth, 192);
   assert.equal(game.state.vfx.some((effect) => effect.effectId === "skill-dog-summon"), false);
   const dog = game.skillEntities[0]; dog.delay = 0; dog.age = 20; game.updateSkillEntities();
-  assert.equal(dog.type, "fallingDog"); assert.equal(dog.renderWidth, 128);
+  assert.equal(dog.type, "fallingDog"); assert.equal(dog.renderWidth, 256);
   dog.graceFrames = 0; dog.y = 1; dog.vy = -10; game.updateSkillEntities();
   assert.equal(dog.type, "dogImpact");
   assert.equal(game.state.vfx.some((effect) => effect.effectId === "hit-burst"), true);

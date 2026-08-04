@@ -439,6 +439,7 @@ export function createFighterState(id, x, facing = 1) {
     skillInterruptionReason: null,
     skillRecoveryFrames: 0,
     slimeCooldown: 0,
+    rainDashFrames: 0,
     skillHoldFrames: 0,
     skillHoldThresholdFrames: 21,
     skillHoldActive: false,

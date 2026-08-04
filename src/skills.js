@@ -56,6 +56,8 @@ export const SKILL_LOCKOUT_STATES = Object.freeze([
   "special_start",
   "special_active",
   "special_recovery",
+  "throwing",
+  "grabbed",
   "defeat",
 ]);
 
@@ -106,8 +108,8 @@ export const SKILL_CONFIGS = Object.freeze({
     initialGauge: 0,
     initialAmmo: 0,
     maxAmmo: 0,
-    // Five seconds at the fixed 60 Hz simulation rate.
-    cooldownFrames: 300,
+    // Two seconds at the fixed 60 Hz simulation rate.
+    cooldownFrames: 120,
     phase: phase(6, 0, 3, 22),
     interruption: Object.freeze(["hit", "throw", "down", "knockdown", "ko"]),
     effectId: "skill-slime-shot",
@@ -165,7 +167,7 @@ export const SKILL_CONFIGS = Object.freeze({
     hudLabel: "DOG",
     trigger: "hold-release",
     releaseActivates: true,
-    chargeRate: 1,
+    chargeRate: 2,
     chargeMax: 100,
     initialGauge: 0,
     initialAmmo: 0,
@@ -319,7 +321,6 @@ export function canStartSkill(fighter = {}, configOrId = fighter.id) {
   if (!config || !fighter || fighter.hp === 0 || skillBlockedByState(fighter)) return false;
   const current = fighter.skillPhase || fighter.skillState || "skillUnavailable";
   if (current !== "skillUnavailable" && current !== "skillRecovery") return false;
-  if (fighter.state === "special" || String(fighter.action || "").startsWith("special")) return false;
   if (config.initialAmmo > 0 && Number(fighter.ammo ?? fighter.skillAmmo ?? config.initialAmmo) <= 0 && config.type !== "flash") return false;
   if (config.type === "slimeShot" && Number(fighter.slimeCooldown || 0) > 0) return false;
   if (config.type === "ramenBuff" && Number(fighter.buff?.frames || 0) > 0) return false;
