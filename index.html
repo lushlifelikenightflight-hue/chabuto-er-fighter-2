@@ -4,7 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <meta name="theme-color" content="#070914">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="茶封筒er2">
     <title>茶封筒erファイター2</title>
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
     <link rel="stylesheet" href="./style.css">
   </head>
   <body>
@@ -19,6 +25,7 @@
         <div class="virtual-pad-slot" data-virtual-pad aria-label="virtual controls"></div>
       </section>
     </main>
+    <script type="module" src="./src/pwa.js"></script>
     <script type="module" src="./src/game.js"></script>
   </body>
 </html>

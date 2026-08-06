@@ -1,5 +1,0 @@
-Use case: 2D fighting-game player sprite animation. Asset type: bob-girl victory and defeat result body sheet.
-Input images: Images 1-4 are immutable bob-girl combat keyframes; Image 5 is the accepted idle profile reference. Preserve short black bob hair, expressive eyes, red dress with white buttons and dark belt, pale legs, black shoes, pixel-art palette and dark outline.
-Primary request: exactly 6 full-body grounded frames in a 2 rows x 3 columns grid, row-major: victory frames 1-3 (confident upright stance, small celebratory hand and posture changes) then defeat frames 4-6 (distinct slumped, lowered-head, kneeling or exhausted silhouettes). Keep bob-girl identity and outfit; no text, trophy, confetti, opponent, glow or effects.
-Grounded contract: match accepted idle camera, body scale, centered root and shared feet baseline in every frame. Keep full body inside central 60%-70% safe area with no edge touch.
-Background: perfectly flat solid #FF00FF only; no gradient, floor, shadow, reflection, texture, labels, borders, watermark, UI, props or other characters. Output clean raw 2x3 grid.

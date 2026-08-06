@@ -154,6 +154,7 @@ function normalMove(name, archetype, overrides = {}) {
     cancelRoutes: isLight ? ["light_attack_neutral", "light_attack_crouch", "strong_attack_neutral"] : ["special"],
     hitboxFrames: [isLight ? 5 : 10, isLight ? 6 : 11, isLight ? 7 : 12],
     hurtboxProfile: isCrouch ? "crouch" : (isAir ? "air" : "standing"),
+    wakeupAttackInvulnerableFrames: isCrouch ? 8 : 0,
     meterGainOnHit: isLight ? 4 : 7,
     meterGainOnBlock: isLight ? 2 : 3,
     scoreValue: isLight ? 100 : 250,
@@ -352,8 +353,8 @@ export const STAGES = Object.freeze([
   Object.freeze({ number: 5, id: "mirror", name: "ミラーマッチ", opponent: "mirror", dialogue: "…。", background: "assets/stages/stage-mirror.png", platforms: Object.freeze([]) }),
 ]);
 
-export const MENU_ITEMS = Object.freeze(["GAME START", "TRAINING MODE", "HOW TO PLAY", "SCORE", "SETTINGS"]);
-export const SETTINGS_ITEMS = Object.freeze(["SOUND", "BGM", "SE", "DEBUG OVERLAY", "RESET DATA", "BACK"]);
+export const MENU_ITEMS = Object.freeze(["STORY MODE", "VS MODE", "TRAINING MODE", "HOW TO PLAY", "SETTINGS", "SCORE"]);
+export const SETTINGS_ITEMS = Object.freeze(["SOUND", "BGM", "SE", "CONTROLLER SETTINGS", "DEBUG OVERLAY", "RESET DATA", "BACK"]);
 export const TRAINING_SETTINGS_ITEMS = Object.freeze(["START TRAINING", "CPU FIGHTER", "STAGE", "CPU MOVE", "CPU ATTACK", "BACK"]);
 
 // Only two runtime tracks are currently shipped.  These profiles

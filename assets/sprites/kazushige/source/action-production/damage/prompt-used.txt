@@ -1,3 +1,0 @@
-Use case: production-oriented 2D fighting-game player sprite animation.
-Input images: kazushige/sheet-transparent.png and kazushige/combat-1.png as identity references.
-Generated with image_gen as a 4x4, sixteen-frame reaction family: hit_light, hit_heavy, hit_crouch, air_hit, knockback, knockdown, down_idle and wakeup (two frames each). Bass remains attached, roots are consistent, #FF00FF background, no effects or edge contact.

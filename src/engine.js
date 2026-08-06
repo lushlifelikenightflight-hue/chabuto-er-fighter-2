@@ -121,6 +121,7 @@ export const canFollowup = canDownFollowup;
 export function isJustGuardEligible(move = {}) {
   if (!move) return false;
   if (["throw", "commandThrow"].includes(move.kind) || move.isThrow === true || move.counterOnly === true) return false;
+  if (move.unblockable === true || move.justGuardable === false) return false;
   return true;
 }
 
@@ -440,6 +441,9 @@ export function createFighterState(id, x, facing = 1) {
     skillRecoveryFrames: 0,
     slimeCooldown: 0,
     rainDashFrames: 0,
+    rainSlipFrames: 0,
+    rainSlipTriggered: false,
+    rainSlipDirection: 0,
     skillHoldFrames: 0,
     skillHoldThresholdFrames: 21,
     skillHoldActive: false,
@@ -563,6 +567,8 @@ export function createProjectile(owner, fighter, move, currentFrame = 0) {
     damage: move.damage,
     effectId: move.effectId || "attack-special",
     moveKind: move.kind || "special",
+    unblockable: move.unblockable === true,
+    justGuardable: move.justGuardable !== false,
     hit: false,
     // Projectiles are created when the owning move reaches its first active
     // frame. Do not charge startup twice after the projectile exists.

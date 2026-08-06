@@ -1,4 +1,5 @@
 /** Versioned, failure-tolerant localStorage helpers. */
+import { normalizeControllerBindings } from "./controller-bindings.js";
 
 export const STORAGE_KEY = "chabuto-er-fighter2.save.v1";
 export const STORAGE_VERSION = 1;
@@ -11,6 +12,7 @@ export const DEFAULT_SAVE = Object.freeze({
   debug: false,
   highScores: [],
   last: null,
+  controllerBindings: normalizeControllerBindings(),
 });
 
 function resolveStorage(storage) {
@@ -18,7 +20,13 @@ function resolveStorage(storage) {
   try { return globalThis.localStorage; } catch { return null; }
 }
 
-function cloneDefault() { return { ...DEFAULT_SAVE, highScores: [] }; }
+function cloneDefault() {
+  return {
+    ...DEFAULT_SAVE,
+    highScores: [],
+    controllerBindings: normalizeControllerBindings(DEFAULT_SAVE.controllerBindings),
+  };
+}
 
 export function validateSave(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return cloneDefault();
@@ -38,6 +46,7 @@ export function validateSave(value) {
     timestamp: typeof row.timestamp === "string" ? row.timestamp : new Date(0).toISOString(),
   })) : [];
   result.last = value.last && typeof value.last === "object" ? { ...value.last } : null;
+  result.controllerBindings = normalizeControllerBindings(value.controllerBindings);
   return result;
 }
 

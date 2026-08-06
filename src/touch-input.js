@@ -38,6 +38,7 @@ const VIEWPORT_STYLE_PROPERTIES = Object.freeze([
   "userSelect",
   "webkitUserSelect",
 ]);
+const GAME_ACTIVE_CLASS = "game-active";
 
 function canUseDom() {
   return typeof document !== "undefined" && typeof document.createElement === "function";
@@ -82,24 +83,44 @@ export class TouchInput {
       if (typeof document !== "undefined" && document.hidden) this.reset();
     };
     this.onResize = () => this.syncAvailability();
+    this.onOrientationChange = () => {
+      this.reset();
+      this.syncAvailability();
+    };
     this.onVisualViewportResize = () => this.syncViewportMetrics();
     this.onWindowPointerUp = (event) => {
       if (event?.pointerId === this.stickPointerId) this.releaseStick(event.pointerId);
       else this.releasePointer(event?.pointerId);
     };
-    // A cancelled touch can represent several active contacts on mobile. A
-    // full reset is intentional so no phantom held action survives a gesture.
-    this.onWindowPointerCancel = () => this.reset();
+    this.onWindowPointerCancel = (event) => {
+      if (event?.pointerId === this.stickPointerId) this.releaseStick(event.pointerId);
+      else this.releasePointer(event?.pointerId);
+    };
     this.onRootPointerMove = (event) => {
+      if (this.available && this.mode !== TOUCH_MODES.hidden) safePreventDefault(event);
+    };
+    this.onRootTouchMove = (event) => {
+      if (this.available && this.mode !== TOUCH_MODES.hidden) safePreventDefault(event);
+    };
+    this.onSurfacePointerDown = (event) => {
+      if (this.available && this.mode !== TOUCH_MODES.hidden) safePreventDefault(event);
+    };
+    this.onSurfacePointerMove = (event) => {
+      if (this.available && this.mode !== TOUCH_MODES.hidden) safePreventDefault(event);
+    };
+    this.onSurfaceTouchMove = (event) => {
       if (this.available && this.mode !== TOUCH_MODES.hidden) safePreventDefault(event);
     };
     this.onContextMenu = (event) => safePreventDefault(event);
     if (!container || !canUseDom()) return;
     this.gameRoot = this.resolveGameRoot();
     this.build();
+    this.container.addEventListener("pointerdown", this.onSurfacePointerDown, { passive: false });
+    this.container.addEventListener("pointermove", this.onSurfacePointerMove, { passive: false });
+    this.container.addEventListener("touchmove", this.onSurfaceTouchMove, { passive: false });
     window.addEventListener("blur", this.onBlur);
     window.addEventListener("resize", this.onResize, { passive: true });
-    window.addEventListener("orientationchange", this.onResize, { passive: true });
+    window.addEventListener("orientationchange", this.onOrientationChange, { passive: true });
     window.visualViewport?.addEventListener?.("resize", this.onVisualViewportResize, { passive: true });
     window.addEventListener("pointerup", this.onWindowPointerUp, true);
     window.addEventListener("pointercancel", this.onWindowPointerCancel, true);
@@ -128,6 +149,7 @@ export class TouchInput {
     root.setAttribute("aria-hidden", "true");
     root.addEventListener("contextmenu", this.onContextMenu);
     root.addEventListener("pointermove", this.onRootPointerMove, { passive: false });
+    root.addEventListener("touchmove", this.onRootTouchMove, { passive: false });
 
     const stick = document.createElement("div");
     stick.className = "virtual-pad__stick";
@@ -147,7 +169,7 @@ export class TouchInput {
     const down = (event) => this.pressStick(event);
     const move = (event) => this.moveStick(event);
     const up = (event) => this.releaseStick(event.pointerId);
-    const cancel = () => this.reset();
+    const cancel = (event) => this.releaseStick(event.pointerId);
     stick.addEventListener("pointerdown", down, { passive: false });
     stick.addEventListener("pointermove", move, { passive: false });
     stick.addEventListener("pointerup", up);
@@ -173,6 +195,7 @@ export class TouchInput {
     utilities.setAttribute("aria-label", "ジャンプと必殺技");
     utilities.appendChild(this.createButton("jump", "JUMP", "ジャンプ", ["jump"], "virtual-pad__utility virtual-pad__jump"));
     utilities.appendChild(this.createButton("special", "SP", "必殺技", ["special"], "virtual-pad__utility virtual-pad__special"));
+    utilities.appendChild(this.createButton("throw", "COUNTER", "カウンター", ["throw"], "virtual-pad__utility virtual-pad__throw"));
     root.appendChild(utilities);
 
     this.container.appendChild(root);
@@ -198,7 +221,7 @@ export class TouchInput {
       this.pressPointer(event, button, actions);
     };
     const up = (event) => this.releasePointer(event.pointerId);
-    const cancel = () => this.reset();
+    const cancel = (event) => this.releasePointer(event.pointerId);
     const lost = (event) => this.releasePointer(event.pointerId);
     // Some embedded WebViews expose a click without PointerEvent dispatch.
     // Treat that as a one-frame pulse so menu A/B and direct mouse clicks are
@@ -365,7 +388,6 @@ export class TouchInput {
     this.available = isTouchAvailable(win, nav);
     this.syncViewportMetrics();
     this.updateVisibility();
-    this.syncViewportLock(this.mode === TOUCH_MODES.battle);
   }
 
   syncViewportMetrics() {
@@ -384,11 +406,10 @@ export class TouchInput {
 
   setMode(mode, { preserveInput = false } = {}) {
     const next = mode === TOUCH_MODES.menu || mode === TOUCH_MODES.battle || mode === TOUCH_MODES.preview ? mode : TOUCH_MODES.hidden;
-    if (next !== this.mode && !preserveInput) this.reset();
+    if (!preserveInput) this.reset();
     this.mode = next;
     if (this.root) this.root.dataset.mode = next;
     this.updateVisibility();
-    this.syncViewportLock(next === TOUCH_MODES.battle);
   }
 
   updateVisibility() {
@@ -406,7 +427,15 @@ export class TouchInput {
       button.tabIndex = interactive ? 0 : -1;
       button.setAttribute("aria-disabled", interactive ? "false" : "true");
     }
+    this.syncDocumentLock(visible);
+    this.syncViewportLock(visible);
     if (!interactive) this.reset();
+  }
+
+  syncDocumentLock(locked) {
+    if (typeof document === "undefined") return;
+    document.documentElement?.classList?.toggle(GAME_ACTIVE_CLASS, locked);
+    document.body?.classList?.toggle(GAME_ACTIVE_CLASS, locked);
   }
 
   syncViewportLock(locked) {
@@ -452,11 +481,12 @@ export class TouchInput {
     if (this.destroyed) return;
     this.destroyed = true;
     this.reset();
+    this.syncDocumentLock(false);
     this.syncViewportLock(false);
     if (typeof window !== "undefined") {
       window.removeEventListener("blur", this.onBlur);
       window.removeEventListener("resize", this.onResize);
-      window.removeEventListener("orientationchange", this.onResize);
+      window.removeEventListener("orientationchange", this.onOrientationChange);
       window.visualViewport?.removeEventListener?.("resize", this.onVisualViewportResize);
       window.removeEventListener("pointerup", this.onWindowPointerUp, true);
       window.removeEventListener("pointercancel", this.onWindowPointerCancel, true);
@@ -464,6 +494,10 @@ export class TouchInput {
     if (typeof document !== "undefined") document.removeEventListener("visibilitychange", this.onVisibility);
     this.root?.removeEventListener("contextmenu", this.onContextMenu);
     this.root?.removeEventListener("pointermove", this.onRootPointerMove);
+    this.root?.removeEventListener("touchmove", this.onRootTouchMove);
+    this.container?.removeEventListener("pointerdown", this.onSurfacePointerDown);
+    this.container?.removeEventListener("pointermove", this.onSurfacePointerMove);
+    this.container?.removeEventListener("touchmove", this.onSurfaceTouchMove);
     if (this.stick && this.stickBindings) {
       const { down, move, up, cancel } = this.stickBindings;
       this.stick.removeEventListener("pointerdown", down);

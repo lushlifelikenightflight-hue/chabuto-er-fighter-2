@@ -1,3 +1,0 @@
-Use case: production-oriented 2D fighting-game player sprite animation.
-Input images: kazushige/sheet-transparent.png and kazushige/combat-1.png as identity references.
-Generated with image_gen as a 3x4, twelve-frame jump family: jump_start, jump_rise, jump_apex, jump_fall, landing and double_jump (two frames each). Airborne root is centered and body/bass scale is stable; #FF00FF background, no effects or edge contact.

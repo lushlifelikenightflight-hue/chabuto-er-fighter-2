@@ -14,6 +14,8 @@ import {
 import { appendHighScore, loadSave, resetSave, saveData } from "./storage.js";
 import { EFFECT_ASSET_MANIFEST, RUNTIME_ANIMATION_ALIASES, getEffectAssetManifest, getSkillAnimationClip } from "./sprite-manifest.js";
 import { TouchInput } from "./touch-input.js";
+import { VsInputRouter } from "./vs-input.js";
+import { CONTROLLER_ACTIONS, DEFAULT_CONTROLLER_BINDINGS, isAssignableControllerButton, normalizeControllerBindings } from "./controller-bindings.js";
 import {
   canContinueSkill, canStartSkill, getSkillConfig, getSkillHudState, interruptSkill,
   SKILL_HOLD_THRESHOLD_FRAMES,
@@ -23,10 +25,11 @@ import { effectForMove, getEffectDescriptor } from "./vfx.js";
 export const SCREEN = Object.freeze({
   boot: "boot", title: "title", menu: "menu", difficultySelect: "difficultySelect",
   characterSelect: "characterSelect", colorSelect: "colorSelect", trainingSettings: "trainingSettings",
-  howToPlay: "howToPlay", settings: "settings",
+  howToPlay: "howToPlay", settings: "settings", controllerSettings: "controllerSettings",
   stageIntro: "stageIntro", roundIntro: "roundIntro", battle: "battle", pause: "pause",
   roundResult: "roundResult", stageResult: "stageResult", continue: "continue",
   gameOver: "gameOver", ending: "ending", score: "score",
+  vsDeviceSelect: "vsDeviceSelect", vsCharacterSelect: "vsCharacterSelect", vsColorSelect: "vsColorSelect", vsResult: "vsResult",
 });
 
 const FRAME = 1000 / FIXED_HZ;
@@ -41,7 +44,9 @@ export function spriteDrawPlacement(fighter, sprite, scale = DEFAULT_SPRITE_SCAL
   const anchor = sprite?.anchor || { x: 128, y: 233 };
   const cellWidth = sprite?.cellWidth || 256;
   const cellHeight = sprite?.cellHeight || 256;
-  const baselineY = STAGE_BOUNDS.floor - Math.max(0, Number(fighter?.y) || 0);
+  const slimeDowned = fighter?.id === "green-slime" && ["knockdownLanding", "downed", "groundHit", "knockdown", "koLanding", "koDowned"].includes(fighter?.state);
+  const downedOffsetY = slimeDowned ? 18 : Number(fighter?.downedOffsetY || 0);
+  const baselineY = STAGE_BOUNDS.floor - Math.max(0, Number(fighter?.y) || 0) + downedOffsetY;
   return {
     originX: Number(fighter?.x) || 0,
     baselineY,
@@ -190,11 +195,38 @@ const BACKWARD_SPEED_MULTIPLIER = 1.85;
 const SUPER_VFX_SCALE = 1.7;
 const SKILL_CHARGE_SPEED_MULTIPLIER = 2.9;
 const KO_PRESENTATION_FRAMES = 72 + 3 * FIXED_HZ;
+const KO_FALL_TIMEOUT_FRAMES = KO_PRESENTATION_FRAMES + 2 * FIXED_HZ;
 const RAIN_STAGE_IDS = new Set(["toko", "rusty", "mirror"]);
-const RAIN_CYCLE_FRAMES = 540;
 const RAIN_ACTIVE_START = 180;
-const RAIN_ACTIVE_END = 360;
-const RAIN_SLIP_DASH_FRAMES = 90;
+const RAIN_START_VARIANCE = 60;
+const RAIN_MIN_DURATION_MS = 20_000;
+const RAIN_DURATION_VARIANCE_MS = 10_000;
+const RAIN_SLIP_INPUT_FRAMES = FIXED_HZ;
+const VISIBLE_SETTINGS_INDICES = Object.freeze([0, 1, 2, 3, 6]);
+const CONTROLLER_BUTTON_LABELS = Object.freeze(["A", "B", "X", "Y", "L", "R", "ZL", "ZR"]);
+const CONTROLLER_SETTINGS_FOCUS_LAYOUT = Object.freeze([
+  Object.freeze({ id: "p1", x: 0, y: 0 }), Object.freeze({ id: "p2", x: 1, y: 0 }),
+  ...CONTROLLER_ACTIONS.map((_, index) => Object.freeze({ id: `action-${index}`, x: index % 4, y: 1 + Math.floor(index / 4) })),
+  Object.freeze({ id: "save", x: 0, y: 3 }), Object.freeze({ id: "back", x: 1, y: 3 }),
+]);
+
+export function controllerButtonLabel(button) {
+  return CONTROLLER_BUTTON_LABELS[button] || `BUTTON ${button}`;
+}
+
+export function moveControllerSettingsFocus(focus, direction) {
+  const current = CONTROLLER_SETTINGS_FOCUS_LAYOUT.find((item) => item.id === focus) || CONTROLLER_SETTINGS_FOCUS_LAYOUT[0];
+  const rows = [...new Set(CONTROLLER_SETTINGS_FOCUS_LAYOUT.map((item) => item.y))];
+  const row = CONTROLLER_SETTINGS_FOCUS_LAYOUT.filter((item) => item.y === current.y).sort((a, b) => a.x - b.x);
+  if (direction === "left" || direction === "right") {
+    const offset = direction === "left" ? -1 : 1;
+    return row[(row.indexOf(current) + row.length + offset) % row.length].id;
+  }
+  const offset = direction === "up" ? -1 : 1;
+  const nextY = rows[(rows.indexOf(current.y) + rows.length + offset) % rows.length];
+  return CONTROLLER_SETTINGS_FOCUS_LAYOUT.filter((item) => item.y === nextY)
+    .sort((a, b) => Math.abs(a.x - current.x) - Math.abs(b.x - current.x) || a.x - b.x)[0].id;
+}
 const PLATFORM_RENDER_PROFILES = Object.freeze({
   amp: Object.freeze({ sx: 64, sy: 133, sw: 128, sh: 111 }),
   "light-podium": Object.freeze({ sx: 66, sy: 89, sw: 123, sh: 155 }),
@@ -241,6 +273,10 @@ function imageReady(image) {
   return Boolean(image?.complete && (typeof image.naturalWidth === "undefined" || image.naturalWidth > 0));
 }
 
+function effectImageReady(image) {
+  return Boolean(image?.complete && Number(image.naturalWidth) > 0 && Number(image.naturalHeight) > 0);
+}
+
 export class Game {
   constructor(root = null) {
     this.root = root || byId("game");
@@ -275,6 +311,9 @@ export class Game {
     this.padHeld = new Set();
     this.padJust = new Set();
     this.padReleased = new Set();
+    this.controllerBindings = normalizeControllerBindings(this.save?.controllerBindings);
+    this.vsInput = new VsInputRouter(this.controllerBindings);
+    this.vsThrowChordHeld = { p1: false, p2: false };
     this.lastDirection = 0;
     this.lastDirectionFrame = -999;
     this.frame = 0;
@@ -286,6 +325,7 @@ export class Game {
     this.bgmSource = "";
     this.bgmProfileKey = "";
     this.sePlayers = new Map();
+    this.activeSePlayers = new Set();
     this.state = {
       screen: SCREEN.boot,
       menuIndex: 0,
@@ -301,6 +341,17 @@ export class Game {
       combatNotice: { text: "", kind: "", damage: 0, x: 240, y: 120, frames: 0 },
       selectedId: "guitar-boy",
       color: 1,
+      vsSelectedIds: { p1: "guitar-boy", p2: "toko" },
+      vsColors: { p1: 1, p2: 2 },
+      vsSelecting: "p1",
+      vsWinner: "",
+      vsLocked: { p1: false, p2: false },
+      vsResumeScreen: null,
+      controllerSettingsPlayer: null,
+      controllerSettingsAction: 0,
+      controllerSettingsFocus: "p1",
+      controllerCapture: null,
+      controllerDraft: normalizeControllerBindings(this.controllerBindings),
       stage: 1,
       round: 1,
       playerRounds: 0,
@@ -488,13 +539,19 @@ export class Game {
     this.ensureAudio();
     const base = this.sePlayers.get(id);
     if (!base || typeof base.cloneNode !== "function") return false;
+    let player = null;
     try {
-      const player = base.cloneNode(true);
+      player = base.cloneNode(true);
       player.volume = 0.94;
+      player.currentTime = 0;
+      this.activeSePlayers.add(player);
+      const cleanup = () => this.activeSePlayers.delete(player);
+      player.addEventListener?.("ended", cleanup, { once: true });
+      player.addEventListener?.("error", cleanup, { once: true });
       const playback = player.play();
-      if (playback?.catch) playback.catch(() => {});
+      if (playback?.catch) playback.catch(cleanup);
       return true;
-    } catch { return false; }
+    } catch { this.activeSePlayers.delete(player); return false; }
   }
 
   addSpecialMeter(fighter, amount) {
@@ -527,6 +584,15 @@ export class Game {
   tick() {
     this.frame += 1;
     const input = this.readInput();
+    const vsSources = this.state.mode === "vs" || [SCREEN.vsDeviceSelect, SCREEN.vsCharacterSelect, SCREEN.vsColorSelect, SCREEN.vsResult].includes(this.state.screen)
+      ? this.vsInput.poll(this.keys, this.justKeys, this.releasedKeys) : null;
+    const vsInputs = vsSources ? this.vsInput.playerInputs(vsSources) : null;
+    if (vsSources && [...vsSources.values()].some((source) => Object.values(source).some(Boolean))) this.ensureAudio();
+    const disconnectedVsPlayers = vsSources ? this.vsInput.consumeDisconnectedPlayers() : [];
+    if (disconnectedVsPlayers.length && this.state.screen !== SCREEN.vsDeviceSelect) {
+      this.state.vsResumeScreen = this.state.screen;
+      this.setScreen(SCREEN.vsDeviceSelect);
+    }
     this.state.inputHistory.push({ frame: this.frame, left: input.left, right: input.right, down: input.down, up: input.up, light: input.light, strong: input.strong, guard: input.guard, skill: input.skill, special: input.special });
     if (this.state.inputHistory.length > 30) this.state.inputHistory.shift();
     this.state.screenFrames += 1;
@@ -535,6 +601,9 @@ export class Game {
     } else if (this.state.screen === SCREEN.title) {
       if (input.start || input.confirm) this.setScreen(SCREEN.menu);
     } else if (this.state.screen === SCREEN.menu) this.tickMenu(input);
+    else if (this.state.screen === SCREEN.vsDeviceSelect) this.tickVsDevices(vsSources);
+    else if (this.state.screen === SCREEN.vsCharacterSelect) this.tickVsCharacter(vsInputs);
+    else if (this.state.screen === SCREEN.vsColorSelect) this.tickVsColor(vsInputs);
     else if (this.state.screen === SCREEN.difficultySelect) this.tickDifficulty(input);
     else if (this.state.screen === SCREEN.characterSelect) this.tickCharacter(input);
     else if (this.state.screen === SCREEN.colorSelect) this.tickColor(input);
@@ -543,6 +612,8 @@ export class Game {
       if (input.cancel || input.confirm) this.setScreen(SCREEN.menu);
     } else if (this.state.screen === SCREEN.settings) {
       this.tickSettings(input);
+    } else if (this.state.screen === SCREEN.controllerSettings) {
+      this.tickControllerSettings(input);
     } else if (this.state.screen === SCREEN.score) {
       if (input.cancel || input.confirm) this.setScreen(SCREEN.menu);
     } else if (this.state.screen === SCREEN.stageIntro) {
@@ -552,17 +623,20 @@ export class Game {
     } else if (this.state.screen === SCREEN.roundIntro) {
       if (input.confirm || this.state.screenFrames > 70) this.setScreen(SCREEN.battle);
     } else if (this.state.screen === SCREEN.battle) {
-      if (input.pause || input.cancel) this.setScreen(SCREEN.pause);
-      else this.tickBattle(input);
+      if ((this.state.mode === "vs" ? (vsInputs.p1.pausePressed || vsInputs.p2.pausePressed) : (input.pause || input.cancel))) this.setScreen(SCREEN.pause);
+      else this.tickBattle(this.state.mode === "vs" ? this.vsBattleInput(vsInputs.p1, this.player, "p1") : input, this.state.mode === "vs" ? this.vsBattleInput(vsInputs.p2, this.cpu, "p2") : null);
     } else if (this.state.screen === SCREEN.pause) {
       // ENTER/the virtual pause button resumes. ESC is also a training escape
       // route so a training session can be left without requiring a mouse.
-      if (input.upPressed) this.state.pauseIndex = (this.state.pauseIndex + 1) % 2;
-      if (input.downPressed) this.state.pauseIndex = (this.state.pauseIndex + 1) % 2;
-      if (input.cancel) this.state.mode === "training" || this.state.pauseIndex === 1 ? this.returnTitle() : this.setScreen(SCREEN.battle);
-      else if (input.pause || input.confirm) this.state.pauseIndex === 0 ? this.setScreen(SCREEN.battle) : this.returnTitle();
+      const pauseInput = this.state.mode === "vs" ? this.vsMenuInput(vsInputs) : input;
+      if (pauseInput.upPressed) this.state.pauseIndex = (this.state.pauseIndex + 1) % 2;
+      if (pauseInput.downPressed) this.state.pauseIndex = (this.state.pauseIndex + 1) % 2;
+      if (pauseInput.cancel) this.state.mode === "training" || this.state.pauseIndex === 1 ? this.returnTitle() : this.setScreen(SCREEN.battle);
+      else if ((this.state.mode === "vs" ? pauseInput.pausePressed : pauseInput.pause) || pauseInput.confirm) this.state.pauseIndex === 0 ? this.setScreen(SCREEN.battle) : this.returnTitle();
     } else if (this.state.screen === SCREEN.roundResult) {
-      if (input.confirm || this.state.screenFrames > 100) this.resolveRoundResult();
+      if ((this.state.mode === "vs" ? (vsInputs.p1.confirm || vsInputs.p2.confirm) : input.confirm) || this.state.screenFrames > 100) this.resolveRoundResult();
+    } else if (this.state.screen === SCREEN.vsResult) {
+      this.tickVsResult(vsInputs);
     } else if (this.state.screen === SCREEN.stageResult) {
       if (input.confirm || this.state.screenFrames > 110) this.resolveStageResult();
     } else if (this.state.screen === SCREEN.continue) {
@@ -620,9 +694,12 @@ export class Game {
     const backwardHeld = Number(this.player?.facing || 1) >= 0 ? left : right;
     const backwardPressed = Number(this.player?.facing || 1) >= 0 ? leftPressed : rightPressed;
     const previousThrowHeld = this.throwChordHeld;
-    const throwHeld = battleScreen && backwardHeld && yHeld;
-    const throwPressed = throwHeld && (backwardPressed || yPressed) && !previousThrowHeld;
-    const throwReleased = previousThrowHeld && !throwHeld;
+    const touchThrowHeld = battleScreen && touchHeld("throw");
+    const touchThrowPressed = battleScreen && touchPressed("throw");
+    const touchThrowReleased = battleScreen && touchReleased("throw");
+    const throwHeld = touchThrowHeld || gamepad.counter || (battleScreen && backwardHeld && yHeld);
+    const throwPressed = touchThrowPressed || gamepad.counterPressed || (throwHeld && (backwardPressed || yPressed) && !previousThrowHeld);
+    const throwReleased = touchThrowReleased || (previousThrowHeld && !throwHeld);
     this.throwChordHeld = throwHeld;
     let light = aHeld && !throwHeld;
     let strong = xHeld && !throwHeld;
@@ -646,14 +723,14 @@ export class Game {
     this.touchInput?.setExternalVisualActions?.([
       left && "left", right && "right", up && "up", down && "down",
       aHeld && "a", bHeld && "b", xHeld && "x", yHeld && "y",
-      jumpHeld && "jump", special && "special",
+      jumpHeld && "jump", special && "special", touchThrowHeld && "throw",
     ].filter(Boolean));
     return {
       left, right, up, down, light, strong, guard, skill, special,
       a: aHeld, b: bHeld, x: xHeld, y: yHeld,
       jump: jumpHeld, jumpPressed: jump, jumpReleased, specialPressed, specialReleased,
       skillPressed, skillReleased: bReleased,
-      throwHeld, throwPressed, throwReleased, counterThrow: false,
+      throwHeld, throwPressed, throwReleased: touchThrowReleased || gamepad.counterReleased || (previousThrowHeld && !throwHeld), counterThrow: gamepad.counter,
       leftPressed, rightPressed, upPressed, upReleased, downPressed,
       lightPressed, strongPressed, guardPressed,
       confirm, cancel, pause, start: confirm,
@@ -674,13 +751,15 @@ export class Game {
     const right = axisX > 0.35 || buttonDown(15);
     const up = axisY < -0.35 || buttonDown(12);
     const down = axisY > 0.35 || buttonDown(13);
-    const a = buttonDown(0);
-    const b = buttonDown(1);
-    const x = buttonDown(2);
-    const y = buttonDown(3);
-    const jump = buttonDown(8) || buttonDown(10);
-    const special = buttonDown(5) || buttonDown(7) || buttonDown(9) || buttonDown(11);
-    const ea = edge("a", a); const eb = edge("b", b); const ex = edge("x", x); const ey = edge("y", y);
+    const binding = this.controllerBindings.p1 || DEFAULT_CONTROLLER_BINDINGS;
+    const a = buttonDown(binding.light);
+    const b = buttonDown(binding.skill);
+    const x = buttonDown(binding.strong);
+    const y = buttonDown(binding.guard);
+    const counter = buttonDown(binding.counter);
+    const jump = buttonDown(binding.jump);
+    const special = buttonDown(binding.special);
+    const ea = edge("a", a); const eb = edge("b", b); const ex = edge("x", x); const ey = edge("y", y); const ecounter = edge("counter", counter);
     const ejump = edge("jump", jump); const espec = edge("special", special);
     const confirm = a || buttonDown(9);
     const result = {
@@ -688,28 +767,41 @@ export class Game {
       leftPressed: edge("left", left).just, rightPressed: edge("right", right).just, upPressed: edge("up", up).just, downPressed: edge("down", down).just,
       upReleased: edge("up", up).up,
       a, b, x, y, aPressed: ea.just, bPressed: eb.just, xPressed: ex.just, yPressed: ey.just,
-      aReleased: ea.up, bReleased: eb.up, xReleased: ex.up, yReleased: ey.up,
+      aReleased: ea.up, bReleased: eb.up, xReleased: ex.up, yReleased: ey.up, counter, counterPressed: ecounter.just, counterReleased: ecounter.up,
       jump, jumpPressed: ejump.just, jumpReleased: ejump.up,
       special, specialPressed: espec.just, specialReleased: espec.up,
       confirmPressed: confirm && !this.padHeld.has("confirm"),
     };
-    if (ea.just || eb.just || ex.just || ey.just || ejump.just || espec.just || result.leftPressed || result.rightPressed || result.upPressed || result.downPressed) this.ensureAudio();
+    if (ea.just || eb.just || ex.just || ey.just || ecounter.just || ejump.just || espec.just || result.leftPressed || result.rightPressed || result.upPressed || result.downPressed) this.ensureAudio();
     if (confirm) this.padHeld.add("confirm"); else this.padHeld.delete("confirm");
     return result;
   }
 
   setScreen(screen) {
     this.state.screen = screen;
+    if (screen !== SCREEN.battle) {
+      for (const fighter of [this.player, this.cpu]) {
+        if (!fighter) continue;
+        fighter.rainSlipFrames = 0;
+        fighter.rainDashFrames = 0;
+        fighter.rainSlipDirection = 0;
+        fighter.rainSlipTriggered = false;
+      }
+    }
+    if (this.root?.dataset) this.root.dataset.screen = screen;
     this.state.screenFrames = 0;
     if (screen === SCREEN.pause) this.state.pauseIndex = 0;
     // Do not clear the edge that caused this transition.  The originating
     // pointer/key event is consumed at the end of the current tick; clearing
     // it here made the first A/X/touch input disappear when entering battle.
-    const touchBattleScreens = new Set([SCREEN.battle, SCREEN.pause]);
+    const touchBattleScreens = new Set([SCREEN.battle]);
+    // Keep the console controls visible from title through results so the
+    // player never has to adapt to a controller appearing only at battle.
+    // The pad lives below the LCD, so native menu buttons remain unobstructed.
     const touchMode = touchBattleScreens.has(screen) ? "battle" : "menu";
     this.touchInput?.setMode(touchMode, { preserveInput: false });
     if (this.headerPause) {
-      const pauseAvailable = touchBattleScreens.has(screen);
+      const pauseAvailable = screen === SCREEN.battle || screen === SCREEN.pause;
       this.headerPause.disabled = !pauseAvailable;
       this.headerPause.setAttribute("aria-pressed", screen === SCREEN.pause ? "true" : "false");
       this.headerPause.setAttribute("aria-label", screen === SCREEN.pause ? "Resume battle" : "Pause battle");
@@ -728,15 +820,103 @@ export class Game {
 
   activateMenu(index) {
     if (index === 0) { this.state.mode = "arcade"; this.setScreen(SCREEN.difficultySelect); }
-    else if (index === 1) { this.state.mode = "training"; this.state.trainingSettingsIndex = 0; this.setScreen(SCREEN.characterSelect); }
-    else if (index === 2) this.setScreen(SCREEN.howToPlay);
-    else if (index === 3) this.setScreen(SCREEN.score);
+    else if (index === 1) this.startVsSetup();
+    else if (index === 2) { this.state.mode = "training"; this.state.trainingSettingsIndex = 0; this.setScreen(SCREEN.characterSelect); }
+    else if (index === 3) this.setScreen(SCREEN.howToPlay);
     else if (index === 4) this.setScreen(SCREEN.settings);
+    else if (index === 5) this.setScreen(SCREEN.score);
+  }
+
+  startVsSetup() {
+    this.state.mode = "vs";
+    this.state.vsSelectedIds = { p1: "guitar-boy", p2: "toko" };
+    this.state.vsColors = { p1: 1, p2: 2 };
+    this.state.vsSelecting = "p1";
+    this.state.vsWinner = "";
+    this.state.vsLocked = { p1: false, p2: false };
+    this.state.vsResumeScreen = null;
+    this.vsThrowChordHeld = { p1: false, p2: false };
+    this.vsInput.resetClaims();
+    this.setScreen(SCREEN.vsDeviceSelect);
+  }
+
+  tickVsDevices(sources) {
+    if (!sources) return;
+    if (this.vsInput.claim(sources)) {
+      const resumeScreen = this.state.vsResumeScreen;
+      this.state.vsResumeScreen = null;
+      this.setScreen(resumeScreen || SCREEN.vsCharacterSelect);
+    }
+  }
+
+  tickVsCharacter(inputs) {
+    for (const player of ["p1", "p2"]) {
+      const input = inputs[player]; if (input.confirm) this.state.vsLocked[player] = true;
+      if (this.state.vsLocked[player]) continue;
+      const index = CHARACTER_IDS.indexOf(this.state.vsSelectedIds[player]);
+      let next = index;
+      if (input.leftPressed) next = (index + CHARACTER_IDS.length - 1) % CHARACTER_IDS.length;
+      if (input.rightPressed) next = (index + 1) % CHARACTER_IDS.length;
+      if (input.upPressed) next = (index + CHARACTER_IDS.length - 4) % CHARACTER_IDS.length;
+      if (input.downPressed) next = (index + 4) % CHARACTER_IDS.length;
+      this.state.vsSelectedIds[player] = CHARACTER_IDS[next];
+    }
+    if (this.state.vsLocked.p1 && this.state.vsLocked.p2) { this.state.vsLocked = { p1: false, p2: false }; this.setScreen(SCREEN.vsColorSelect); }
+  }
+
+  tickVsColor(inputs) {
+    for (const player of ["p1", "p2"]) {
+      const input = inputs[player];
+      if (input.confirm) this.state.vsLocked[player] = true;
+      if (this.state.vsLocked[player]) continue;
+      if (input.leftPressed || input.rightPressed || input.upPressed || input.downPressed) this.state.vsColors[player] = this.state.vsColors[player] === 1 ? 2 : 1;
+    }
+    if (this.state.vsLocked.p1 && this.state.vsLocked.p2) this.startVsMatch();
+  }
+
+  vsMenuInput(inputs = {}) {
+    const p1 = inputs.p1 || {};
+    const p2 = inputs.p2 || {};
+    const fields = ["upPressed", "downPressed", "leftPressed", "rightPressed", "confirm", "cancel", "pausePressed", "guardPressed"];
+    return Object.fromEntries(fields.map((field) => [field, Boolean(p1[field] || p2[field])]));
+  }
+
+  openVsCharacterSelect() {
+    this.state.vsLocked = { p1: false, p2: false };
+    this.setScreen(SCREEN.vsCharacterSelect);
+  }
+
+  tickVsResult(inputs) {
+    const resultInput = this.vsMenuInput(inputs);
+    if (resultInput.cancel || resultInput.pausePressed) this.setScreen(SCREEN.menu);
+    else if (resultInput.guardPressed) this.openVsCharacterSelect();
+    else if (resultInput.confirm) this.startVsMatch();
+  }
+
+  startVsMatch() {
+    this.state.mode = "vs"; this.state.stage = 1; this.state.round = 1;
+    this.state.playerRounds = 0; this.state.cpuRounds = 0; this.state.vsWinner = "";
+    this.state.score = 0; this.state.combo = 0; this.state.maxCombo = 0;
+    this.vsThrowChordHeld = { p1: false, p2: false };
+    this.resetRoundCarry(); this.beginRound();
+  }
+
+  vsBattleInput(input, fighter, player) {
+    const backward = Number(fighter?.facing || 1) >= 0 ? input.left : input.right;
+    const backwardPressed = Number(fighter?.facing || 1) >= 0 ? input.leftPressed : input.rightPressed;
+    const throwHeld = Boolean(input.counter || (backward && input.guard));
+    const previous = Boolean(this.vsThrowChordHeld[player]);
+    const throwPressed = Boolean(input.counterPressed) || (throwHeld && (Boolean(backwardPressed) || Boolean(input.guardPressed)) && !previous);
+    this.vsThrowChordHeld[player] = throwHeld;
+    return { ...input, jumpPressed: Boolean(input.jumpPressed || input.upPressed), jumpReleased: Boolean(input.jumpReleased || input.upReleased), throwHeld, throwPressed, throwReleased: Boolean(input.counterReleased || (previous && !throwHeld)) };
   }
 
   tickSettings(input) {
-    if (input.upPressed) this.state.settingsIndex = (this.state.settingsIndex + SETTINGS_ITEMS.length - 1) % SETTINGS_ITEMS.length;
-    if (input.downPressed) this.state.settingsIndex = (this.state.settingsIndex + 1) % SETTINGS_ITEMS.length;
+    let index = VISIBLE_SETTINGS_INDICES.indexOf(this.state.settingsIndex);
+    if (index < 0) index = 0;
+    if (input.upPressed) index = (index + VISIBLE_SETTINGS_INDICES.length - 1) % VISIBLE_SETTINGS_INDICES.length;
+    if (input.downPressed) index = (index + 1) % VISIBLE_SETTINGS_INDICES.length;
+    this.state.settingsIndex = VISIBLE_SETTINGS_INDICES[index];
     if (input.confirm) this.activateSettings(this.state.settingsIndex);
     else if (input.cancel) this.setScreen(SCREEN.menu);
   }
@@ -752,15 +932,94 @@ export class Game {
       this.state.seEnabled = !this.state.seEnabled;
       this.state.sound = this.state.bgmEnabled || this.state.seEnabled;
     } else if (index === 3) {
-      if (debugBuildEnabled()) this.state.debug = !this.state.debug;
+      this.openControllerSettings(); return;
     } else if (index === 4) {
+      if (debugBuildEnabled()) this.state.debug = !this.state.debug;
+    } else if (index === 5) {
       this.save = resetSave(); this.state.sound = true; this.state.bgmEnabled = true; this.state.seEnabled = true; this.state.debug = false;
       this.beep(160, 0.1);
-    } else if (index === 5) {
+    } else if (index === 6) {
       this.setScreen(SCREEN.menu); return;
     }
     this.save = saveData({ ...this.save, sound: this.state.sound, bgmEnabled: this.state.bgmEnabled, seEnabled: this.state.seEnabled, debug: debugBuildEnabled() && this.state.debug });
     this.syncBgm();
+    this.renderPanel();
+  }
+
+  openControllerSettings() {
+    this.state.controllerSettingsPlayer = null;
+    this.state.controllerSettingsAction = 0;
+    this.state.controllerSettingsFocus = "p1";
+    this.state.controllerCapture = null;
+    this.state.controllerDraft = normalizeControllerBindings(this.controllerBindings);
+    this.setScreen(SCREEN.controllerSettings);
+  }
+
+  controllerPadFor(player) {
+    try {
+      const pads = Array.from(navigator?.getGamepads?.() || []).filter((pad) => pad?.connected !== false);
+      if (player === "p2") return pads[1] || null;
+      return pads[0] || null;
+    } catch { return null; }
+  }
+
+  pressedAssignableControllerButtons(pad) {
+    return Array.from(pad?.buttons || []).flatMap((value, index) => (
+      Boolean(value?.pressed) && isAssignableControllerButton(index) ? [index] : []
+    ));
+  }
+
+  beginControllerCapture(player, action) {
+    const pad = this.controllerPadFor(player);
+    this.state.controllerCapture = {
+      player,
+      action,
+      ignoredButtons: this.pressedAssignableControllerButtons(pad),
+    };
+  }
+
+  captureControllerBinding() {
+    const capture = this.state.controllerCapture;
+    if (!capture) return false;
+    const pad = this.controllerPadFor(capture.player);
+    if (!pad) return false;
+    const pressed = this.pressedAssignableControllerButtons(pad);
+    const ignored = new Set(capture.ignoredButtons || []);
+    capture.ignoredButtons = [...ignored].filter((button) => pressed.includes(button));
+    const button = pressed.find((index) => !ignored.has(index));
+    if (button === undefined) return false;
+    this.state.controllerDraft[capture.player][capture.action] = button;
+    this.state.controllerCapture = null;
+    this.renderPanel();
+    return true;
+  }
+
+  saveControllerSettings() {
+    this.controllerBindings = normalizeControllerBindings(this.state.controllerDraft);
+    this.vsInput.setBindings(this.controllerBindings);
+    this.save = saveData({ ...this.save, controllerBindings: this.controllerBindings });
+    this.setScreen(SCREEN.settings);
+  }
+
+  tickControllerSettings(input) {
+    if (this.captureControllerBinding()) return;
+    if (input.cancel) { this.state.controllerCapture = null; this.setScreen(SCREEN.settings); return; }
+    const direction = input.leftPressed ? "left" : input.rightPressed ? "right" : input.upPressed ? "up" : input.downPressed ? "down" : null;
+    if (direction) {
+      const next = moveControllerSettingsFocus(this.state.controllerSettingsFocus, direction);
+      const unselected = this.state.controllerSettingsPlayer === null;
+      this.state.controllerSettingsFocus = unselected && !["p1", "p2"].includes(next) ? this.state.controllerSettingsFocus : next;
+      this.renderPanel(); return;
+    }
+    if (input.confirm) {
+      const focus = this.state.controllerSettingsFocus;
+      if (focus === "p1" || focus === "p2") this.state.controllerSettingsPlayer = focus;
+      else if (this.state.controllerSettingsPlayer !== null && focus.startsWith("action-")) {
+        this.state.controllerSettingsAction = Number(focus.slice("action-".length));
+        this.beginControllerCapture(this.state.controllerSettingsPlayer, CONTROLLER_ACTIONS[this.state.controllerSettingsAction]);
+      } else if (this.state.controllerSettingsPlayer !== null && focus === "save") { this.saveControllerSettings(); return; }
+      else if (this.state.controllerSettingsPlayer !== null && focus === "back") { this.setScreen(SCREEN.settings); return; }
+    }
     this.renderPanel();
   }
 
@@ -878,13 +1137,16 @@ export class Game {
   }
 
   beginRound() {
-    const opponentId = stageOpponent(this.state.stage, this.state.selectedId);
-    this.player = createFighterState(this.state.selectedId, 150, 1);
+    const versus = this.state.mode === "vs";
+    const opponentId = versus ? this.state.vsSelectedIds.p2 : stageOpponent(this.state.stage, this.state.selectedId);
+    const playerId = versus ? this.state.vsSelectedIds.p1 : this.state.selectedId;
+    this.player = createFighterState(playerId, 150, 1);
     this.cpu = createFighterState(opponentId, 330, -1);
-    this.player.color = this.state.color;
-    this.cpu.color = opponentId === this.state.selectedId ? (this.state.color === 1 ? 2 : 1) : 1;
+    this.player.color = versus ? this.state.vsColors.p1 : this.state.color;
+    this.cpu.color = versus ? this.state.vsColors.p2 : (opponentId === this.state.selectedId ? (this.state.color === 1 ? 2 : 1) : 1);
     this.player.boxProfile = "standing";
     this.cpu.boxProfile = "standing";
+    if (versus) this.vsThrowChordHeld = { p1: false, p2: false };
     this.restoreRoundCarry(this.player);
     this.restoreRoundCarry(this.cpu, this.state.cpuRoundCarry);
     this.state.timerFrames = ROUND_TIME_SECONDS * FIXED_HZ;
@@ -951,7 +1213,7 @@ export class Game {
     fighter.copiedSkillUses = Math.max(0, Number(carry.copiedSkillUses) || 0);
   }
 
-  tickBattle(input) {
+  tickBattle(input, vsCpuInput = null) {
     const training = this.state.mode === "training";
     const cinematic = this.state.specialCinematic;
     if (cinematic) {
@@ -965,17 +1227,22 @@ export class Game {
     }
     if (!training && this.state.koFrames > 0) {
       this.state.koFrames += 1;
+      const loser = this.player.hp <= 0 ? this.player : this.cpu;
+      this.updateKoFighter(loser);
       if (this.state.koFrames % 3 === 0) {
         advanceVisualSequence(this.player);
         advanceVisualSequence(this.cpu);
       }
-      if (this.state.koFrames >= KO_PRESENTATION_FRAMES) this.finishRound();
+      const landed = loser.grounded && loser.y <= 0 && loser.state === "koDowned";
+      if ((landed && this.state.koFrames >= KO_PRESENTATION_FRAMES) || this.state.koFrames >= KO_FALL_TIMEOUT_FRAMES) {
+        if (!landed) { loser.y = 0; loser.vy = 0; loser.grounded = true; loser.state = "koDowned"; loser.action = "defeat"; loser.boxProfile = "down"; }
+        this.finishRound();
+      }
       return;
     }
     if (!training) this.state.timerFrames = Math.max(0, this.state.timerFrames - 1);
     this.state.stageFrame += 1;
     this.state.battleFrames = Number(this.state.battleFrames || 0) + 1;
-    this.updateWeather();
     this.state.comboTimer = Math.max(0, this.state.comboTimer - 1);
     if (this.state.comboTimer === 0) {
       this.state.combo = 0;
@@ -989,10 +1256,12 @@ export class Game {
     }
     this.updateThrowSequence();
     this.updateFighter(this.player, input, true);
-    const cpuIntroLocked = !training && this.state.battleFrames <= FIXED_HZ;
-    const plan = training || cpuIntroLocked ? null : aiPlan({ self: this.cpu, opponent: this.player, difficulty: this.state.difficulty, nowFrame: this.frame });
-    const aiInput = training ? this.trainingInput() : this.inputForPlan(cpuIntroLocked ? null : plan);
+    const versus = this.state.mode === "vs";
+    const cpuIntroLocked = !training && !versus && this.state.battleFrames <= FIXED_HZ;
+    const plan = training || versus || cpuIntroLocked ? null : aiPlan({ self: this.cpu, opponent: this.player, difficulty: this.state.difficulty, nowFrame: this.frame });
+    const aiInput = versus ? (vsCpuInput || this.vsInput.playerInputs(this.vsInput.poll(this.keys, this.justKeys, this.releasedKeys)).p2) : (training ? this.trainingInput() : this.inputForPlan(cpuIntroLocked ? null : plan));
     this.updateFighter(this.cpu, aiInput, false);
+    this.updateWeather({ player: input, cpu: versus ? aiInput : null });
     if (!this.player.thrownBy && !this.cpu.thrownBy) resolvePushboxes(this.player, this.cpu);
     this.player.facing = this.player.x <= this.cpu.x ? 1 : -1;
     this.cpu.facing = -this.player.facing;
@@ -1014,26 +1283,87 @@ export class Game {
     this.state.skillEntities = [];
     const loser = this.player.hp <= 0 ? this.player : this.cpu;
     const winner = loser === this.player ? this.cpu : this.player;
-    loser.state = "defeat"; loser.action = "defeat"; loser.actionFrame = 0;
+    loser.koLandedFrame = null;
+    if (!loser.grounded || Number(loser.y || 0) > 0) {
+      loser.state = "koFalling"; loser.action = "knockback"; loser.boxProfile = "air"; loser.grounded = false;
+      loser.vy = Math.min(Number(loser.vy || 0), 1.5);
+    } else {
+      loser.y = 0; loser.vy = 0; loser.grounded = true; loser.state = "koDowned"; loser.action = "defeat"; loser.boxProfile = "down";
+    }
+    loser.actionFrame = 0;
     winner.state = "victory"; winner.action = "victory"; winner.actionFrame = 0;
     setVisualSequence(loser, [{ name: "knockdown", duration: 12 }, { name: "defeat", duration: 36 }]);
     setVisualSequence(winner, [{ name: "victory", duration: 48 }]);
     this.showCombatNotice("K.O.", "ko", 0, loser);
   }
 
-  updateWeather() {
+  updateKoFighter(fighter) {
+    if (!fighter || fighter.hp > 0 || fighter.state === "koDowned") return;
+    if (fighter.state === "koLanding") {
+      fighter.state = "koDowned"; fighter.action = "defeat"; fighter.actionFrame = 0; fighter.boxProfile = "down";
+      return;
+    }
+    fighter.state = "koFalling"; fighter.action = "knockback"; fighter.boxProfile = "air"; fighter.grounded = false;
+    fighter.x = clamp(Number(fighter.x || 0) + Number(fighter.vx || 0), STAGE_BOUNDS.left, STAGE_BOUNDS.right);
+    fighter.vx = Number(fighter.vx || 0) * 0.94;
+    fighter.vy = Number(fighter.vy || 0) - GRAVITY;
+    fighter.y = Math.max(0, Number(fighter.y || 0) + fighter.vy);
+    fighter.actionFrame = Number(fighter.actionFrame || 0) + 1;
+    if (fighter.y <= 0) {
+      fighter.y = 0; fighter.vy = 0; fighter.grounded = true; fighter.platformY = 0;
+      fighter.state = "koLanding"; fighter.action = "knockdown"; fighter.actionFrame = 0; fighter.boxProfile = "down"; fighter.koLandedFrame = this.frame;
+    }
+  }
+
+  updateWeather(inputs = {}) {
     const stage = STAGES[Math.max(0, Number(this.state.stage || 1) - 1)];
     const supportsRain = RAIN_STAGE_IDS.has(stage?.id);
-    const cycleFrame = Number(this.state.battleFrames || 0) % RAIN_CYCLE_FRAMES;
-    const active = supportsRain && cycleFrame >= RAIN_ACTIVE_START && cycleFrame < RAIN_ACTIVE_END;
-    this.state.weather = { type: active ? "rain" : "clear", active, cycleFrame };
-    for (const fighter of [this.player, this.cpu]) {
+    const battleFrames = Number(this.state.battleFrames || 0);
+    const now = typeof this.now === "function" ? this.now() : Date.now();
+    const previous = this.state.weather || {};
+    let schedule = previous;
+    if (previous.stageId !== stage?.id) {
+      const random = typeof this.random === "function" ? this.random : Math.random;
+      const willRain = supportsRain && random() < 0.55;
+      const activeStart = RAIN_ACTIVE_START + Math.floor(random() * RAIN_START_VARIANCE);
+      schedule = {
+        stageId: stage?.id,
+        willRain,
+        activeStart,
+        scheduledAt: now + (activeStart / FIXED_HZ) * 1000,
+        weatherStartedAt: null,
+        weatherEndsAt: null,
+      };
+    }
+    if (supportsRain && schedule.willRain === true && schedule.weatherStartedAt === null && now >= schedule.scheduledAt) {
+      const random = typeof this.random === "function" ? this.random : Math.random;
+      const durationMs = RAIN_MIN_DURATION_MS + Math.floor(random() * RAIN_DURATION_VARIANCE_MS);
+      schedule = { ...schedule, durationMs, weatherStartedAt: now, weatherEndsAt: now + durationMs };
+    }
+    const active = supportsRain && schedule.weatherStartedAt !== null && now < schedule.weatherEndsAt;
+    this.state.weather = { ...schedule, type: active ? "rain" : "clear", active, battleFrames };
+    for (const [fighter, input] of [[this.player, inputs.player], [this.cpu, inputs.cpu]]) {
       if (!fighter) continue;
-      fighter.rainDashFrames = active && fighter.grounded && fighter.action === "dash"
-        ? Number(fighter.rainDashFrames || 0) + 1
-        : 0;
-      if (fighter.rainDashFrames >= RAIN_SLIP_DASH_FRAMES && !fighter.downed && fighter.state !== "knockback") {
+      const direction = !input || Boolean(input.left) === Boolean(input.right) ? 0 : input.left ? -1 : 1;
+      const directionHeld = direction !== 0;
+      if (!directionHeld) {
+        fighter.rainSlipFrames = 0;
+        fighter.rainSlipTriggered = false;
+        fighter.rainSlipDirection = 0;
         fighter.rainDashFrames = 0;
+        continue;
+      }
+      if (fighter.rainSlipDirection !== direction) fighter.rainSlipFrames = 0;
+      fighter.rainSlipDirection = direction;
+      if (fighter.rainSlipTriggered) continue;
+      const blockedState = ACTION_LOCK_STATES.has(fighter.state) || fighter.downed || fighter.state === "guarding" || fighter.state === "moving" && fighter.locomotionAction === "backstep";
+      const eligible = active && this.state.screen === SCREEN.battle && this.state.koFrames <= 0 && fighter.grounded && !blockedState;
+      fighter.rainSlipFrames = eligible ? Number(fighter.rainSlipFrames || 0) + 1 : 0;
+      fighter.rainDashFrames = fighter.rainSlipFrames;
+      if (fighter.rainSlipFrames >= RAIN_SLIP_INPUT_FRAMES) {
+        fighter.rainSlipFrames = 0;
+        fighter.rainDashFrames = 0;
+        fighter.rainSlipTriggered = true;
         fighter.vx = fighter.facing * -2.5;
         this.launchKnockdown(fighter, { knockbackY: 4.2, hardKnockdown: false });
         this.showCombatNotice("SLIP!", "slip", 0, fighter);
@@ -1156,6 +1486,10 @@ export class Game {
     fighter.tackleCooldown = Math.max(0, Number(fighter.tackleCooldown || 0) - 1);
     fighter.slimeCooldown = Math.max(0, Number(fighter.slimeCooldown || 0) - 1);
     fighter.attackCooldownFrames = Math.max(0, Number(fighter.attackCooldownFrames || 0) - 1);
+    if (fighter.mirrorActiveFrames > 0) {
+      fighter.mirrorActiveFrames = Math.max(0, fighter.mirrorActiveFrames - 1);
+      if (fighter.mirrorActiveFrames === 0) { fighter.mirrorHolding = false; fighter.mirrorResourceMode = null; }
+    }
     if (fighter.buff?.frames > 0) {
       fighter.buff.frames -= 1;
       if (fighter.id === "kazushige" && fighter.buff.durationFrames) {
@@ -1212,13 +1546,13 @@ export class Game {
       return;
     }
     if (fighter.state === "knockdownLanding") {
-      if (input.lightPressed || input.strongPressed) fighter.downAttackBuffer = input.strongPressed ? "strong" : "light";
+      if (input.lightPressed || input.strongPressed) { this.startDownAttack(fighter, input); return; }
       fighter.boxProfile = "down"; fighter.action = "knockdown"; fighter.downedFrames += 1; fighter.actionFrame += 1;
       if (fighter.downedFrames >= DOWN_LANDING_FRAMES) { fighter.state = "downed"; fighter.action = "down_idle"; fighter.actionFrame = 0; }
       return;
     }
     if (fighter.state === "downed" || fighter.state === "groundHit" || fighter.state === "knockdown") {
-      if (input.lightPressed || input.strongPressed) fighter.downAttackBuffer = input.strongPressed ? "strong" : "light";
+      if (input.lightPressed || input.strongPressed) { this.startDownAttack(fighter, input); return; }
       fighter.downed = true; fighter.boxProfile = "down"; fighter.action = fighter.downedFrames < 10 ? "knockdown" : "down_idle";
       fighter.downedFrames += 1; fighter.downTimer = fighter.downedFrames; fighter.actionFrame += 1;
       const autoWake = fighter.hardKnockdown ? DOWN_HARD_WAKEUP_FRAMES : DOWN_WAKEUP_FRAMES;
@@ -1414,6 +1748,19 @@ export class Game {
     fighter.state = "wakeup"; fighter.wakeupState = "wakeup"; fighter.action = "wakeup"; fighter.actionFrame = 0; fighter.downed = false; fighter.downValue = 0; fighter.knockdownValue = 0; fighter.followupReserved = false; fighter.followupAttacker = null; fighter.boxProfile = "standing"; fighter.grounded = true; fighter.y = 0;
   }
 
+  startDownAttack(fighter, input) {
+    if (!fighter || fighter.hp <= 0) return false;
+    const key = input.strongPressed ? "strong_attack_crouch" : "light_attack_crouch";
+    const move = CHARACTERS[fighter.id]?.moves?.[key];
+    if (!move) return false;
+    fighter.downed = false; fighter.downedFrames = 0; fighter.downTimer = 0;
+    fighter.state = "attacking"; fighter.action = key; fighter.actionFrame = 0; fighter.currentMove = move;
+    fighter.currentAttackId = `${key}:wakeup:${this.frame}`; fighter.hitRegistry.clear(); fighter.boxProfile = "crouch";
+    fighter.invulnerableFrames = Math.max(1, Number(move.wakeupAttackInvulnerableFrames || 8));
+    fighter.wakeupInvulnerable = false; fighter.wakeupInvulnerableFrames = 0;
+    return true;
+  }
+
   startWakeupInvulnerable(fighter) {
     fighter.state = "wakeupInvulnerable"; fighter.wakeupState = "wakeupInvulnerable"; fighter.action = "wakeup"; fighter.actionFrame = 0; fighter.wakeupInvulnerable = true; fighter.wakeupInvulnerableFrames = WAKEUP_INVULN_FRAMES; fighter.invulnerableFrames = WAKEUP_INVULN_FRAMES; fighter.downed = false; fighter.downValue = 0; fighter.knockdownValue = 0; fighter.followupReserved = false; fighter.followupAttacker = null; fighter.boxProfile = "standing";
   }
@@ -1513,7 +1860,7 @@ export class Game {
     fighter.skillUsingStock = config.type === "mirror" && Number(fighter.skillAmmo || fighter.ammo || 0) > 0;
     // A copied skill is a stocked use, not another charge attempt.  B starts
     // its normal startup immediately even when the button is only tapped.
-    const holdRequired = config.type !== "ramenBuff" && !fighter.skillCopiedUse && !fighter.skillUsingStock && input.skillHoldRequired !== false && (input.skillHoldRequired === true || input.skillPressed === true);
+    const holdRequired = config.skillInputMode !== "press" && config.type !== "ramenBuff" && !fighter.skillCopiedUse && !fighter.skillUsingStock && input.skillHoldRequired !== false && (input.skillHoldRequired === true || input.skillPressed === true);
     // B owns its cooldown contract and may cancel an ordinary move.  Remove
     // every pending part of the old move so it cannot hit after the fighter
     // has visibly entered the skill startup.
@@ -1534,6 +1881,19 @@ export class Game {
       fighter.skillHoldRequired = false;
       fighter.skillActivated = true;
       this.activateSkill(fighter, config);
+      fighter.skillPhase = "skillRecovery"; fighter.skillState = "skillRecovery"; fighter.skill.phase = "skillRecovery";
+      fighter.skillRecoveryFrames = config.phase?.recoveryFrames || 1; fighter.state = "skillRecovery"; fighter.action = "skill_recovery"; fighter.skillActionFrame = 0;
+      return true;
+    }
+    // Press-mode skills commit exactly once on their input edge.  Keeping the
+    // fighter in recovery makes later held-frame updates inert until a new
+    // B edge arrives, while still using the normal entity/effect pipeline.
+    if (config.skillInputMode === "press") {
+      fighter.skillHoldActive = true;
+      fighter.skillHoldRequired = false;
+      fighter.skillActivated = true;
+      this.activateSkill(fighter, config);
+      if (fighter.flashReloading) return true;
       fighter.skillPhase = "skillRecovery"; fighter.skillState = "skillRecovery"; fighter.skill.phase = "skillRecovery";
       fighter.skillRecoveryFrames = config.phase?.recoveryFrames || 1; fighter.state = "skillRecovery"; fighter.action = "skill_recovery"; fighter.skillActionFrame = 0;
       return true;
@@ -1574,11 +1934,11 @@ export class Game {
       fighter.skillCharging = config.trigger === "hold-release" || (config.type === "copy" && !fighter.skillCopiedUse);
     }
     fighter.skillActionFrame = (fighter.skillActionFrame || 0) + 1;
-    if (config.type === "flash" && Number(fighter.skillAmmo || fighter.ammo || 0) <= 0) {
-      if (released && !fighter.flashReloading) {
+    if (config.type === "flash" && (fighter.flashReloading || Number(fighter.skillAmmo || fighter.ammo || 0) <= 0)) {
+      if (released && !fighter.flashReloading && config.skillInputMode !== "press") {
         fighter.flashReloadFrames = 0; fighter.skillPhase = "skillUnavailable"; fighter.skillState = "skillUnavailable"; fighter.skill.phase = "skillUnavailable"; fighter.skillActivated = false; fighter.state = fighter.grounded ? "idle" : "jumping"; fighter.action = fighter.state; return;
       }
-      if (input.skill) {
+      if (input.skill || fighter.flashReloading) {
         fighter.flashReloading = true;
         fighter.flashReloadFrames = Math.min(Number(config.filmReloadFrames || 36), Number(fighter.flashReloadFrames || 0) + 1);
         fighter.skillPhase = "skillActive"; fighter.skillState = "skillActive"; fighter.skill.phase = "skillActive"; fighter.state = "skillActive"; fighter.action = "skill_reload";
@@ -1587,7 +1947,7 @@ export class Game {
         }
         return;
       }
-      if (released && fighter.flashReloading) { fighter.flashReloadFrames = 0; fighter.flashReloading = false; fighter.skillPhase = "skillUnavailable"; fighter.skillState = "skillUnavailable"; fighter.skill.phase = "skillUnavailable"; fighter.skillActivated = false; fighter.state = fighter.grounded ? "idle" : "jumping"; fighter.action = fighter.state; return; }
+      if (released && fighter.flashReloading && config.skillInputMode !== "press") { fighter.flashReloadFrames = 0; fighter.flashReloading = false; fighter.skillPhase = "skillUnavailable"; fighter.skillState = "skillUnavailable"; fighter.skill.phase = "skillUnavailable"; fighter.skillActivated = false; fighter.state = fighter.grounded ? "idle" : "jumping"; fighter.action = fighter.state; return; }
     }
     if (fighter.skillPhase === "skillStartup" && fighter.skillActionFrame >= (config.phase?.startupFrames || 1)) {
       const needsCharge = config.trigger === "hold-release" || (config.type === "copy" && !fighter.skillCopiedUse) || (config.trigger === "hold" && Number(config.chargeRate || 0) > 0 && !fighter.skillUsingStock);
@@ -1622,7 +1982,6 @@ export class Game {
         fighter.state = fighter.grounded ? "idle" : "jumping"; fighter.action = fighter.state === "idle" ? "idle" : "jump_fall"; fighter.actionFrame = 0;
         return;
       }
-      if (config.type === "mirror" && fighter.mirrorActiveFrames > 0) fighter.mirrorActiveFrames -= 1;
       if (config.type === "flash" && fighter.flashReloading) return;
       if (fighter.skillActionFrame >= (config.phase?.activeFrames || 1)) { fighter.skillPhase = "skillRecovery"; fighter.skillState = "skillRecovery"; fighter.skill.phase = "skillRecovery"; fighter.skillRecoveryFrames = config.phase?.recoveryFrames || 1; fighter.state = "skillRecovery"; fighter.action = "skill_recovery"; fighter.skillActionFrame = 0; }
       return;
@@ -1664,13 +2023,18 @@ export class Game {
         }
         this.showCombatNotice("COPY USE", "skill", 0, fighter);
       } else if (Number(fighter.skillGauge || 0) >= Number(config.chargeMax || 100)) {
-        const copied = getSkillConfig(opponent?.id);
+        const random = typeof this.random === "function" ? this.random : Math.random;
+        const copyCandidates = CHARACTER_IDS.filter((id) => id !== "guitar-boy");
+        const copiedId = opponent?.id === "guitar-boy"
+          ? copyCandidates[Math.min(copyCandidates.length - 1, Math.floor(clamp(Number(random()) || 0, 0, 0.999999) * copyCandidates.length))]
+          : opponent?.id;
+        const copied = getSkillConfig(copiedId);
         if (copied && copied.type !== "copy") {
-          fighter.copiedSkillId = opponent.id;
+          fighter.copiedSkillId = copiedId;
           fighter.copiedSkillUses = Number(config.copiedSkillUses || config.copyCharges || 2);
           fighter.copyCharges = fighter.copiedSkillUses; fighter.copy.charges = fighter.copyCharges;
           fighter.copy.skillId = fighter.copiedSkillId; fighter.copy.uses = fighter.copiedSkillUses;
-          this.showCombatNotice("COPY", "skill", 0, fighter);
+          this.showCombatNotice(`COPY: ${CHARACTERS[copiedId]?.name || copiedId}`, "skill", 0, fighter);
         }
         fighter.skillGauge = 0; fighter.skill.gauge = 0;
       }
@@ -1719,7 +2083,12 @@ export class Game {
       fighter.norioActivationCount = activation; fighter.norioLastPositions = positions;
     } else if (type === "flash") {
       if (fighter.flashReloadFrames == null) fighter.flashReloadFrames = 0;
-      if (resourceMode === "native" && (fighter.skillAmmo || fighter.ammo || 0) <= 0) { fighter.flashReloadFrames = 0; fighter.flashReloading = false; fighter.skillPhase = "skillUnavailable"; fighter.skillState = "skillUnavailable"; fighter.skill.phase = "skillUnavailable"; fighter.skillActivated = false; return; }
+      if (resourceMode === "native" && (fighter.skillAmmo || fighter.ammo || 0) <= 0) {
+        fighter.flashReloadFrames = 0; fighter.flashReloading = true;
+        fighter.skillPhase = "skillActive"; fighter.skillState = "skillActive"; fighter.skill.phase = "skillActive";
+        fighter.state = "skillActive"; fighter.action = "skill_reload";
+        return;
+      }
       if (resourceMode === "native") { fighter.skillAmmo = Math.max(0, (fighter.skillAmmo || fighter.ammo) - 1); fighter.ammo = fighter.skillAmmo; }
       fighter.flashHitUsed = false; fighter.flashReloading = false;
       // The shot travels in a straight line. It deals no damage, but a clean
@@ -1866,7 +2235,8 @@ export class Game {
     if (!manifest || !Array.isArray(manifest.frames) || manifest.frames.length === 0) return null;
     const frameDuration = Math.max(1, Number(manifest.frameDuration || 1));
     const index = Math.min(manifest.frames.length - 1, Math.floor(Math.max(0, Number(age) || 0) / frameDuration));
-    return { manifest, index, src: manifest.frames[index] };
+    const src = manifest.frames[index];
+    return typeof src === "string" && src.length > 0 ? { manifest, index, src } : null;
   }
 
   loadEffectFrame(effectId, age = 0) {
@@ -1875,13 +2245,18 @@ export class Game {
     let image = this.effectImages.get(resolved.src);
     if (!image) {
       image = makeImage(resolved.src);
-      if (image) this.effectImages.set(resolved.src, image);
+      if (image) {
+        this.effectImages.set(resolved.src, image);
+        image.addEventListener?.("error", () => {
+          if (this.effectImages.get(resolved.src) === image) this.effectImages.delete(resolved.src);
+        }, { once: true });
+      }
     }
     return { ...resolved, image };
   }
 
   tintedEffectFrame(asset, tint) {
-    if (!tint || !imageReady(asset?.image) || typeof document === "undefined") return asset?.image || null;
+    if (!tint || !effectImageReady(asset?.image) || typeof document === "undefined") return asset?.image || null;
     const key = `${asset.src}:${tint}`;
     if (this.effectTintCache.has(key)) return this.effectTintCache.get(key);
     const canvas = document.createElement("canvas");
@@ -1924,7 +2299,7 @@ export class Game {
       if (entity.type === "fallingDog") {
         if (entity.age <= Number(entity.graceFrames || 0)) continue;
         entity.y += Number(entity.vy || -10);
-        if (entity.y <= 0) { entity.type = "dogImpact"; entity.age = 0; entity.frameOffset = 192; entity.y = 0; entity.w = 90; entity.h = 80; entity.renderWidth = 256; entity.renderHeight = 256; entity.damage = 220; entity.duration = 96; entity.guardable = true; entity.causesKnockdown = true; entity.hardKnockdown = true; entity.ownerHit = false; this.spawnVfx("hit-burst", { x: entity.x, y: 36 }, { scale: 0.85 }); }
+        if (entity.y <= 0) { entity.type = "dogImpact"; entity.age = 0; entity.frameOffset = 192; entity.y = 0; entity.w = 180; entity.h = 160; entity.renderWidth = 256; entity.renderHeight = 256; entity.damage = 220; entity.duration = 96; entity.guardable = true; entity.causesKnockdown = true; entity.hardKnockdown = true; entity.ownerHit = false; entity.hitTargets = new Set(); this.spawnVfx("hit-burst", { x: entity.x, y: 62 }, { scale: 1.35 }); }
         else continue;
       }
       if (entity.type === "snareMarker") {
@@ -1949,13 +2324,15 @@ export class Game {
       if (entity.type === "tackle" && defender.downed) { entity.active = false; continue; }
       if (entity.type === "tackle" && entity.jumpAvoidable && (defender.y > 0 || defender.boxProfile === "air")) { entity.active = false; continue; }
       const entityHitboxScale = Number(attacker.buff?.hitboxScale || 1);
-      const hitbox = { x: entity.x - (entity.w || 0) * entityHitboxScale * 0.5, y: entity.y, w: (entity.w || 0) * entityHitboxScale, h: (entity.h || 0) * entityHitboxScale };
+      const hitboxWidth = Math.min(STAGE_BOUNDS.right - STAGE_BOUNDS.left, (entity.w || 0) * entityHitboxScale);
+      const hitbox = { x: clamp(entity.x - hitboxWidth * 0.5, STAGE_BOUNDS.left, STAGE_BOUNDS.right - hitboxWidth), y: entity.y, w: hitboxWidth, h: (entity.h || 0) * entityHitboxScale };
       const targetHit = getFighterBoxes(defender).hurtboxes.some((part) => part.x < hitbox.x + hitbox.w && part.x + part.w > hitbox.x && part.y < hitbox.y + hitbox.h && part.y + part.h > hitbox.y);
       if (entity.type === "dogImpact" && attacker.id === "rusty" && !entity.ownerHit) {
         const ownerHit = getFighterBoxes(attacker).hurtboxes.some((part) => part.x < hitbox.x + hitbox.w && part.x + part.w > hitbox.x && part.y < hitbox.y + hitbox.h && part.y + part.h > hitbox.y);
         if (ownerHit) {
-          const selfDamage = Number(attacker.maxHp || CHARACTERS.rusty.stats.hp || 0) * 0.8;
-          applyDamage(attacker, selfDamage * Number(CHARACTERS.rusty.stats.defense || 1), { knockbackX: 0, knockbackY: 0, hitstunFrames: 0 });
+          const selfDamage = Number(entity.damage || 0) * 0.4;
+          applyDamage(attacker, selfDamage * Number(CHARACTERS.rusty.stats.defense || 1), { knockbackX: 0, knockbackY: 2, hitstunFrames: 28 });
+          if (entity.causesKnockdown || entity.hardKnockdown) this.launchKnockdown(attacker, entity);
           entity.ownerHit = true;
           this.spawnVfx("hit-burst", { x: attacker.x, y: attacker.y + 82 }, { x: 0, y: 0, scale: 0.38 });
         }
@@ -1965,14 +2342,15 @@ export class Game {
         if (entity.type === "flash" && (defender.downed || defender.flashComboHit)) { entity.hit = true; entity.active = false; continue; }
         if (entity.type === "snareImpact") {
           entity.hitTargets = entity.hitTargets || new Set();
-          const count = Number(defender.norioHits || 0);
-          if (count >= 3) { entity.active = false; continue; }
-          defender.norioHits = count + 1; entity.hitTargets.add(defender.id);
+          entity.hitTargets.add(defender.id);
         }
-        const move = { id: entity.type, kind: "skill", damage: entity.damage || 0, hitLevel: entity.hitLevel || "mid", unblockable: entity.unblockable === true, causesKnockdown: entity.causesKnockdown, hardKnockdown: entity.hardKnockdown, knockdownValue: entity.knockdownValue || 0, chipDamage: entity.chipDamage || 0, justGuardable: true, guardable: true, hitstunFrames: entity.hitstunFrames || 28, blockstunFrames: entity.blockstunFrames || 8, knockbackX: entity.knockbackX || 3, knockbackY: entity.knockbackY || 1 };
+        const move = { id: entity.type, kind: "skill", damage: entity.damage || 0, hitLevel: entity.hitLevel || "mid", unblockable: entity.unblockable === true, causesKnockdown: entity.causesKnockdown, hardKnockdown: entity.hardKnockdown, knockdownValue: entity.knockdownValue || 0, chipDamage: entity.chipDamage || 0, justGuardable: entity.justGuardable !== false, guardable: entity.guardable !== false, hitstunFrames: entity.hitstunFrames || 28, blockstunFrames: entity.blockstunFrames || 8, knockbackX: entity.knockbackX || 3, knockbackY: entity.knockbackY || 1 };
+        if (entity.type === "flash") { move.status = "flash"; move.flashStunFrames = Math.min(180, Number(entity.maxHitstopFrames || 180)); }
+        move.reflectionDepth = Number(entity.reflectionDepth || 0);
+        if (this.reflectAttack(defender, attacker, move)) { entity.hit = true; entity.active = false; continue; }
         const guardStart = defender.guardStartedFrame;
-        const justGuard = defender.guardHeld && Number.isFinite(guardStart) && this.frame - guardStart <= JUST_GUARD_WINDOW && defender.justGuardConsumedFrame !== guardStart;
-        const blocked = defender.guardHeld;
+        const justGuard = defender.guardHeld && Number.isFinite(guardStart) && this.frame - guardStart <= JUST_GUARD_WINDOW && defender.justGuardConsumedFrame !== guardStart && isJustGuardEligible(move);
+        const blocked = defender.guardHeld && move.unblockable !== true && move.guardable !== false;
         const contactPoint = { x: Math.max(hitbox.x, Math.min(defender.x, hitbox.x + hitbox.w)), y: Math.max(hitbox.y, Math.min(defender.y + 82, hitbox.y + hitbox.h)) };
         if (justGuard) {
           defender.justGuardConsumedFrame = guardStart; entity.hit = true; entity.active = false;
@@ -2010,6 +2388,38 @@ export class Game {
     this.state.effects = this.state.vfx;
   }
 
+  consumeMirror(defender) {
+    const copied = defender.mirrorResourceMode === "copied";
+    if (!copied) {
+      defender.skillAmmo = Math.max(0, Number(defender.skillAmmo ?? defender.ammo ?? 0) - 1);
+      defender.ammo = defender.skillAmmo;
+      const config = getSkillConfig("bob-girl");
+      defender.skillGauge = Number(config?.chargeMax || 100) * defender.skillAmmo / Math.max(1, Number(config?.maxAmmo || 3));
+      defender.skill.gauge = defender.skillGauge; defender.gauge.skill = defender.skillGauge;
+    }
+    defender.mirrorActiveFrames = 0; defender.mirrorHolding = false; defender.mirrorResourceMode = null;
+    this.spawnVfx("skill-mirror", defender); this.showCombatNotice("MIRROR", "skill", 0, defender);
+  }
+
+  reflectAttack(defender, attacker, move = {}, { deferred = false } = {}) {
+    if (!defender || !attacker || Number(defender.mirrorActiveFrames || 0) <= 0 || Number(move.reflectionDepth || 0) >= 1) return false;
+    if (defender.mirrorResourceMode !== "copied" && Number(defender.skillAmmo ?? defender.ammo ?? 0) <= 0) return false;
+    this.consumeMirror(defender);
+    if (deferred) return true;
+    const reflectedMove = { ...move, reflected: true, reflectionDepth: 1 };
+    const damage = applyDamage(attacker, Number(reflectedMove.damage || 0), {
+      knockbackX: -Number(reflectedMove.knockbackX || 3),
+      knockbackY: Number(reflectedMove.knockbackY || 1),
+      hitstunFrames: Number(reflectedMove.hitstunFrames || 28),
+    });
+    if (reflectedMove.flashStunFrames > 0 || reflectedMove.status === "flash") {
+      attacker.flashStunned = true; attacker.flashStunFrames = Number(reflectedMove.flashStunFrames || 180);
+    }
+    if (reflectedMove.causesKnockdown || reflectedMove.hardKnockdown) this.launchKnockdown(attacker, reflectedMove);
+    this.onHit(defender, attacker, reflectedMove, false, reflectedMove.kind === "throw", damage);
+    return true;
+  }
+
   handleCombat(attacker, defender) {
     if (!attacker || !defender || attacker.hp <= 0 || defender.hp <= 0 || this.state.koFrames > 0) return;
     if (defender.wakeupInvulnerable && defender.wakeupInvulnerableFrames > 0) return;
@@ -2032,6 +2442,7 @@ export class Game {
     if (move.kind === "throw" && activeFrame(move, attacker.actionFrame)) {
       if (!attacker.hitRegistry.has(`throw:${defender.id}`) && evaluateThrow(attacker, defender, attacker.actionFrame)) {
         attacker.hitRegistry.add(`throw:${defender.id}`);
+        if (this.reflectAttack(defender, attacker, { ...move, causesKnockdown: true })) return;
         attacker.throwTarget = defender;
         attacker.throwReleased = false;
         defender.thrownBy = attacker;
@@ -2052,27 +2463,12 @@ export class Game {
       }
       return;
     }
-    if (defender.mirrorActiveFrames > 0 && move.kind === "special" && ["projectile", "energy", "linearSpecial"].includes(move.specialType)) {
-      defender.mirrorActiveFrames = 0;
-      defender.mirrorHolding = false;
-      if (defender.mirrorResourceMode !== "copied") {
-        defender.skillAmmo = Math.max(0, Number(defender.skillAmmo || defender.ammo || 1) - 1);
-        defender.ammo = defender.skillAmmo;
-        const mirrorConfig = getSkillConfig("bob-girl");
-        defender.skillGauge = Number(mirrorConfig?.chargeMax || 100) * defender.skillAmmo / Math.max(1, Number(mirrorConfig?.maxAmmo || 3));
-        defender.skill.gauge = defender.skillGauge;
-      }
-      defender.mirrorResourceMode = null;
-      attacker.hitRegistry.add(`mirror:${defender.id}`);
-      this.spawnVfx("skill-mirror", defender);
-      this.spawnSkillEntity({ owner: defender === this.player ? "player" : "cpu", type: "reflected", x: defender.x + defender.facing * 38, y: defender.y + 70, vx: defender.facing * 5, damage: Number(move.damage || 0) * 1.25, w: move.hitboxWidth || 48, h: move.hitboxHeight || 24, duration: 90, causesKnockdown: true, hardKnockdown: false, guardable: true, justGuardable: true, effectId: "skill-mirror" });
-      return;
-    }
     // Projectile specials resolve only through the projectile collision path.
     // Their authored move hitbox is a preview/debug shape, not a second hit.
     if (move.specialType === "projectile") return;
     const result = evaluateStrike(attacker, defender, move, attacker.actionFrame, attacker.hitRegistry);
     if (!result.hit) return;
+    if (this.reflectAttack(defender, attacker, move)) return;
     if (!(attacker.alreadyHitTargets instanceof Set)) attacker.alreadyHitTargets = new Set();
     attacker.alreadyHitTargets.add(defender.id);
     const guardDashGuard = defender.guardDashActive && defender.guardDashFrames <= GUARD_DASH_GUARD_FRAMES;
@@ -2204,20 +2600,17 @@ export class Game {
       const hitbox = { x: projectile.x, y: projectile.y, w: projectile.w, h: projectile.h, type: "projectileHitbox" };
       const targetBoxes = getFighterBoxes(target).hurtboxes;
       if (!projectile.hit && targetBoxes.some((part) => part && part.x < hitbox.x + hitbox.w && part.x + part.w > hitbox.x && part.y < hitbox.y + hitbox.h && part.y + part.h > hitbox.y)) {
-        if (target.mirrorActiveFrames > 0) {
-          target.mirrorActiveFrames = 0; target.mirrorHolding = false;
-          target.skillAmmo = Math.max(0, Number(target.skillAmmo || target.ammo || 1) - 1); target.ammo = target.skillAmmo;
-          const mirrorConfig = getSkillConfig("bob-girl");
-          target.skillGauge = Number(mirrorConfig?.chargeMax || 100) * target.skillAmmo / Math.max(1, Number(mirrorConfig?.maxAmmo || 3)); target.skill.gauge = target.skillGauge;
-          projectile.owner = target === this.player ? "player" : "cpu"; projectile.vx *= -1; projectile.facing = projectile.vx < 0 ? -1 : 1; projectile.damage = Number(projectile.damage || 0) * 1.25; projectile.x += projectile.vx * 2;
-          this.spawnVfx("skill-mirror", target); this.showCombatNotice("MIRROR", "skill", 0, target);
+        const projectileAttacker = projectile.owner === "player" ? this.player : this.cpu;
+        if (this.reflectAttack(target, projectileAttacker, { ...projectile, kind: projectile.moveKind || "special", causesKnockdown: projectile.causesKnockdown, hardKnockdown: projectile.hardKnockdown }, { deferred: true })) {
+          projectile.owner = target === this.player ? "player" : "cpu"; projectile.vx *= -1; projectile.facing = projectile.vx < 0 ? -1 : 1; projectile.x += projectile.vx * 2; projectile.reflected = true; projectile.reflectionDepth = 1;
           continue;
         }
         projectile.hit = true;
         const attacker = projectile.owner === "player" ? this.player : this.cpu;
         attacker.hitRegistry.add(`projectile:${target.id}`);
         const guardStart = target.guardStartedFrame;
-        const justGuard = target.guardHeld && Number.isFinite(guardStart) && this.frame - guardStart <= JUST_GUARD_WINDOW && target.justGuardConsumedFrame !== guardStart;
+        const projectileMove = { ...projectile, kind: projectile.moveKind || "special" };
+        const justGuard = target.guardHeld && Number.isFinite(guardStart) && this.frame - guardStart <= JUST_GUARD_WINDOW && target.justGuardConsumedFrame !== guardStart && isJustGuardEligible(projectileMove);
         if (justGuard) {
           target.justGuardConsumedFrame = guardStart; this.addSpecialMeter(target, 10); attacker.stunFrames = 12; target.stunFrames = 3; this.state.hitstopFrames = JUST_GUARD_HITSTOP;
           this.spawnVfx("just-guard-ring", target); this.showCombatNotice("JUST GUARD", "guard", 0, target); this.beep(880, 0.08, "triangle");
@@ -2262,24 +2655,27 @@ export class Game {
       this.cpu.state = "defeat";
       this.cpu.action = "defeat";
       this.state.playerRounds += 1;
-      this.state.score += scoreForEvent("round");
-      this.state.score += scoreForEvent("hp", Math.round(this.player.hp));
-      this.state.score += scoreForEvent("time", remaining);
-      if (this.player.hp >= (this.player.maxHp || MAX_HP)) this.state.score += scoreForEvent("perfect");
+      if (this.state.mode !== "vs") { this.state.score += scoreForEvent("round"); this.state.score += scoreForEvent("hp", Math.round(this.player.hp)); this.state.score += scoreForEvent("time", remaining); if (this.player.hp >= (this.player.maxHp || MAX_HP)) this.state.score += scoreForEvent("perfect"); }
     } else if (outcome.result === "loss") {
       this.player.state = "defeat";
       this.player.action = "defeat";
       this.cpu.state = "victory";
       this.cpu.action = "victory";
       this.state.cpuRounds += 1;
-      this.state.roundLosses += 1;
-      this.state.score += scoreForEvent("roundLoss");
+      if (this.state.mode !== "vs") { this.state.roundLosses += 1; this.state.score += scoreForEvent("roundLoss"); }
     }
     this.state.round += outcome.result === "draw" ? 0 : 1;
     this.setScreen(SCREEN.roundResult);
   }
 
   resolveRoundResult() {
+    if (this.state.mode === "vs") {
+      if (this.state.playerRounds >= 2 || this.state.cpuRounds >= 2) {
+        this.state.vsWinner = this.state.playerRounds >= 2 ? "P1" : "P2";
+        this.setScreen(SCREEN.vsResult);
+      } else this.beginRound();
+      return;
+    }
     if (this.state.playerRounds >= 2) {
       this.state.stageResult = "win";
       if (!this.state.stageBonusAwarded) {
@@ -2435,7 +2831,7 @@ export class Game {
     const alpha = clamp((effect.frames || 0) / 12, 0, 1);
     const asset = this.loadEffectFrame(effect.effectId, effect.age || 0);
     ctx.save(); ctx.globalAlpha = alpha;
-    if (imageReady(asset?.image)) {
+    if (asset?.manifest && effectImageReady(asset.image)) {
       const manifest = asset.manifest;
       const width = Number(manifest.cellWidth || 256) * Number(effect.scale || 1);
       const height = Number(manifest.cellHeight || 256) * Number(effect.scale || 1);
@@ -2450,9 +2846,6 @@ export class Game {
         if (Number(effect.facing || 1) < 0) ctx.scale(-1, 1);
         ctx.drawImage(source, -Number(origin.x || 0) * Number(effect.scale || 1), INTERNAL_HEIGHT - Number(effect.y || 0) - Number(origin.y || 0) * Number(effect.scale || 1), width, height);
       }
-    } else {
-      ctx.strokeStyle = effect.effectId?.includes("guard") ? "#7de7ff" : "#ffe37b"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(effect.x || 0, INTERNAL_HEIGHT - (effect.y || 0), Math.max(4, 10 * (effect.scale || 1)), 0, Math.PI * 2); ctx.stroke();
     }
     ctx.restore();
   }
@@ -2489,7 +2882,7 @@ export class Game {
       ctx.save();
       ctx.globalAlpha = entity.type === "dogMarker" ? 0.42 : 0.78;
       const asset = this.loadEffectFrame(entity.effectId, (entity.age || 0) + (entity.frameOffset || 0));
-      if (imageReady(asset?.image)) {
+      if (asset?.manifest && effectImageReady(asset.image)) {
         const manifest = asset.manifest;
         const width = Number(entity.renderWidth || manifest.cellWidth || entity.w || 16);
         const height = Number(entity.renderHeight || manifest.cellHeight || entity.h || 16);
@@ -2501,9 +2894,6 @@ export class Game {
         ctx.translate(Number(entity.x || 0), 0);
         if (Number(entity.facing || 1) < 0) ctx.scale(-1, 1);
         ctx.drawImage(asset.image, -originX, INTERNAL_HEIGHT - Number(entity.y || 0) - originY, width, height);
-      } else {
-        ctx.fillStyle = entity.type === "flash" ? "#ffffff" : entity.type === "snare" || entity.type === "snareImpact" ? "#cf87ff" : entity.type === "dogMarker" ? "#b9e7ff" : "#7ee787";
-        ctx.fillRect((entity.x || 0) - (entity.w || 16) * 0.5, INTERNAL_HEIGHT - (entity.y || 0) - (entity.h || 16), entity.w || 16, entity.h || 16);
       }
       ctx.restore();
     }
@@ -2627,15 +3017,15 @@ export class Game {
     drawSkill(this.player, 16, "left");
     drawSkill(this.cpu, 354, "right");
     ctx.fillStyle = "#f6f5de"; ctx.font = "bold 9px monospace";
-    ctx.fillText(CHARACTERS[this.player.id]?.name || "1P", 16, 9);
-    ctx.textAlign = "right"; ctx.fillText(CHARACTERS[this.cpu.id]?.name || "CPU", 464, 9);
+    ctx.fillText(`${this.state.mode === "vs" ? "P1 " : ""}${CHARACTERS[this.player.id]?.name || "1P"}`, 16, 9);
+    ctx.textAlign = "right"; ctx.fillText(`${this.state.mode === "vs" ? "P2 " : ""}${CHARACTERS[this.cpu.id]?.name || "CPU"}`, 464, 9);
     ctx.textAlign = "center"; ctx.font = "bold 18px monospace";
     const timerLabel = this.state.mode === "training" ? "--" : String(Math.ceil(this.state.timerFrames / FIXED_HZ)).padStart(2, "0");
     ctx.fillText(timerLabel, 240, 21);
     ctx.font = "bold 9px monospace"; ctx.fillText(`R${this.state.playerRounds}-${this.state.cpuRounds}  STAGE ${this.state.stage}`, 240, 34);
     // Keep live information in the central lane. The left/right lanes below
     // the skill gauges are reserved for each fighter's special cut-in.
-    ctx.textAlign = "center"; ctx.fillStyle = "#ffe795"; ctx.fillText(`${this.state.score.toString().padStart(6, "0")}  COMBO ${this.state.combo}`, 240, 51, 200);
+    ctx.textAlign = "center"; ctx.fillStyle = "#ffe795"; ctx.fillText(this.state.mode === "vs" ? "LOCAL VS  FIRST TO 2" : `${this.state.score.toString().padStart(6, "0")}  COMBO ${this.state.combo}`, 240, 51, 200);
     if (this.state.mode === "training") {
       ctx.fillStyle = "#9de8ff";
       ctx.font = "bold 9px monospace";
@@ -2685,8 +3075,11 @@ export class Game {
   renderPanel() {
     if (!this.panel) return;
     const screen = this.state.screen;
+    const signature = this.panelSignature();
+    if (this.panel.dataset.screen === screen && this.panel.dataset.signature === signature) return;
     this.panel.innerHTML = "";
     this.panel.dataset.screen = screen;
+    this.panel.dataset.signature = signature;
     const heading = (title, subtitle = "") => { const h = document.createElement("h1"); h.textContent = title; this.panel.appendChild(h); if (subtitle) { const p = document.createElement("p"); p.textContent = subtitle; this.panel.appendChild(p); } };
     const button = (label, onClick, selected = false, parent = this.panel) => { const b = document.createElement("button"); b.type = "button"; b.textContent = label; b.setAttribute("aria-label", String(label)); if (selected) { b.classList.add("selected"); b.setAttribute("aria-current", "true"); } b.addEventListener("click", () => { this.ensureAudio(); onClick(); }); parent.appendChild(b); return b; };
     const buttonRow = (items) => { const row = document.createElement("div"); row.className = "action-button-row"; this.panel.appendChild(row); items.forEach(({ label, onClick, selected = false }) => button(label, onClick, selected, row)); return row; };
@@ -2703,11 +3096,53 @@ export class Game {
       heading(GAME_TITLE, "MAIN MENU");
       MENU_ITEMS.forEach((item, index) => button(item, () => this.activateMenu(index), index === this.state.menuIndex));
       this.hintText("↑↓ SELECT   ENTER OK");
+    } else if (screen === SCREEN.vsDeviceSelect) {
+      const p1 = this.vsInput.sourceForPlayer("p1") || "PRESS A FACE BUTTON";
+      const p2 = this.vsInput.sourceForPlayer("p2") || "PRESS A FACE BUTTON";
+      heading("VS MODE", "LOCAL 2 PLAYER / FIRST TO 2 ROUNDS");
+      const guide = document.createElement("pre"); guide.textContent = `P1  WASD MOVE · F LIGHT · G STRONG · H GUARD · R SKILL · T SP · Q PAUSE\nP2  ARROWS MOVE · J LIGHT · K STRONG · L GUARD · B SKILL · I SP · BACKSPACE PAUSE\nGAMEPAD: press A / X / direction to claim either P1 or P2\nP1: ${p1}\nP2: ${p2}`; this.panel.appendChild(guide);
+      button("BACK", () => this.setScreen(SCREEN.menu));
+      this.hintText("EACH PLAYER PRESS A FACE BUTTON OR DIRECTION");
+    } else if (screen === SCREEN.vsCharacterSelect) {
+      heading("VS CHARACTER SELECT", "P1 / P2 SELECT THEN BOTH CONFIRM");
+      const grid = document.createElement("div"); grid.className = "character-grid";
+      CHARACTER_IDS.forEach((id) => { const p1 = this.state.vsSelectedIds.p1 === id; const p2 = this.state.vsSelectedIds.p2 === id; const b = document.createElement("button"); b.type = "button"; b.className = [p1 || p2 ? "selected" : "", p1 ? "p1-cursor" : "", p2 ? "p2-cursor" : ""].filter(Boolean).join(" "); b.setAttribute("aria-label", `${CHARACTERS[id].name}${p1 ? " P1" : ""}${p2 ? " P2" : ""}`); b.innerHTML = `<img alt="" src="${CHARACTERS[id].sprite.frames[0]}"><strong>${CHARACTERS[id].name}</strong><small>${p1 ? "P1" : ""}${p2 ? " P2" : ""}</small>`; grid.appendChild(b); }); this.panel.appendChild(grid);
+      const guide = document.createElement("p"); guide.textContent = `P1: ${CHARACTERS[this.state.vsSelectedIds.p1].name} ${this.state.vsLocked.p1 ? "LOCKED" : ""}    P2: ${CHARACTERS[this.state.vsSelectedIds.p2].name} ${this.state.vsLocked.p2 ? "LOCKED" : ""}`; this.panel.appendChild(guide);
+    } else if (screen === SCREEN.vsColorSelect) {
+      heading("VS COLOR SELECT", "BOTH PLAYERS CHOOSE A COLOR THEN CONFIRM");
+      const guide = document.createElement("pre"); guide.textContent = `P1 ${CHARACTERS[this.state.vsSelectedIds.p1].name}: COLOR ${this.state.vsColors.p1} ${this.state.vsLocked.p1 ? "LOCKED" : ""}\nP2 ${CHARACTERS[this.state.vsSelectedIds.p2].name}: COLOR ${this.state.vsColors.p2} ${this.state.vsLocked.p2 ? "LOCKED" : ""}\nDIRECTION CHANGE / ATTACK BUTTON CONFIRM`; this.panel.appendChild(guide);
+    } else if (screen === SCREEN.vsResult) {
+      heading(`${this.state.vsWinner} WINS THE MATCH!`, `${this.state.playerRounds} - ${this.state.cpuRounds} / FIRST TO 2`);
+      buttonRow([{ label: "REMATCH", onClick: () => this.startVsMatch() }, { label: "CHARACTER SELECT", onClick: () => this.openVsCharacterSelect() }]);
+      button("MAIN MENU", () => this.setScreen(SCREEN.menu));
+      this.hintText("A/X: REMATCH   Y: CHARACTER SELECT   PAUSE: MAIN MENU");
     } else if (screen === SCREEN.settings) {
-      heading("SETTINGS", "SOUND / DATA / DEBUG");
-      const settingsLabel = (item) => item === "SOUND" ? `${item}: ${this.state.sound ? "ON" : "OFF"}` : item === "BGM" ? `${item}: ${this.state.bgmEnabled ? "ON" : "OFF"}` : item === "SE" ? `${item}: ${this.state.seEnabled ? "ON" : "OFF"}` : item === "DEBUG OVERLAY" ? `${item}: ${this.state.debug ? "ON" : "OFF"}` : item;
-      SETTINGS_ITEMS.forEach((item, index) => button(settingsLabel(item), () => this.activateSettings(index), index === this.state.settingsIndex));
+      heading("SETTINGS", "SOUND");
+      const settingsLabel = (item) => item === "SOUND" ? `${item}: ${this.state.sound ? "ON" : "OFF"}` : item === "BGM" ? `${item}: ${this.state.bgmEnabled ? "ON" : "OFF"}` : item === "SE" ? `${item}: ${this.state.seEnabled ? "ON" : "OFF"}` : item;
+      VISIBLE_SETTINGS_INDICES.forEach((index) => { const item = SETTINGS_ITEMS[index]; button(settingsLabel(item), () => this.activateSettings(index), index === this.state.settingsIndex); });
       this.hintText("↑↓ SELECT   ENTER OK   ESC BACK");
+    } else if (screen === SCREEN.controllerSettings) {
+      const player = this.state.controllerSettingsPlayer;
+      const capture = this.state.controllerCapture;
+      const focused = (id) => this.state.controllerSettingsFocus === id;
+      const controllerButton = (id, label, onClick, { selected = false, disabled = false } = {}, parent = this.panel) => {
+        const control = button(label, onClick, selected || focused(id), parent);
+        if (focused(id)) control.classList.add("controller-focus");
+        control.disabled = disabled;
+        return control;
+      };
+      const playerLabel = player === "p1" ? "1P" : player === "p2" ? "2P" : "";
+      heading("CONTROLLER SETTINGS", player ? `${playerLabel} / SELECT ACTION, THEN PRESS A BUTTON` : "SELECT 1P OR 2P");
+      const playerRow = document.createElement("div"); playerRow.className = "action-button-row controller-settings-players"; this.panel.appendChild(playerRow);
+      controllerButton("p1", "1P", () => { this.state.controllerSettingsPlayer = "p1"; this.state.controllerSettingsFocus = "p1"; this.state.controllerCapture = null; this.renderPanel(); }, { selected: player === "p1" }, playerRow);
+      controllerButton("p2", "2P", () => { this.state.controllerSettingsPlayer = "p2"; this.state.controllerSettingsFocus = "p2"; this.state.controllerCapture = null; this.renderPanel(); }, { selected: player === "p2" }, playerRow);
+      const actionGrid = document.createElement("div"); actionGrid.className = "controller-settings-actions"; this.panel.appendChild(actionGrid);
+      CONTROLLER_ACTIONS.forEach((action, index) => controllerButton(`action-${index}`, `${action.toUpperCase()}: ${player ? controllerButtonLabel(this.state.controllerDraft[player][action]) : "—"}`, () => { this.state.controllerSettingsAction = index; this.state.controllerSettingsFocus = `action-${index}`; this.beginControllerCapture(player, action); this.renderPanel(); }, { selected: player !== null && index === this.state.controllerSettingsAction, disabled: player === null }, actionGrid));
+      const note = document.createElement("p"); note.textContent = capture ? `WAITING FOR ${capture.player.toUpperCase()} ${capture.action.toUpperCase()} BUTTON…` : "D-PAD / AXIS / STICK PRESS / START ARE RESERVED"; this.panel.appendChild(note);
+      const footer = document.createElement("div"); footer.className = "action-button-row controller-settings-footer"; this.panel.appendChild(footer);
+      controllerButton("save", "SAVE", () => this.saveControllerSettings(), { disabled: player === null }, footer);
+      controllerButton("back", "BACK", () => this.setScreen(SCREEN.settings), { disabled: player === null }, footer);
+      this.hintText("←→ PLAYER  ↑↓ ACTION  ENTER CAPTURE  ESC DISCARD");
     } else if (screen === SCREEN.trainingSettings) {
       heading("TRAINING MODE", "SELECT OPTIONS / DAMAGE DISPLAY ON");
       const trainingLabel = (item) => item === "CPU FIGHTER" ? `${item}: ${CHARACTERS[this.state.trainingOpponentId]?.name || "トコ"}` : item === "STAGE" ? `${item}: ${STAGES[(this.state.trainingStage || 1) - 1]?.name || "STAGE 1"}` : item === "CPU MOVE" ? `${item}: ${this.state.trainingCpuMove ? "ON" : "OFF"}` : item === "CPU ATTACK" ? `${item}: ${this.state.trainingCpuAttack ? "ON" : "OFF"}` : item;
@@ -2779,6 +3214,25 @@ export class Game {
       }
       const list = document.createElement("ol"); list.className = "score-list"; for (const entry of this.save.highScores) { const li = document.createElement("li"); li.textContent = `${entry.score}  ${entry.rank}  ${entry.character || "—"}  ${entry.difficulty}`; list.appendChild(li); } this.panel.appendChild(list); button("BACK", () => this.setScreen(SCREEN.menu));
     }
+  }
+
+  panelSignature() {
+    const { screen } = this.state;
+    if (screen === SCREEN.menu) return `${screen}:${this.state.menuIndex}`;
+    if (screen === SCREEN.vsDeviceSelect) return `${screen}:${this.vsInput.sourceForPlayer("p1")}:${this.vsInput.sourceForPlayer("p2")}`;
+    if (screen === SCREEN.vsCharacterSelect) return `${screen}:${this.state.vsSelectedIds.p1}:${this.state.vsSelectedIds.p2}:${this.state.vsLocked.p1}:${this.state.vsLocked.p2}`;
+    if (screen === SCREEN.vsColorSelect) return `${screen}:${this.state.vsColors.p1}:${this.state.vsColors.p2}:${this.state.vsLocked.p1}:${this.state.vsLocked.p2}`;
+    if (screen === SCREEN.vsResult) return `${screen}:${this.state.vsWinner}:${this.state.playerRounds}:${this.state.cpuRounds}`;
+    if (screen === SCREEN.settings) return `${screen}:${this.state.settingsIndex}:${this.state.sound}:${this.state.bgmEnabled}:${this.state.seEnabled}`;
+    if (screen === SCREEN.controllerSettings) return `${screen}:${this.state.controllerSettingsPlayer}:${this.state.controllerSettingsFocus}:${this.state.controllerSettingsAction}:${this.state.controllerCapture?.action || ""}:${JSON.stringify(this.state.controllerDraft)}`;
+    if (screen === SCREEN.trainingSettings) return `${screen}:${this.state.trainingSettingsIndex}:${this.state.trainingOpponentId}:${this.state.trainingStage}:${this.state.trainingCpuMove}:${this.state.trainingCpuAttack}`;
+    if (screen === SCREEN.difficultySelect) return `${screen}:${this.state.difficulty}`;
+    if (screen === SCREEN.characterSelect) return `${screen}:${this.state.mode}:${this.state.selectedId}`;
+    if (screen === SCREEN.colorSelect) return `${screen}:${this.state.selectedId}:${this.state.color}`;
+    if (screen === SCREEN.stageIntro || screen === SCREEN.roundIntro) return `${screen}:${this.state.stage}:${this.state.round}:${this.state.mode}`;
+    if (screen === SCREEN.pause) return `${screen}:${this.state.pauseIndex}:${this.state.mode}`;
+    if (screen === SCREEN.roundResult || screen === SCREEN.stageResult || screen === SCREEN.continue || screen === SCREEN.gameOver || screen === SCREEN.ending || screen === SCREEN.score) return `${screen}:${this.state.result}:${this.state.stage}:${this.state.score}:${this.state.continueUsed}:${Boolean(this.state.finalStats)}`;
+    return screen;
   }
 
   stagePreview(stage) {

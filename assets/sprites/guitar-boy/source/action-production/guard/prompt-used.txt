@@ -1,4 +1,0 @@
-Use case: 2D fighting-game player sprite animation. Asset: guitar-boy guard body sheet.
-References: combat-1 master identity; idle-anchor-2x2 invisible cell/root/feet/camera template; sheet-transparent.png and player_01_guitar-boy.png identity refs. Preserve slim guitarist, messy black hair, black jacket with cyan piping, dark pants, cyan sneakers, purple guitar fixed size/orientation, strap/back case, palette, outline and pixel-art style.
-Generate exactly 6 full-body frames in a 2x3 grid, row-major: guard_high 1-2, guard_low 3-4, just_guard 5-6. Upright cover, compact crouched cover, and sharp timed parry must have distinct silhouettes; no opponent. Grounded frames share idle feet/root/camera; central 60%-70% safe area; no cell-edge contact. Anchor is invisible guidance only.
-Flat solid #FF00FF outside subjects; no shadow/floor/texture/gradient/glow/dust/particles/weapon FX/text/labels/borders/watermark/UI/props. Clean raw 2x3 grid.

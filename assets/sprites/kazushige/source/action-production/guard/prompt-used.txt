@@ -1,3 +1,0 @@
-Use case: production-oriented 2D fighting-game player sprite animation.
-Input images: kazushige/sheet-transparent.png and kazushige/combat-1.png as identity and guard references.
-Generated with image_gen as a 2x3, six-frame guard family: guard_high, guard_low and just_guard (two frames each). Bass braced across body with fixed grounded feet and central safe area; #FF00FF background, no effects or edge contact.

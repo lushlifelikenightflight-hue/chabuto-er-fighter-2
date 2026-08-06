@@ -1,3 +1,0 @@
-Use case: production-oriented 2D fighting-game player sprite animation.
-Input images: kazushige/sheet-transparent.png and kazushige/combat-3.png as identity and light-attack references.
-Generated with image_gen as a 3x4, twelve-frame family: light_stand, light_crouch and light_air (four startup/active/recovery/return frames each). Distinct bass/arm/leg mechanics, integrated bass only, fixed grounded/air roots, #FF00FF background and no detached effects or edge contact.

@@ -1,6 +1,0 @@
-Use case: 2D fighting-game player sprite animation.
-Asset type: guitar-boy light attack body sheet.
-Input images: Image 1 combat-1 master identity; Image 2 deterministic anchor template locking grounded body scale, camera, root and feet line; Images 3-4 identity; Image 5 combat-3 active keyframe. Preserve face/hair/outfit/guitar/strap/case details and pixel-art palette.
-Primary request: exactly 12 body-only frames in a 3 rows x 4 columns grid, row-major sequence: light_stand frames 1-4 (startup, active, recovery, settle), light_crouch frames 5-8 (startup, active, recovery, settle), light_air frames 9-12 (startup, active, recovery, settle). Distinguish all three silhouettes and phases; moderate quick guitar strikes, integrated guitar, no detached FX.
-Grounded anchor: stand/crouch feet/root use the same grounded baseline and camera scale as anchor; air frames use a stable airborne center/root. Body height close to idle profile and every weapon/limb central 60%-70% safe area with no clipping. Active poses read clearly; weak attacks must not become heavy swings. No slash arcs or particles.
-Background: flat solid #FF00FF only outside subjects; no shadow, floor, glow, dust, effects, text, labels, borders, separators, watermark, UI or other characters. Clean raw 3x4 grid.
