@@ -1,12 +1,18 @@
 const CACHE_PREFIX = "chabuto-er-fighter-2";
-const CACHE_NAME = `${CACHE_PREFIX}-v1`;
+const CACHE_NAME = `${CACHE_PREFIX}-v2-controller-audio`;
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css",
   "./manifest.webmanifest",
+  "./src/game.js",
   "./assets/icons/icon-192.png",
   "./assets/icons/icon-512.png",
+  "./assets/audio/se/light-attack.wav",
+  "./assets/audio/se/strong-attack.wav",
+  "./assets/audio/se/super.wav",
+  "./assets/audio/se/skill.wav",
+  "./assets/audio/se/jump.wav",
 ];
 
 self.addEventListener("install", (event) => {

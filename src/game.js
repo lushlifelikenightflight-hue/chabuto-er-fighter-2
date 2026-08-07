@@ -331,6 +331,8 @@ export class Game {
     this.bgmSource = "";
     this.bgmProfileKey = "";
     this.sePlayers = new Map();
+    this.seBuffers = new Map();
+    this.seBufferLoads = new Map();
     this.activeSePlayers = new Set();
     this.state = {
       screen: SCREEN.boot,
@@ -484,7 +486,41 @@ export class Game {
         const resumed = this.soundContext.resume();
         this.audioResumePromise = Promise.resolve(resumed).catch(() => undefined);
       }
+      this.preloadSeBuffers();
     } catch { this.soundContext = null; }
+  }
+
+  decodeSeBuffer(arrayBuffer) {
+    const context = this.soundContext;
+    if (!context?.decodeAudioData) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (buffer) => { if (!settled) { settled = true; resolve(buffer || null); } };
+      try {
+        const decoded = context.decodeAudioData(arrayBuffer.slice(0), finish, () => finish(null));
+        if (decoded?.then) decoded.then(finish, () => finish(null));
+      } catch { finish(null); }
+    });
+  }
+
+  preloadSeBuffers() {
+    if (!this.state.seEnabled || !this.soundContext || typeof fetch !== "function") return;
+    for (const [id, source] of Object.entries(SE_SOURCES)) {
+      if (this.seBuffers.has(id) || this.seBufferLoads.has(id)) continue;
+      const load = fetch(source)
+        .then((response) => {
+          if (!response.ok) throw new Error(`SE ${response.status}`);
+          return response.arrayBuffer();
+        })
+        .then((bytes) => this.decodeSeBuffer(bytes))
+        .then((buffer) => {
+          if (buffer) this.seBuffers.set(id, buffer);
+          return buffer;
+        })
+        .catch(() => null)
+        .finally(() => this.seBufferLoads.delete(id));
+      this.seBufferLoads.set(id, load);
+    }
   }
 
   syncBgm() {
@@ -544,6 +580,21 @@ export class Game {
   playSe(id) {
     if (!this.state.seEnabled) return false;
     this.ensureAudio();
+    const buffer = this.seBuffers.get(id);
+    if (buffer && this.soundContext && this.soundContext.state !== "suspended") {
+      let source = null;
+      try {
+        source = this.soundContext.createBufferSource();
+        const gain = this.soundContext.createGain();
+        source.buffer = buffer;
+        gain.gain.value = 0.94;
+        source.connect(gain).connect(this.soundContext.destination);
+        this.activeSePlayers.add(source);
+        source.onended = () => this.activeSePlayers.delete(source);
+        source.start();
+        return true;
+      } catch { this.activeSePlayers.delete(source); }
+    }
     const base = this.sePlayers.get(id);
     if (!base || typeof base.cloneNode !== "function") return false;
     let player = null;
