@@ -34,7 +34,13 @@ export const SCREEN = Object.freeze({
 
 const FRAME = 1000 / FIXED_HZ;
 export const STAGE_DIALOGUE_FRAMES = 4 * FIXED_HZ;
+export const BATTLE_COUNTDOWN_FRAMES = 3 * FIXED_HZ;
 export const DEFAULT_SPRITE_SCALE = 0.82;
+
+export function battleCountdownValue(frames = 0) {
+  const remaining = Math.max(0, Number(frames) || 0);
+  return remaining > 0 ? Math.ceil(remaining / FIXED_HZ) : null;
+}
 
 // Action PNGs are normalized around their authored 128,233 anchor, so runtime
 // rendering uses one scale contract for every fighter and every action.
@@ -377,6 +383,7 @@ export class Game {
       pauseIndex: 0,
       stageFrame: 0,
       battleFrames: 0,
+      battleCountdownFrames: 0,
       timerFrames: ROUND_TIME_SECONDS * FIXED_HZ,
       result: "",
       stageResult: "",
@@ -624,6 +631,7 @@ export class Game {
       if (input.confirm || this.state.screenFrames > 70) this.setScreen(SCREEN.battle);
     } else if (this.state.screen === SCREEN.battle) {
       if ((this.state.mode === "vs" ? (vsInputs.p1.pausePressed || vsInputs.p2.pausePressed) : (input.pause || input.cancel))) this.setScreen(SCREEN.pause);
+      else if (this.state.battleCountdownFrames > 0) this.state.battleCountdownFrames -= 1;
       else this.tickBattle(this.state.mode === "vs" ? this.vsBattleInput(vsInputs.p1, this.player, "p1") : input, this.state.mode === "vs" ? this.vsBattleInput(vsInputs.p2, this.cpu, "p2") : null);
     } else if (this.state.screen === SCREEN.pause) {
       // ENTER/the virtual pause button resumes. ESC is also a training escape
@@ -778,7 +786,10 @@ export class Game {
   }
 
   setScreen(screen) {
+    const previousScreen = this.state.screen;
     this.state.screen = screen;
+    if (screen === SCREEN.roundIntro) this.state.battleCountdownFrames = 0;
+    if (screen === SCREEN.battle && previousScreen === SCREEN.roundIntro) this.state.battleCountdownFrames = BATTLE_COUNTDOWN_FRAMES;
     if (screen !== SCREEN.battle) {
       for (const fighter of [this.player, this.cpu]) {
         if (!fighter) continue;
@@ -2925,6 +2936,24 @@ export class Game {
       ctx.fillText(CHARACTERS[fighter.id]?.special?.name || "SPECIAL", x + 58, 156, 106);
       ctx.restore();
     }
+    const countdown = this.state.screen === SCREEN.battle ? battleCountdownValue(this.state.battleCountdownFrames) : null;
+    if (countdown) {
+      ctx.save();
+      ctx.fillStyle = "rgba(4,7,14,.44)";
+      ctx.fillRect(0, 0, INTERNAL_WIDTH, INTERNAL_HEIGHT);
+      ctx.textAlign = "center";
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = "rgba(5,7,15,.92)";
+      ctx.fillStyle = "#ffe56e";
+      ctx.font = "900 68px monospace";
+      ctx.strokeText(String(countdown), INTERNAL_WIDTH * 0.5, INTERNAL_HEIGHT * 0.56);
+      ctx.fillText(String(countdown), INTERNAL_WIDTH * 0.5, INTERNAL_HEIGHT * 0.56);
+      ctx.font = "900 14px monospace";
+      ctx.fillStyle = "#e9fbff";
+      ctx.strokeText("READY", INTERNAL_WIDTH * 0.5, INTERNAL_HEIGHT * 0.31);
+      ctx.fillText("READY", INTERNAL_WIDTH * 0.5, INTERNAL_HEIGHT * 0.31);
+      ctx.restore();
+    }
   }
 
   drawWeather(ctx) {
@@ -3021,17 +3050,20 @@ export class Game {
     ctx.textAlign = "right"; ctx.fillText(`${this.state.mode === "vs" ? "P2 " : ""}${CHARACTERS[this.cpu.id]?.name || "CPU"}`, 464, 9);
     ctx.textAlign = "center"; ctx.font = "bold 18px monospace";
     const timerLabel = this.state.mode === "training" ? "--" : String(Math.ceil(this.state.timerFrames / FIXED_HZ)).padStart(2, "0");
-    ctx.fillText(timerLabel, 240, 21);
-    ctx.font = "bold 9px monospace"; ctx.fillText(`R${this.state.playerRounds}-${this.state.cpuRounds}  STAGE ${this.state.stage}`, 240, 34);
+    // The landscape-safe pause control occupies the playfield's top-center
+    // header lane. Keep the central HUD immediately below it so both remain
+    // readable without moving either fighter's side gauges.
+    ctx.fillText(timerLabel, 240, 42);
+    ctx.font = "bold 9px monospace"; ctx.fillText(`R${this.state.playerRounds}-${this.state.cpuRounds}  STAGE ${this.state.stage}`, 240, 54);
     // Keep live information in the central lane. The left/right lanes below
     // the skill gauges are reserved for each fighter's special cut-in.
-    ctx.textAlign = "center"; ctx.fillStyle = "#ffe795"; ctx.fillText(this.state.mode === "vs" ? "LOCAL VS  FIRST TO 2" : `${this.state.score.toString().padStart(6, "0")}  COMBO ${this.state.combo}`, 240, 51, 200);
+    ctx.textAlign = "center"; ctx.fillStyle = "#ffe795"; ctx.fillText(this.state.mode === "vs" ? "LOCAL VS  FIRST TO 2" : `${this.state.score.toString().padStart(6, "0")}  COMBO ${this.state.combo}`, 240, 67, 200);
     if (this.state.mode === "training") {
       ctx.fillStyle = "#9de8ff";
       ctx.font = "bold 9px monospace";
-      ctx.fillText(`TRAINING  DAMAGE ${Math.round(this.state.trainingDamage || 0)}`, 240, 64, 200);
+      ctx.fillText(`TRAINING  DAMAGE ${Math.round(this.state.trainingDamage || 0)}`, 240, 80, 200);
       ctx.font = "bold 7px monospace";
-      ctx.fillText("COMMAND: →+A  DOWN+A/X  BACK+Y THROW  B SKILL  SP SPECIAL", 240, 75, 220);
+      ctx.fillText("COMMAND: →+A  DOWN+A/X  BACK+Y THROW  B SKILL  SP SPECIAL", 240, 91, 220);
     }
     const notice = this.state.combatNotice;
     if (notice?.frames > 0 && notice.text) {
